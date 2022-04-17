@@ -1,7 +1,7 @@
 // 2. Preliminaries
 
 protocol Rule: Hashable {
-  associatedtype RHS: Collection where RHS.Element: Hashable
+  associatedtype RHS: Collection where RHS.Element: Hashable, RHS.Index: Hashable
   typealias SYM = RHS.Element
   var lhs: SYM { get }
   var rhs: RHS { get }
@@ -127,16 +127,22 @@ extension AnyGrammar {
 // null string.  The elimination of empty rules and proper nullables is done by
 // rewriting the grammar. [2] shows how to do this without loss of generality.
 
-struct Dotted<R: Rule>: Hashable where R.RHS.Index: Hashable {
+struct Dotted<R: Rule>: Hashable {
   let rule: R
   var dot: R.RHS.Index
 }
 
 func LHS<R: Rule>(_ r: Dotted<R>) -> R.SYM { LHS(r.rule) }
 
+/// A traditional Earley item
+struct EIMT<R: Rule, Origin: Hashable>: Hashable {
+  var dr: Dotted<R>
+  var origin: Origin
+}
+
 // 4. Earley's Algorithm
 extension AnyGrammar {
-  typealias DR = (rule: RULE, dot: RULE.RHS.Index)
+  typealias DR = Dotted<RULE>
 
   func postdotSTR(_ x: DR) -> STR { RHS(x.rule)[x.dot...] }
 
@@ -144,7 +150,7 @@ extension AnyGrammar {
 
   func Next(_ x: DR) -> DR? {
     x.dot == RHS(x.rule).endIndex ? nil
-      : (rule: x.rule, dot: RHS(x.rule).index(after: x.dot))
+      : DR(rule: x.rule, dot: RHS(x.rule).index(after: x.dot))
   }
 
   func Penult(_ x: DR) -> SYM? {
@@ -160,7 +166,7 @@ extension AnyGrammar {
   var startSYM: SYM { RHS(acceptRULE).first! }
 
   /// The initial dotted rule is initialDR =[acceptSYM → •startSYM]
-  var initialDR: DR { (rule: acceptRULE, dot: RHS(acceptRULE).startIndex) }
+  var initialDR: DR { .init(rule: acceptRULE, dot: RHS(acceptRULE).startIndex) }
 
   /// A predicted dotted rule is a dotted rule, other than the initial dotted
   /// rule, with a dot position of zero,
@@ -184,6 +190,20 @@ extension AnyGrammar {
   typealias ORIGIN = Int
   typealias LOC = ORIGIN
 
-  /// A traditional Earley item
-  typealias EIMT = (DR, ORIGIN)
+  /// An Earley Set
+  typealias ES = Set<EIMT<RULE, LOC>>
+
+  typealias Table = [LOC: ES]
+
+  /// ||table[Recce]|| is the total number of Earley items in all Earley sets
+  /// for Recce. For example, ||table[Marpa]|| is the total number of Earley
+  /// items in all the Earley sets of a Marpa parse.
+  func cardiality(_ t: Table) -> Int {
+    t.values.joined().count
+  }
+
+  func hasAccepted(_ table: Table, _ inputLength: Int) -> Bool {
+    table[inputLength]?.contains(
+      EIMT(dr: Next(initialDR)!, origin: 0)) ?? false
+  }
 }
