@@ -127,7 +127,10 @@ extension AnyGrammar {
 // null string.  The elimination of empty rules and proper nullables is done by
 // rewriting the grammar. [2] shows how to do this without loss of generality.
 
-typealias Dotted<R: Rule> = (rule: R, dot: R.RHS.Index)
+struct Dotted<R: Rule>: Hashable where R.RHS.Index: Hashable {
+  let rule: R
+  var dot: R.RHS.Index
+}
 
 func LHS<R: Rule>(_ r: Dotted<R>) -> R.SYM { LHS(r.rule) }
 
@@ -153,6 +156,34 @@ extension AnyGrammar {
   /// A penult is a dotted rule dDR such that Penult(d) ̸= Λ.
   func isPenult(_ x: DR) -> Bool { Penult(x) != nil }
 
+  /// The unique start symbol.  In an Earley grammar, RHS(acceptRULE).count == 1
+  var startSYM: SYM { RHS(acceptRULE).first! }
+
   /// The initial dotted rule is initialDR =[acceptSYM → •startSYM]
-  var initialDR: DR { (rule: .init(lhs: acceptSYM, rhs: [startSYM])) }
+  var initialDR: DR { (rule: acceptRULE, dot: RHS(acceptRULE).startIndex) }
+
+  /// A predicted dotted rule is a dotted rule, other than the initial dotted
+  /// rule, with a dot position of zero,
+  func isPredicted(_ r: DR) -> Bool {
+    r != initialDR && r.dot == RHS(r.rule).startIndex
+  }
+
+  /// A confirmed dotted rule is the initial dotted rule, or a dotted rule with
+  /// a dot position greater than zero.
+  func isConfirmed(_ r: DR) -> Bool {
+    return r == initialDR || r.dot != RHS(r.rule).startIndex
+  }
+
+  /// A completed dotted rule is a dotted rule with its dot position after the
+  /// end of its RHS
+  func isCompleted(_ r: DR) -> Bool {
+    return r.dot == RHS(r.rule).endIndex
+  }
+
+  /// A position in the input
+  typealias ORIGIN = Int
+  typealias LOC = ORIGIN
+
+  /// A traditional Earley item
+  typealias EIMT = (DR, ORIGIN)
 }
