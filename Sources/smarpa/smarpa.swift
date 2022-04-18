@@ -135,12 +135,12 @@ struct Dotted<R: Rule>: Hashable {
 func LHS<R: Rule>(_ r: Dotted<R>) -> R.SYM { LHS(r.rule) }
 
 /// A traditional Earley item
-struct EIMT<R: Rule, Origin: Hashable>: Hashable {
+struct TraditionalEarleyItem<R: Rule, Origin: Hashable>: Hashable {
   var dr: Dotted<R>
   var origin: Origin
 }
 
-// 4. Earley's Algorithm
+/// 4. Earley's Algorithm
 extension AnyGrammar {
   typealias DR = Dotted<RULE>
 
@@ -190,8 +190,9 @@ extension AnyGrammar {
   typealias ORIGIN = Int
   typealias LOC = ORIGIN
 
+  typealias EIMT = TraditionalEarleyItem<RULE, LOC>
   /// An Earley Set
-  typealias ES = Set<EIMT<RULE, LOC>>
+  typealias ES = Set<EIMT>
 
   typealias Table = [LOC: ES]
 
@@ -203,7 +204,29 @@ extension AnyGrammar {
   }
 
   func hasAccepted(_ table: Table, _ inputLength: Int) -> Bool {
-    table[inputLength]?.contains(
-      EIMT(dr: Next(initialDR)!, origin: 0)) ?? false
+    table[inputLength]?.contains(EIMT(dr: Next(initialDR)!, origin: 0))
+      ?? false
+  }
+}
+
+/// 5. Operations of the Earley algorithm
+extension AnyGrammar {
+
+  /// 5.1 Initialization
+  var initialTable: Table {
+    [0: [.init(dr: initialDR, origin: 0)]]
+  }
+
+  /// 5.2 Scanning
+  func scan(
+    token: SYM, at previousLOC: LOC, into table: inout Table, predecessor: EIMT
+  ) {
+    assert(previousLOC >= 0)
+    let currentLOC = previousLOC + 1
+    assert(table[previousLOC]!.contains(predecessor))
+    let beforeDR = predecessor.dr
+    assert(Postdot(beforeDR) == token)
+    table[currentLOC, default: []]
+      .insert(EIMT(dr: Next(beforeDR)!, origin: predecessor.origin))
   }
 }
