@@ -181,7 +181,7 @@ extension AnyGrammar {
   }
 
   /// A completed dotted rule is a dotted rule with its dot position after the
-  /// end of its RHS
+  /// end of its RHS.
   func isCompleted(_ r: DR) -> Bool {
     return r.dot == RHS(r.rule).endIndex
   }
@@ -287,4 +287,17 @@ extension AnyGrammar {
         .insert(EIMT(dr: Dotted(rule: r, dot: RHS(r).startIndex)))
     }
   }
+}
+
+/// 6. The Leo Algorithm
+
+/// A traditional Leo item
+struct TraditionalLeoItem<R: Rule, Origin: Hashable>: Hashable {
+  var topDR: Dotted<R>
+  var transition: R.SYM
+  var origin: Origin
+}
+
+extension AnyGrammar {
+
 }
