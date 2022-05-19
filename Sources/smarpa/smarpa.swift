@@ -55,6 +55,11 @@ protocol AnyGrammar {
   func Right_NN(_ r: RULE) -> SYM
 
   func rulesByLHS(_ x: SYM) -> RulesByLHS
+
+  associatedtype InitialSymbolSet: Collection where InitialSymbolSet.Element == SYM
+
+  /// Returns the set of symbols that begin any string derived by s.
+  func initialSymbolsOfStringsDerivedStar(by s: SYM) -> InitialSymbolSet
 }
 
 extension AnyGrammar {
@@ -282,9 +287,13 @@ extension AnyGrammar {
     //   ∧ ∃ (zSTR | Postdot(predecessorDR) ⇒∗ LSYM .zSTR)
     // }
 
-    for l in initialSymbolsOfStringsDerivedStar(by: Postdot(predecessor.dr)) {
-      table[current, default: []]
-        .insert(EIMT(dr: Dotted(rule: r, dot: RHS(r).startIndex)))
+    if let nextSymbol = Postdot(predecessor.dr) {
+      for l in initialSymbolsOfStringsDerivedStar(by: nextSymbol) {
+        for r in rulesByLHS(l) {
+          table[current, default: []]
+            .insert(EIMT(dr: Dotted(rule: r, dot: RHS(r).startIndex), origin: current))
+        }
+      }
     }
   }
 }
