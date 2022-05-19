@@ -199,7 +199,7 @@ extension AnyGrammar {
   /// ||table[Recce]|| is the total number of Earley items in all Earley sets
   /// for Recce. For example, ||table[Marpa]|| is the total number of Earley
   /// items in all the Earley sets of a Marpa parse.
-  func cardiality(_ t: Table) -> Int {
+  func cardinality(_ t: Table) -> Int {
     t.values.joined().count
   }
 
