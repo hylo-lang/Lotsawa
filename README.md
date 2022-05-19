@@ -1,3 +1,3 @@
 # smarpa
 
-A description of this package.
+An attempt to encode the MARPA parser paper in Swift

@@ -219,14 +219,72 @@ extension AnyGrammar {
 
   /// 5.2 Scanning
   func scan(
-    token: SYM, at previousLOC: LOC, into table: inout Table, predecessor: EIMT
+    token: SYM, at previous: LOC, into table: inout Table, predecessor: EIMT
   ) {
-    assert(previousLOC >= 0)
-    let currentLOC = previousLOC + 1
-    assert(table[previousLOC]!.contains(predecessor))
-    let beforeDR = predecessor.dr
-    assert(Postdot(beforeDR) == token)
-    table[currentLOC, default: []]
-      .insert(EIMT(dr: Next(beforeDR)!, origin: predecessor.origin))
+    // tokenSYM =w[previousLOC]
+
+    // currentLOC > 0
+    // previousLOC = currentLOC − 1
+    assert(previous >= 0)
+    let current = previous + 1
+
+    // predecessorEIMT = [beforeDR,predecessorORIG]
+    let before = predecessor.dr
+
+    // predecessorEIMT ∈previousES
+    assert(table[previous, default: []].contains(predecessor))
+
+    // Postdot(beforeDR) = tokenSYM
+    assert(Postdot(before) == token)
+
+    // insert: {[Next(beforeDR),predecessorORIG]}
+    table[current, default: []]
+      .insert(EIMT(dr: Next(before)!, origin: predecessor.origin))
+  }
+
+  /// 5.3 Reduction
+  func reduce(
+    _ component: EIMT, at current: LOC, into table: inout Table, predecessor: EIMT
+  ) {
+    // componentEIMT = [[lhsSYM →rhsSTR•],component-origLOC]
+    let lhs = LHS(component.dr)
+    assert(Next(component.dr) == nil)
+
+    // componentEIMT ∈ currentES
+    assert(table[current, default: []].contains(component))
+
+    // predecessorEIMT = [beforeDR,predecessorORIG]
+    let before = predecessor.dr
+
+    // predecessorEIMT ∈ component-origES
+    assert(table[component.origin, default: []].contains(predecessor))
+
+    // Postdot(beforeDR) = lhsSYM
+    assert(Postdot(before) == lhs)
+
+    // insert: {[Next(beforeDR),predecessorORIG]}
+    table[current, default: []]
+      .insert(EIMT(dr: Next(before)!, origin: predecessor.origin))
+  }
+
+  /// 5.4 Prediction
+  func predict(
+    predecessor: EIMT, at current: LOC, into table: inout Table
+  ) {
+
+    // predecessorEIMT =[predecessorDR,predecessorORIG]
+    // predecessorEIMT ∈currentES
+    assert(table[current, default: []].contains(predecessor))
+
+    // insert: {
+    //   [[LSYM → •rhSTR],currentLOC] such that
+    //   [LSYM →rhSTR] ∈ rules
+    //   ∧ ∃ (zSTR | Postdot(predecessorDR) ⇒∗ LSYM .zSTR)
+    // }
+
+    for l in initialSymbolsOfStringsDerivedStar(by: Postdot(predecessor.dr)) {
+      table[current, default: []]
+        .insert(EIMT(dr: Dotted(rule: r, dot: RHS(r).startIndex)))
+    }
   }
 }
