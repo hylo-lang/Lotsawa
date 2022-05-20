@@ -438,3 +438,25 @@ extension LeoGrammar {
     }
   }
 }
+
+/// 6.3 Leo memoization.
+extension LeoGrammar {
+  /// Penult-Unique(penultSY M,iES) ≝
+  ///   ∀yDR(Contains(currentES,yDR) ∧ penultSYM=Penult(yDR)) ⇒ xDR = yDR.
+
+  /// Leo-Unique(xDR,currentLOC) ≝ Contains(currentES,xDR)
+  ///    ∧ Penult(xDR)≠Λ
+  ///    ∧ Penult-Unique(Penult(xDR),currentES)
+
+
+  /// Leo-Eligible(xDR,currentLOC) ≝
+  ///    ∃xRULE,xORIG | xDR = [xRULE,iORIG]
+  ///  ∧ Right-Recursive(xRULE )
+  ///  ∧ Leo-Unique(currentES,xDR).
+
+  /// LIMT-Predecessor(predLIMT ,bottomEIMT ) ≝
+  ///    ∃bottom-originES,bottomDR,predDR, pred-originLOC,bottom-originLOC |
+  ///       bottomEIMT =[bottomDR,bottom-originLOC]
+  ///       ∧ predLIMT = [predDR,LHS(bottomDR),pred-originLOC]
+  ///       ∧ predLIMT ∈ bottom-originES
+}
