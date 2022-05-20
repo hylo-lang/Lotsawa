@@ -441,8 +441,11 @@ extension LeoGrammar {
 
 /// 6.3 Leo memoization.
 extension LeoGrammar {
-  /// Penult-Unique(penultSY M,iES) ≝
-  ///   ∀yDR(Contains(currentES,yDR) ∧ penultSYM=Penult(yDR)) ⇒ xDR = yDR.
+  /// Penult-Unique(penultSYM,iES) ≝
+  ///   ∀yDR (Contains(currentES,yDR) ∧ penultSYM=Penult(yDR)) ⇒ xDR = yDR.
+  func PenultUnique(penult: SYM, i: ES, at: current) -> Bool {
+    fatalError("Pending https://github.com/jeffreykegler/Marpa-arxiv-paper/issues/7")
+  }
 
   /// Leo-Unique(xDR,currentLOC) ≝ Contains(currentES,xDR)
   ///    ∧ Penult(xDR)≠Λ
