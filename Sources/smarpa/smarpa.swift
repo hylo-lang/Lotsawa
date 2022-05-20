@@ -340,7 +340,10 @@ protocol LeoGrammar: AnyGrammar where ES: LeoEarleySet, ES.LOC == ORIGIN, ES.RUL
 }
 
 extension Collection {
-  var hasUniqueElement: Bool { !isEmpty && dropFirst().isEmpty }
+  var hasUniqueElement: Bool {
+    var p = makeIterator()
+    return p.next() != nil && p.next() == nil
+  }
 }
 
 extension LeoGrammar {
@@ -442,20 +445,23 @@ extension LeoGrammar {
 /// 6.3 Leo memoization.
 extension LeoGrammar {
   /// Penult-Unique(penultSYM,iES) ≝
-  ///   ∀yDR (Contains(currentES,yDR) ∧ penultSYM=Penult(yDR)) ⇒ xDR = yDR.
-  func PenultUnique(penult: SYM, i: ES, at: current) -> Bool {
-    fatalError("Pending https://github.com/jeffreykegler/Marpa-arxiv-paper/issues/7")
+  /// ∀xDR∀yDR
+  ///   (Contains(iES,xDR) ∧ Contains(iES,yDR) ∧ penultSYM = Penult(xDR) = Penult(yDR))
+  ///      ⇒ xDR = yDR
+  func PenultUnique(penult: SYM, i: ES) -> Bool {
+    i.lazy.filter { item in Penult(item.dr) == penult }.dropFirst().isEmpty
   }
 
-  /// Leo-Unique(xDR,currentLOC) ≝ Contains(currentES,xDR)
-  ///    ∧ Penult(xDR)≠Λ
-  ///    ∧ Penult-Unique(Penult(xDR),currentES)
-
+  /// Leo-Unique(xDR, currentLOC) ≝
+  ///    Contains(currentES,xDR)
+  ///        ∧ Penult(xDR) ≠ Λ
+  ///        ∧ Penult-Unique(Penult(xDR), currentES)
 
   /// Leo-Eligible(xDR,currentLOC) ≝
-  ///    ∃xRULE,xORIG | xDR = [xRULE,iORIG]
-  ///  ∧ Right-Recursive(xRULE )
-  ///  ∧ Leo-Unique(currentES,xDR).
+  ///   ∃xRULE,i | (
+  ///     xDR = [xRULE,i]
+  ///     ∧ Right-Recursive(xRULE)
+  ///     ∧ Leo-Unique(currentES,xDR))
 
   /// LIMT-Predecessor(predLIMT ,bottomEIMT ) ≝
   ///    ∃bottom-originES,bottomDR,predDR, pred-originLOC,bottom-originLOC |
