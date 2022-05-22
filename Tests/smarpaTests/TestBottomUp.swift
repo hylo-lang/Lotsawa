@@ -20,7 +20,7 @@ extension BottomUpChartParser {
 }
 
 /// Grammar definition
-enum Symbol: Int, CaseIterable {
+fileprivate enum Symbol: Int, CaseIterable {
   case LPAREN, RPAREN, NUMBER, PLUS, MINUS, TIMES, DIVIDE
   case term, factor, expr
 
@@ -30,10 +30,10 @@ enum Symbol: Int, CaseIterable {
 /// A tiny DSL for defining grammar rules.
 infix operator => : AssignmentPrecedence
 infix operator ~: MultiplicationPrecedence
-func ~(a: Symbol, b: Symbol) -> [Symbol] { [a, b] }
-func ~(a: [Symbol], b: Symbol) -> [Symbol] { a + [b] }
-func =>(lhs: Symbol, rhs: Symbol) -> [Symbol] { [lhs, rhs] }
-func =>(lhs: Symbol, rhs: [Symbol]) -> [Symbol] { [lhs] + rhs }
+fileprivate func ~(a: Symbol, b: Symbol) -> [Symbol] { [a, b] }
+fileprivate func ~(a: [Symbol], b: Symbol) -> [Symbol] { a + [b] }
+fileprivate func =>(lhs: Symbol, rhs: Symbol) -> [Symbol] { [lhs, rhs] }
+fileprivate func =>(lhs: Symbol, rhs: [Symbol]) -> [Symbol] { [lhs] + rhs }
 
 class BottomUpTest: XCTestCase {
   func testQuick() {

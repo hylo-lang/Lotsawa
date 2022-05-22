@@ -109,19 +109,22 @@ struct EarleyGrammar<Symbol: Hashable>: AnyEarleyGrammar {
   }
 }
 
-public struct EarleyParser<G: AnyEarleyGrammar> {
+public struct EarleyParser<Grammar: AnyEarleyGrammar> {
+  /// Creates an instance for the given grammar.
+  init(_ g: Grammar) { self.g = g }
+
   /// A position in the input.
   typealias SourcePosition = Int
 
   /// A parse rule being matched.
   struct PartialParse: Hashable {
     /// The positions in ruleStore of yet-to-be recognized RHS symbols.
-    var rule: G.PartialRule
+    var rule: Grammar.PartialRule
 
     /// The position in the token stream where the partially-parsed input begins.
     let start: SourcePosition
 
-    init(expecting expected: G.PartialRule, at start: SourcePosition) {
+    init(expecting expected: Grammar.PartialRule, at start: SourcePosition) {
       self.rule = expected
       self.start = start
     }
@@ -130,19 +133,27 @@ public struct EarleyParser<G: AnyEarleyGrammar> {
     func advanced() -> Self { Self(expecting: rule.dropFirst(), at: start) }
   }
 
-  func postdot(_ p: PartialParse) -> G.Symbol? { g.postdot(p.rule) }
-  func lhs(_ p: PartialParse) -> G.Symbol { g.lhs(p.rule) }
+  func postdot(_ p: PartialParse) -> Grammar.Symbol? { g.postdot(p.rule) }
+  func lhs(_ p: PartialParse) -> Grammar.Symbol { g.lhs(p.rule) }
   
   /// all the partial parses
-  var S: Array<Set<PartialParse>> = []
-  var g: G
+  var S: [[PartialParse]] = []
+
+  /// The grammar
+  var g: Grammar
+}
+
+extension Array where Element: Equatable {
+  mutating func appendIfMissing(_ x: Element) {
+    if !self.contains(x) { append(x) }
+  }
 }
 
 /// Initialization and algorithm.
 extension EarleyParser {
   /// Recognizes the sequence of symbols in `source` as a parse of `start`.
-  public mutating func recognize<Source: Collection>(_ start: G.Symbol, as source: Source )
-    where Source.Element == G.Symbol
+  public mutating func recognize<Source: Collection>(_ source: Source, as start: Grammar.Symbol)
+    where Source.Element == Grammar.Symbol
   {
     let n = source.count
     S.removeAll(keepingCapacity: true)
@@ -150,21 +161,28 @@ extension EarleyParser {
     S.append(contentsOf: repeatElement([], count: n + 1))
     
     for r in g.alternatives(start) {
-      S[0].insert(PartialParse(expecting: r, at: 0))
+      S[0].append(PartialParse(expecting: r, at: 0))
     }
 
     // Recognize each token over its range in the source.
-    for (i, t) in source.enumerated() {
-      for p in S[i] {
+    var remainingTokens = source[...]
+
+    for i in S.indices {
+      let t = remainingTokens.popFirst()
+
+      var j = 0
+      while j < S[i].count {
+        let p = S[i][j]
+
         if let expected = postdot(p) {
           if t == expected {  // scan
-            S[i + 1].insert(p.advanced())
+            S[i + 1].appendIfMissing(p.advanced())
           }
           else { // predict
             for predicted_rhs in g.alternatives(expected) {
-              S[i].insert(PartialParse(expecting: predicted_rhs, at: i))  
+              S[i].appendIfMissing(PartialParse(expecting: predicted_rhs, at: i))
               if g.isNullable(expected) {
-                S[i].insert(p.advanced())
+                S[i].appendIfMissing(p.advanced())
               }
             }
           }
@@ -172,10 +190,36 @@ extension EarleyParser {
         else { // // complete.
           // TODO: avoid a linear search over everything in S[item.start].
           for q in S[p.start] where postdot(q) == lhs(p) {
-            S[i].insert(q.advanced()) 
+            S[i].appendIfMissing(q.advanced())
           }
         }
+        j += 1
       }
     }
+  }
+}
+
+extension EarleyParser: CustomStringConvertible {
+  public var description: String {
+    var lines: [String] = []
+    for (i, states) in S.enumerated() {
+      lines.append("=== \(i) ===")
+      for p in states { lines.append(ruleString(p)) }
+      lines.append("")
+    }
+    return lines.joined(separator: "\n")
+  }
+
+  func ruleString(_ p: PartialParse) -> String {
+    var r = "\(lhs(p)) ->\t"
+    var all = g.alternatives(lhs(p)).first { $0.endIndex == p.rule.endIndex }!
+    while !g.isComplete(all) {
+      if all.count == p.rule.count { r += "• " }
+      r += "\(g.postdot(all)!) "
+      _ = all.popFirst()
+    }
+    if p.rule.isEmpty { r += "•" }
+    r += "\t(\(p.start))"
+    return r
   }
 }
