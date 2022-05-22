@@ -57,7 +57,10 @@ public struct BottomUpChartParser {
   var rulesByRHSStart: [SymbolID: [RuleTail]] = [:]
 
   /// All the partial parses so far.
-  var chart: [ChartLocation: [PartialParse]] = [:]
+  var partial: [ChartLocation: [PartialParse]] = [:]
+
+  /// All the recognized rules so far.
+  var completed: [SourcePosition: [(lhs: RuleStore.Index, end: SourcePosition)]] = [:]
 }
 
 /// Initialization and algorithm.
@@ -98,11 +101,12 @@ extension BottomUpChartParser {
     var p = r
     _ = p.expected.popFirst()
     if p.isComplete {
+      completed[p.start, default: []].append((lhs: p.expected.upperBound, end: l))
       recognize(lhs(p.expected), spanningInput: p.start..<l)
     }
     else {
       let postdot = next(p.expected)
-      chart[ChartLocation(expecting: postdot, at: l), default: []].append(p)
+      partial[ChartLocation(expecting: postdot, at: l), default: []].append(p)
     }
   }
 
@@ -111,7 +115,7 @@ extension BottomUpChartParser {
     // print("\(g): recognize\t", symbolName(s))
 
     // Advance all rules that are expecting s at g.lowerBound.
-    if let advancingRules = chart[ChartLocation(expecting: s, at: g.lowerBound)] {
+    if let advancingRules = partial[ChartLocation(expecting: s, at: g.lowerBound)] {
       for p in advancingRules {
         advance(p, to: g.upperBound)
       }
