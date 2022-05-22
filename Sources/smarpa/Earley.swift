@@ -41,6 +41,9 @@ public struct EarleyParser {
 
   /// The items with which to initialize S[0]
   var initialItems: Set<Item> = []
+
+  /// The set of symbols that can derive the null string.
+  var nullableSymbols: Set<SymbolID> = []
 }
 
 /// Initialization and algorithm.
@@ -50,6 +53,8 @@ extension EarleyParser {
     where Grammar.Element == (lhs: SymbolID, rhs: RHS),
           RHS.Element == SymbolID
   {
+    var rulesByRHS: [SymbolID: [RHSTail]] = [:]
+
     for r in grammar {
       let start = ruleStore.count
       ruleStore.append(contentsOf: r.rhs)
@@ -57,8 +62,32 @@ extension EarleyParser {
       ruleStore.append(r.lhs)
       rulesByLHS[r.lhs, default: []].append(rhs)
 
+      for s in r.rhs {
+        rulesByRHS[s, default: []].append(rhs)
+      }
+
       if r.lhs == start {
         initialItems.insert(Item(expected: rhs, start: 0))
+      }
+
+      if r.rhs.isEmpty {
+        nullableSymbols.insert(r.lhs)
+      }
+    }
+
+    for n in nullableSymbols {
+      discoverNullable(n)
+    }
+
+    func discoverNullable(_ s: SymbolID) {
+      for r in rulesByRHS[s, default: []] {
+        let lhs = ruleStore[r.upperBound]
+        if !nullableSymbols.contains(lhs)
+             && ruleStore[r].allSatisfy(nullableSymbols.contains)
+        {
+          nullableSymbols.insert(lhs)
+          discoverNullable(lhs)
+        }
       }
     }
   }
@@ -74,14 +103,17 @@ extension EarleyParser {
     // Recognize each token over its range in the source.
     for (i, t) in source.enumerated() {
       for var item in S[i] {
-        if let x = item.expected.popFirst() {
-          let expected: SymbolID = ruleStore[x]
-          if t == expected {
+        if let xi = item.expected.popFirst() {
+          let nextSymbol: SymbolID = ruleStore[xi]
+          if t == nextSymbol {
             S[i + 1].insert(item) // scan
           }
           else {
-            for rhs in rulesByLHS[expected, default: []] {
-              S[i].insert(Item(expected: rhs, start: i))  // predict
+            for predicted_rhs in rulesByLHS[nextSymbol, default: []] {
+              S[i].insert(Item(expected: predicted_rhs, start: i))  // predict
+              if nullableSymbols.contains(nextSymbol) {
+                S[i].insert(item)
+              }
             }
           }
         }
