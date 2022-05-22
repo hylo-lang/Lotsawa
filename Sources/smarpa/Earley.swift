@@ -1,128 +1,178 @@
-public struct EarleyParser {
-  /// Terminals and nonterminals are identified by a symbol ID.
-  public typealias SymbolID = Int
+public protocol AnyEarleyGrammar {
+  /// A terminal or nonterminal in the grammar
+  associatedtype Symbol: Equatable
 
-  /// The symbols of all rules, stored end-to-end.
-  typealias RuleStore = [SymbolID]
+  /// A suffix of a grammar rule's RHS, from which the rule's LHS symbol can also be identified.
+  associatedtype PartialRule: Collection, Hashable where PartialRule.SubSequence == PartialRule
 
-  /// The RHS symbols of a parse rule followed by the rule's LHS symbol.
-  typealias Rule = RuleStore.SubSequence
+  /// The rules for a given LHS symbol.
+  associatedtype Alternatives: Collection where Alternatives.Element == PartialRule
 
-  /// A range of positions in `ruleStore` denoting a suffix of a rule's RHS.
-  typealias RHSTail = Range<RuleStore.Index>
+  /// Returns the right-hand side alternatives for lhs, or an empty collection if lhs is a terminal.
+  func alternatives(_ lhs: Symbol) -> Alternatives
 
-  /// A position in the input.
-  typealias SourcePosition = Int
+  /// Returns true iff `s` derives the null string.
+  func isNullable(_ s: Symbol) -> Bool
 
-  /// A range of positions in the input.
-  typealias SourceRegion = Range<SourcePosition>
+  /// Returns true iff `t` is empty.
+  func isComplete(_ t: PartialRule) -> Bool
 
-  /// A parse rule being matched.
-  struct PartialParse: Hashable {
-    /// The positions in ruleStore of yet-to-be recognized RHS symbols.
-    var expected: RHSTail
+  /// Returns the LHS symbol for the rule corresponding to `t`.
+  func lhs(_ t: PartialRule) -> Symbol
 
-    /// The position in the token stream where the partially-parsed input begins.
-    var start: SourcePosition
-
-    /// True iff the entire RHS has been recognized.
-    var isComplete: Bool { expected.isEmpty }
-  }
-  typealias Item = PartialParse
-
-  /// Storage for all the rules.
-  var ruleStore: RuleStore = []
-
-  /// The right-hand side alternatives for each nonterminal symbol.
-  var rulesByLHS: [SymbolID: [RHSTail]] = [:]
-
-  /// all the partial parses
-  var S: Array<Set<Item>> = []
-
-  /// The items with which to initialize S[0]
-  var initialItems: Set<Item> = []
-
-  /// The set of symbols that can derive the null string.
-  var nullableSymbols: Set<SymbolID> = []
+  /// Returns the next expected symbol of `t`, .
+  func postdot(_ t: PartialRule) -> Symbol?
 }
 
-/// Initialization and algorithm.
-extension EarleyParser {
-  /// Creates a parser for the given grammar.
-  public init<Grammar: Collection, RHS: Collection>(_ grammar: Grammar, recognizing start: SymbolID)
-    where Grammar.Element == (lhs: SymbolID, rhs: RHS),
-          RHS.Element == SymbolID
+struct MultiMap<K: Hashable, V> {
+  typealias Storage = Dictionary<K, [V]>
+
+  subscript(k: K) -> [V] {
+    set { storage[k] = newValue }
+    _modify { yield &storage[k, default: []] }
+    _read { yield storage[k, default: []] }
+  }
+
+  /// The keys in this MultiMap.
+  ///
+  /// - Note: the order of these keys is incidental.
+  var keys: Storage.Keys {
+    get { storage.keys }
+  }
+
+  /// The sets of values in this MultiMap.
+  ///
+  /// - Note: the order of these sets is incidental.
+  var values: Storage.Values {
+    get { storage.values }
+  }
+
+  private(set) var storage: Storage = [:]
+}
+
+struct EarleyGrammar<Symbol: Hashable>: AnyEarleyGrammar {
+  typealias RuleStore = [Symbol]
+  typealias PartialRule = Range<RuleStore.Index>
+  typealias Alternatives = [PartialRule]
+
+  func alternatives(_ lhs: Symbol) -> Alternatives { rulesByLHS[lhs] }
+  func isNullable(_ s: Symbol) -> Bool { nullables.contains(s) }
+  func isComplete(_ rhs: PartialRule) -> Bool { rhs.isEmpty }
+  func lhs(_ t: PartialRule) -> Symbol { ruleStore[t.upperBound] }
+  func postdot(_ t: PartialRule) -> Symbol? { ruleStore[t].first }
+
+  /// Storage for all the rules.
+  private let ruleStore: [Symbol]
+
+  /// The right-hand side alternatives for each nonterminal symbol.
+  private let rulesByLHS: MultiMap<Symbol, PartialRule>
+
+  /// The set of symbols that can derive the null string.
+  private let nullables: Set<Symbol>
+
+  public init<RawRules: Collection, RHS: Collection>(_ rawRules: RawRules)
+    where RawRules.Element == (lhs: Symbol, rhs: RHS), RHS.Element == Symbol
   {
-    var rulesByRHS: [SymbolID: [RHSTail]] = [:]
+    var rulesByLHS = MultiMap<Symbol, PartialRule>()
+    var rulesByRHS = MultiMap<Symbol, PartialRule>()
 
-    for r in grammar {
+    var ruleStore: [Symbol] = []
+    for (lhs, rhs) in rawRules {
       let start = ruleStore.count
-      ruleStore.append(contentsOf: r.rhs)
-      let rhs = start..<ruleStore.count
-      ruleStore.append(r.lhs)
-      rulesByLHS[r.lhs, default: []].append(rhs)
+      ruleStore.append(contentsOf: rhs)
+      let r = start..<ruleStore.endIndex
+      ruleStore.append(lhs)
 
-      for s in r.rhs {
-        rulesByRHS[s, default: []].append(rhs)
-      }
+      rulesByLHS[lhs].append(r)
+      for s in rhs { rulesByRHS[s].append(r) }
+    }
+    self.ruleStore = ruleStore
+    self.rulesByLHS = rulesByLHS
 
-      if r.lhs == start {
-        initialItems.insert(Item(expected: rhs, start: 0))
-      }
-
-      if r.rhs.isEmpty {
-        nullableSymbols.insert(r.lhs)
+    var nullables = Set<Symbol>()
+    for (lhs, alternatives) in rulesByLHS.storage {
+      if !alternatives.allSatisfy({ !$0.isEmpty }) {
+        discoverNullable(lhs)
       }
     }
+    self.nullables = nullables
 
-    for n in nullableSymbols {
-      discoverNullable(n)
-    }
-
-    func discoverNullable(_ s: SymbolID) {
-      for r in rulesByRHS[s, default: []] {
+    func discoverNullable(_ s: Symbol) {
+      nullables.insert(s)
+      for r in rulesByRHS[s] {
         let lhs = ruleStore[r.upperBound]
-        if !nullableSymbols.contains(lhs)
-             && ruleStore[r].allSatisfy(nullableSymbols.contains)
-        {
-          nullableSymbols.insert(lhs)
+        if !nullables.contains(lhs) && ruleStore[r].allSatisfy(nullables.contains) {
           discoverNullable(lhs)
         }
       }
     }
   }
+}
 
-  /// Parses the sequence of symbols in `source`.
-  public mutating func parse<Source: Collection>(_ source: Source) where Source.Element == SymbolID {
+public struct EarleyParser<G: AnyEarleyGrammar> {
+  /// A position in the input.
+  typealias SourcePosition = Int
+
+  /// A parse rule being matched.
+  struct PartialParse: Hashable {
+    /// The positions in ruleStore of yet-to-be recognized RHS symbols.
+    var rule: G.PartialRule
+
+    /// The position in the token stream where the partially-parsed input begins.
+    let start: SourcePosition
+
+    init(expecting expected: G.PartialRule, at start: SourcePosition) {
+      self.rule = expected
+      self.start = start
+    }
+
+    /// Returns `self`, having advanced the forward by one position.
+    func advanced() -> Self { Self(expecting: rule.dropFirst(), at: start) }
+  }
+
+  func postdot(_ p: PartialParse) -> G.Symbol? { g.postdot(p.rule) }
+  func lhs(_ p: PartialParse) -> G.Symbol { g.lhs(p.rule) }
+  
+  /// all the partial parses
+  var S: Array<Set<PartialParse>> = []
+  var g: G
+}
+
+/// Initialization and algorithm.
+extension EarleyParser {
+  /// Recognizes the sequence of symbols in `source` as a parse of `start`.
+  public mutating func recognize<Source: Collection>(_ start: G.Symbol, as source: Source )
+    where Source.Element == G.Symbol
+  {
     let n = source.count
     S.removeAll(keepingCapacity: true)
     S.reserveCapacity(n + 1)
-    S.append(initialItems)
-    S.append(contentsOf: repeatElement([], count: n))
+    S.append(contentsOf: repeatElement([], count: n + 1))
+    
+    for r in g.alternatives(start) {
+      S[0].insert(PartialParse(expecting: r, at: 0))
+    }
 
     // Recognize each token over its range in the source.
     for (i, t) in source.enumerated() {
-      for var item in S[i] {
-        if let xi = item.expected.popFirst() {
-          let nextSymbol: SymbolID = ruleStore[xi]
-          if t == nextSymbol {
-            S[i + 1].insert(item) // scan
+      for p in S[i] {
+        if let expected = postdot(p) {
+          if t == expected {  // scan
+            S[i + 1].insert(p.advanced())
           }
-          else {
-            for predicted_rhs in rulesByLHS[nextSymbol, default: []] {
-              S[i].insert(Item(expected: predicted_rhs, start: i))  // predict
-              if nullableSymbols.contains(nextSymbol) {
-                S[i].insert(item)
+          else { // predict
+            for predicted_rhs in g.alternatives(expected) {
+              S[i].insert(PartialParse(expecting: predicted_rhs, at: i))  
+              if g.isNullable(expected) {
+                S[i].insert(p.advanced())
               }
             }
           }
         }
-        else {
-          let lhs = ruleStore[item.expected.upperBound]
+        else { // // complete.
           // TODO: avoid a linear search over everything in S[item.start].
-          for var parent in S[item.start] where ruleStore[parent.expected].first == lhs {
-            _ = parent.expected.popFirst()
-            S[i].insert(parent) // complete.
+          for q in S[p.start] where postdot(q) == lhs(p) {
+            S[i].insert(q.advanced()) 
           }
         }
       }
