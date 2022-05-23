@@ -143,24 +143,21 @@ public struct EarleyParser<Grammar: AnyEarleyGrammar> {
   func postdot(_ p: PartialParse) -> Grammar.Symbol? { g.postdot(p.rule) }
   func lhs(_ p: PartialParse) -> Grammar.Symbol { g.lhs(p.rule) }
   
-  /// all the partial parses
+  /// All the partial parses, grouped by earleme.
   var partials: [PartialParse] = []
-  var pStart: [Array<PartialParse>.Index] = []
+
+  /// The position in `partials` where each earleme begins.
+  var earlemeStart: [Array<PartialParse>.Index] = []
 
   /// The grammar
   var g: Grammar
 }
 
-extension Array where Element: Equatable {
-  mutating func appendIfMissing(_ x: Element) {
-    if !self.contains(x) { append(x) }
-  }
-}
-
 /// Initialization and algorithm.
 extension EarleyParser {
+  /// Adds `p` to the latest earleme if it is not already there.
   mutating func insert(_ p: PartialParse) {
-    if !partials[pStart.last!...].contains(p) { partials.append(p) }
+    if !partials[earlemeStart.last!...].contains(p) { partials.append(p) }
   }
 
   /// Recognizes the sequence of symbols in `source` as a parse of `start`.
@@ -169,9 +166,9 @@ extension EarleyParser {
   {
     let n = source.count
     partials.removeAll(keepingCapacity: true)
-    pStart.removeAll(keepingCapacity: true)
-    pStart.reserveCapacity(n + 1)
-    pStart.append(0)
+    earlemeStart.removeAll(keepingCapacity: true)
+    earlemeStart.reserveCapacity(n + 1)
+    earlemeStart.append(0)
 
     for r in g.alternatives(start) {
       partials.append(PartialParse(expecting: r, at: 0))
@@ -180,25 +177,24 @@ extension EarleyParser {
     // Recognize each token over its range in the source.
     var tokens = source.makeIterator()
 
-    var i = 0
-    while i != pStart.count {
-      var j = pStart[i]
-      // predict / complete
+    var i = 0 // The current earleme
+    while i != earlemeStart.count {
+      var j = earlemeStart[i] // The partial parse within the current earleme
+
+      // predictions and completions
       while j < partials.count {
         let p = partials[j]
-        if let s = postdot(p) {
-          // predict
+        if let s = postdot(p) { // predict
           for rhs in g.alternatives(s) {
             insert(PartialParse(expecting: rhs, at: i))
             if g.isNullable(s) { insert(p.advanced()) }
           }
         }
-        else {
-          // complete
-          var k = pStart[p.start]
+        else { // complete
+          var k = earlemeStart[p.start]
           // TODO: if we can prove the insert is a no-op when p.start == i, we
           // can simplify the loop.
-          while k < (p.start == i ? partials.count: pStart[p.start + 1]) {
+          while k < (p.start == i ? partials.count: earlemeStart[p.start + 1]) {
             let q = partials[k]
             if postdot(q) == lhs(p) { insert(q.advanced()) }
             k += 1
@@ -206,12 +202,13 @@ extension EarleyParser {
         }
         j += 1
       }
+
       // scans
       if let t = tokens.next() {
-        for j in partials[pStart[i]...].indices {
+        for j in partials[earlemeStart[i]...].indices {
           let p = partials[j]
           if postdot(p) == t {
-            if pStart.count == i + 1 { pStart.append(partials.count) }
+            if earlemeStart.count == i + 1 { earlemeStart.append(partials.count) }
             insert(p.advanced())
           }
         }
@@ -226,7 +223,7 @@ extension EarleyParser: CustomStringConvertible {
     var lines: [String] = []
     var i = -1
     for j in partials.indices {
-      if pStart.count > i + 1 && j == pStart[i + 1] {
+      if earlemeStart.count > i + 1 && j == earlemeStart[i + 1] {
         i += 1
         lines.append("\n=== \(i) ===")
       }
