@@ -22,6 +22,13 @@ public protocol AnyEarleyGrammar {
 
   /// Returns the next expected symbol of `t`, .
   func postdot(_ t: PartialRule) -> Symbol?
+
+  /// Returns `true` iff `s` is a terminal symbol.
+  func isTerminal(_ s: Symbol) -> Bool
+}
+
+extension AnyEarleyGrammar {
+  func isTerminal(_ s: Symbol) -> Bool { return alternatives(s).isEmpty }
 }
 
 struct MultiMap<K: Hashable, V> {
@@ -137,7 +144,8 @@ public struct EarleyParser<Grammar: AnyEarleyGrammar> {
   func lhs(_ p: PartialParse) -> Grammar.Symbol { g.lhs(p.rule) }
   
   /// all the partial parses
-  var S: [[PartialParse]] = []
+  var partials: [PartialParse] = []
+  var pStart: [Array<PartialParse>.Index] = []
 
   /// The grammar
   var g: Grammar
@@ -151,50 +159,64 @@ extension Array where Element: Equatable {
 
 /// Initialization and algorithm.
 extension EarleyParser {
+  mutating func insert(_ p: PartialParse) {
+    if !partials[pStart.last!...].contains(p) { partials.append(p) }
+  }
+
   /// Recognizes the sequence of symbols in `source` as a parse of `start`.
   public mutating func recognize<Source: Collection>(_ source: Source, as start: Grammar.Symbol)
     where Source.Element == Grammar.Symbol
   {
     let n = source.count
-    S.removeAll(keepingCapacity: true)
-    S.reserveCapacity(n + 1)
-    S.append(contentsOf: repeatElement([], count: n + 1))
-    
+    partials.removeAll(keepingCapacity: true)
+    pStart.removeAll(keepingCapacity: true)
+    pStart.reserveCapacity(n + 1)
+    pStart.append(0)
+
     for r in g.alternatives(start) {
-      S[0].append(PartialParse(expecting: r, at: 0))
+      partials.append(PartialParse(expecting: r, at: 0))
     }
 
     // Recognize each token over its range in the source.
-    var remainingTokens = source[...]
+    var tokens = source.makeIterator()
 
-    for i in S.indices {
-      let t = remainingTokens.popFirst()
-
-      var j = 0
-      while j < S[i].count {
-        let p = S[i][j]
-
-        if let expected = postdot(p) {
-          if t == expected {  // scan
-            S[i + 1].appendIfMissing(p.advanced())
-          }
-          else { // predict
-            for predicted_rhs in g.alternatives(expected) {
-              S[i].appendIfMissing(PartialParse(expecting: predicted_rhs, at: i))
-              if g.isNullable(expected) {
-                S[i].appendIfMissing(p.advanced())
-              }
-            }
+    var i = 0
+    while i != pStart.count {
+      var j = pStart[i]
+      // predict / complete
+      while j < partials.count {
+        let p = partials[j]
+        if let s = postdot(p) {
+          // predict
+          for rhs in g.alternatives(s) {
+            insert(PartialParse(expecting: rhs, at: i))
+            if g.isNullable(s) { insert(p.advanced()) }
           }
         }
-        else { // // complete.
-          // TODO: avoid a linear search over everything in S[item.start].
-          for q in S[p.start] where postdot(q) == lhs(p) {
-            S[i].appendIfMissing(q.advanced())
+        else {
+          // complete
+          var k = pStart[p.start]
+          // TODO: if we can prove the insert is a no-op when p.start == i, we
+          // can simplify the loop.
+          while k < (p.start == i ? partials.count: pStart[p.start + 1]) {
+            let q = partials[k]
+            if postdot(q) == lhs(p) { insert(q.advanced()) }
+            k += 1
           }
         }
         j += 1
       }
+      // scans
+      if let t = tokens.next() {
+        for j in partials[pStart[i]...].indices {
+          let p = partials[j]
+          if postdot(p) == t {
+            if pStart.count == i + 1 { pStart.append(partials.count) }
+            insert(p.advanced())
+          }
+        }
+      }
+      i += 1
     }
   }
 }
@@ -202,10 +224,13 @@ extension EarleyParser {
 extension EarleyParser: CustomStringConvertible {
   public var description: String {
     var lines: [String] = []
-    for (i, states) in S.enumerated() {
-      lines.append("=== \(i) ===")
-      for p in states { lines.append(ruleString(p)) }
-      lines.append("")
+    var i = -1
+    for j in partials.indices {
+      if pStart.count > i + 1 && j == pStart[i + 1] {
+        i += 1
+        lines.append("\n=== \(i) ===")
+      }
+      lines.append(ruleString(partials[j]))
     }
     return lines.joined(separator: "\n")
   }

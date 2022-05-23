@@ -3,12 +3,12 @@ import XCTest
 
 /// Grammar definition
 class EarleyTest: XCTestCase {
-  enum Symbol: Int {
-    case PLUS_MINUS, TIMES_DIVIDE, LPAREN, RPAREN, DIGIT
-    case Sum, Product, Factor, Number
-  }
-
   func testArithmetic() {
+    enum Symbol: Int {
+      case PLUS_MINUS, TIMES_DIVIDE, LPAREN, RPAREN, DIGIT
+      case Sum, Product, Factor, Number
+    }
+
     let arithmetic = EarleyGrammar<Symbol>(
       [
         (lhs: .Sum, rhs: [.Sum, .PLUS_MINUS, .Product]),
