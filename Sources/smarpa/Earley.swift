@@ -116,45 +116,68 @@ struct EarleyGrammar<Symbol: Hashable>: AnyEarleyGrammar {
   }
 }
 
-public struct EarleyParser<Grammar: AnyEarleyGrammar> {
-  /// Creates an instance for the given grammar.
-  init(_ g: Grammar) { self.g = g }
+typealias SourcePosition = Int
 
-  /// A position in the input.
-  typealias SourcePosition = Int
+/// A parse rule being matched.
+public struct PartialParse_<Grammar: AnyEarleyGrammar>: Hashable {
+  /// The positions in ruleStore of yet-to-be recognized RHS symbols.
+  var rule: Grammar.PartialRule
 
-  /// A parse rule being matched.
-  struct PartialParse: Hashable {
-    /// The positions in ruleStore of yet-to-be recognized RHS symbols.
-    var rule: Grammar.PartialRule
+  /// The position in the token stream where the partially-parsed input begins.
+  let start: SourcePosition
 
-    /// The position in the token stream where the partially-parsed input begins.
-    let start: SourcePosition
-
-    init(expecting expected: Grammar.PartialRule, at start: SourcePosition) {
-      self.rule = expected
-      self.start = start
-    }
-
-    /// Returns `self`, having advanced the forward by one position.
-    func advanced() -> Self { Self(expecting: rule.dropFirst(), at: start) }
+  init(expecting expected: Grammar.PartialRule, at start: SourcePosition) {
+    self.rule = expected
+    self.start = start
   }
 
-  func postdot(_ p: PartialParse) -> Grammar.Symbol? { g.postdot(p.rule) }
-  func lhs(_ p: PartialParse) -> Grammar.Symbol { g.lhs(p.rule) }
-  
-  /// All the partial parses, grouped by earleme.
-  var partials: [PartialParse] = []
+  /// Returns `self`, having advanced the forward by one position.
+  func advanced() -> Self { Self(expecting: rule.dropFirst(), at: start) }
+}
 
-  /// The position in `partials` where each earleme begins.
-  var earlemeStart: [Array<PartialParse>.Index] = []
+public protocol AnyEarleyParser: CustomStringConvertible {
+  associatedtype Grammar: AnyEarleyGrammar
+  typealias PartialParse = PartialParse_<Grammar>
+
+  /// Creates an instance for the given grammar.
+  init(_ g: Grammar)
 
   /// The grammar
-  var g: Grammar
+  var g: Grammar { get }
+
+  /// All the partial parses, grouped by earleme.
+  var partials: [PartialParse] { get set }
+
+  /// The position in `partials` where each earleme begins.
+  var earlemeStart: [Array<PartialParse>.Index] { get set }
+
+  mutating func reduce(_ p: PartialParse, at i: Int)
+}
+
+public extension AnyEarleyParser {
+  func postdot(_ p: PartialParse) -> Grammar.Symbol? { g.postdot(p.rule) }
+  func lhs(_ p: PartialParse) -> Grammar.Symbol { g.lhs(p.rule) }
+}
+
+public struct EarleyParser<Grammar: AnyEarleyGrammar>: AnyEarleyParser {
+  /// Creates an instance for the given grammar.
+  public init(_ g: Grammar) { self.g = g }
+
+  /// A position in the input.
+  public typealias SourcePosition = Int
+
+  /// All the partial parses, grouped by earleme.
+  public var partials: [PartialParse] = []
+
+  /// The position in `partials` where each earleme begins.
+  public var earlemeStart: [Array<PartialParse>.Index] = []
+
+  /// The grammar
+  public var g: Grammar
 }
 
 /// Initialization and algorithm.
-extension EarleyParser {
+extension AnyEarleyParser {
   /// Adds `p` to the latest earleme if it is not already there.
   mutating func insert(_ p: PartialParse) {
     if !partials[earlemeStart.last!...].contains(p) { partials.append(p) }
@@ -190,15 +213,8 @@ extension EarleyParser {
             if g.isNullable(s) { insert(p.advanced()) }
           }
         }
-        else { // complete
-          var k = earlemeStart[p.start]
-          // TODO: if we can prove the insert is a no-op when p.start == i, we
-          // can simplify the loop.
-          while k < (p.start == i ? partials.count: earlemeStart[p.start + 1]) {
-            let q = partials[k]
-            if postdot(q) == lhs(p) { insert(q.advanced()) }
-            k += 1
-          }
+        else {
+          reduce(p, at: i)
         }
         j += 1
       }
@@ -216,9 +232,22 @@ extension EarleyParser {
       i += 1
     }
   }
+
+  public mutating func reduce(_ p: PartialParse, at i: Int) { earleyReduce(p, at: i) }
+
+  mutating func earleyReduce(_ p: PartialParse, at i: Int) {
+    var k = earlemeStart[p.start]
+    // TODO: if we can prove the insert is a no-op when p.start == i, we
+    // can simplify the loop.
+    while k < (p.start == i ? partials.count: earlemeStart[p.start + 1]) {
+      let q = partials[k]
+      if postdot(q) == lhs(p) { insert(q.advanced()) }
+      k += 1
+    }
+  }
 }
 
-extension EarleyParser: CustomStringConvertible {
+extension AnyEarleyParser {
   public var description: String {
     var lines: [String] = []
     var i = -1
