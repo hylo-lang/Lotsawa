@@ -327,7 +327,7 @@ protocol LeoEarleySet: SetAlgebra, Collection {
   associatedtype LOC: Hashable
 
   /// - In each Earley set, there is at most one Leo item per symbol.
-  var leoItem: [RULE.SYM: TraditionalLeoItem<RULE, LOC>] { get }
+  var leoItem: [RULE.SYM: TraditionalLeoItem<RULE, LOC>] { get set }
 }
 
 /// 6. The Leo Algorithm.
@@ -400,7 +400,7 @@ extension LeoGrammar {
   }
 
   /// 6.1. Leo reduction.
-  func leoReduce(
+  func leoReduction(
     _ component: EIMT, at current: LOC, into table: inout Table, predecessor: LIMT
   ) {
     // componentEIMT = [[lhsSYM →rhsSTR•],component-origLOC]
@@ -434,7 +434,7 @@ extension LeoGrammar {
 
     let component_orig = table[component.origin, default: []]
     if let p = component_orig.leoItem[lhs] {
-      leoReduce(component, at: current, into: &table, predecessor: p)
+      leoReduction(component, at: current, into: &table, predecessor: p)
     }
     else {
       reduceEarley(component, at: current, into: &table, predecessor: predecessor)
@@ -448,7 +448,7 @@ extension LeoGrammar {
   /// ∀xDR∀yDR
   ///   (Contains(iES,xDR) ∧ Contains(iES,yDR) ∧ penultSYM = Penult(xDR) = Penult(yDR))
   ///      ⇒ xDR = yDR
-  func PenultUnique(penult: SYM, i: ES) -> Bool {
+  func PenultUnique(_ penult: SYM, _ i: ES) -> Bool {
     i.lazy.filter { item in Penult(item.dr) == penult }.dropFirst().isEmpty
   }
 
@@ -456,16 +456,51 @@ extension LeoGrammar {
   ///    Contains(currentES,xDR)
   ///        ∧ Penult(xDR) ≠ Λ
   ///        ∧ Penult-Unique(Penult(xDR), currentES)
+  func LeoUnique(_ x: DR, _ current: LOC, in table: Table) -> Bool {
+    let currentES = table[current, default: []]
+    return Contains(currentES, x)
+      && Penult(x) != nil
+      && PenultUnique(Penult(x)!, currentES)
+  }
 
   /// Leo-Eligible(xDR,currentLOC) ≝
   ///   ∃xRULE,i | (
   ///     xDR = [xRULE,i]
   ///     ∧ Right-Recursive(xRULE)
-  ///     ∧ Leo-Unique(currentES,xDR))
+  ///     ∧ Leo-Unique(currentES,xDR)) 
+  func LeoEligible(_ x: DR, _ current: LOC, in table: Table) -> Bool {
+    // https://github.com/jeffreykegler/Marpa-arxiv-paper/issues/9
+    isRightRecursive(x.rule) && LeoUnique(x, current, in: table)
+  }
 
   /// LIMT-Predecessor(predLIMT ,bottomEIMT ) ≝
   ///    ∃bottom-originES,bottomDR,predDR, pred-originLOC,bottom-originLOC |
   ///       bottomEIMT =[bottomDR,bottom-originLOC]
   ///       ∧ predLIMT = [predDR,LHS(bottomDR),pred-originLOC]
   ///       ∧ predLIMT ∈ bottom-originES
+  func LIMTPredecessor(_ pred: LIMT, _ bottom: EIMT, in table: Table) -> Bool {
+    return pred.transition == LHS(bottom.dr)
+      && table[bottom.origin, default: []].leoItem[LHS(bottom.dr)] == pred
+  }
+
+  func inference(pred: LIMT, bottom: EIMT, at current: LOC, into table: inout Table) {
+    // bottomEIMT ∈ currentES
+    assert(table[current, default: []].contains(bottom))
+    if !LeoEligible(bottom.dr, current, in: table) { return }
+
+    let penultBottomDR = Penult(bottom.dr)!
+    
+    if LIMTPredecessor(pred, bottom, in: table) {
+      // predLIMT =[predDR,LHS(bottomDR),predORIG]
+      assert(pred.transition == LHS(bottom.dr))
+
+      table[current, default: []].leoItem[penultBottomDR]
+        = LIMT(topDR: pred.topDR, transition: penultBottomDR, origin: pred.origin)
+    }
+    else {
+      // insert: {[Next(bottomDR), Penult(bottomDR), bottomORIG]}
+      table[current, default: []].leoItem[penultBottomDR]
+        = LIMT(topDR: Next(bottom.dr)!, transition: penultBottomDR, origin: bottom.origin)
+    }
+  }
 }
