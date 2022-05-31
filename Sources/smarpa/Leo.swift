@@ -1,24 +1,68 @@
 public protocol AnyLeoGrammar: AnyEarleyGrammar where Symbol: Hashable {
   func isRightRecursive(_ r: PartialRule) -> Bool
-  func penult(_ x: PartialRule) -> Symbol?
 }
 
-struct ALeoGrammar<Symbol: Hashable>: AnyLeoGrammar {
+extension AnyEarleyGrammar where Symbol: Hashable {
+  typealias FullRule = PartialRule
+  func rhs(_ x: FullRule) -> RHS { postdotRHS(x) }
+
+  func rightmostNonNullingSymbol(_ r: FullRule) -> Symbol? {
+    rhs(r).last { s in !isNullable(s) }
+  }
+
+  func computeIsRightRecursive(_ x: FullRule) -> Bool {
+    guard let rnn = rightmostNonNullingSymbol(x) else {
+      return false
+    }
+    if lhs(x) == rnn { return true }
+    var visited: Set<Symbol> = []
+    var q: Set<Symbol> = [rnn]
+
+    while let s = q.popFirst() {
+      visited.insert(s)
+      for r in alternatives(s) {
+        guard let rnn = rightmostNonNullingSymbol(r) else { continue }
+        if rnn == lhs(x) { return true }
+        if !visited.contains(rnn) { q.insert(rnn) }
+      }
+    }
+    return false
+  }
+
+  func penult(_ x: PartialRule) -> Symbol? {
+    guard let next = postdot(x) else { return nil }
+    return !isNullable(next) && postdotRHS(x.dropFirst()).allSatisfy(isNullable) ? next : nil
+  }
+}
+
+struct MyLeoGrammar<Symbol: Hashable>: AnyLeoGrammar {
   typealias Base = EarleyGrammar<Symbol>
+  typealias RHS = [Symbol]
   let base: Base
+  let rightRecursiveRuleEnds: Set<Base.RuleStore.Index>
+
+  init(base: EarleyGrammar<Symbol>) {
+    self.base = base
+    rightRecursiveRuleEnds = Set(
+      base.allRules.lazy.filter {
+        base.computeIsRightRecursive($0)
+      }.map { $0.upperBound })
+  }
 
   typealias PartialRule = Base.PartialRule
   typealias Alternatives = Base.Alternatives
   typealias Symbol = Base.Symbol
 
+  // Forward EarleyGrammar requirements to `base`
   func alternatives(_ lhs: Symbol) -> Alternatives { base.alternatives(lhs) }
   func isNullable(_ s: Symbol) -> Bool { base.isNullable(s) }
   func isComplete(_ rhs: PartialRule) -> Bool { base.isComplete(rhs) }
   func lhs(_ t: PartialRule) -> Symbol { base.lhs(t) }
   func postdot(_ t: PartialRule) -> Symbol? { base.postdot(t) }
+  func postdotRHS(_ x: PartialRule) -> RHS { base.postdotRHS(x) }
+  var allRules: Base.AllRules { base.allRules }
 
-  func isRightRecursive(_ r: PartialRule) -> Bool { fatalError() }
-  func penult(_ x: PartialRule) -> Symbol? { fatalError() }
+  func isRightRecursive(_ r: PartialRule) -> Bool { rightRecursiveRuleEnds.contains(r.upperBound) }
 }
 
 extension Collection {

@@ -25,6 +25,14 @@ public protocol AnyEarleyGrammar {
 
   /// Returns `true` iff `s` is a terminal symbol.
   func isTerminal(_ s: Symbol) -> Bool
+
+  // The following are only actually needed for Leo grammars.
+
+  associatedtype RHS: BidirectionalCollection where RHS.Element == Symbol
+  func postdotRHS(_ x: PartialRule) -> RHS
+
+  associatedtype AllRules: Collection where AllRules.Element == PartialRule
+  var allRules: AllRules { get }
 }
 
 extension AnyEarleyGrammar {
@@ -113,6 +121,16 @@ struct EarleyGrammar<Symbol: Hashable>: AnyEarleyGrammar {
         }
       }
     }
+  }
+}
+
+extension EarleyGrammar {
+  func postdotRHS(_ x: PartialRule) -> [Symbol] {
+    x.lazy.map { ruleStore[$0] }
+  }
+
+  var allRules: [PartialRule] {
+    Array(rulesByLHS.values.joined())
   }
 }
 
