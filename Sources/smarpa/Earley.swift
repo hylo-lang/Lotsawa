@@ -259,14 +259,6 @@ extension AnyEarleyParser {
   public mutating func reduce(_ p: PartialParse) { earleyReduce(p) }
 
   mutating func earleyReduce(_ p: PartialParse) {
-    var k = earlemeStart[p.start]
-    // TODO: if we can prove the insert is a no-op when p.start == i, we
-    // can simplify the loop.
-    while k < (p.start == earlemeStart.count - 1 ? partials.count: earlemeStart[p.start + 1]) {
-      let q = partials[k]
-      if postdot(q) == lhs(p) { insert(q.advanced()) }
-      k += 1
-    }
   }
 }
 
