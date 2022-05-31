@@ -93,7 +93,7 @@ public struct LeoParser<Grammar: AnyLeoGrammar>: AnyEarleyParser {
 
   public var leoItems: [[Grammar.Symbol: PartialParse]] = []
 
-  mutating func reduce(_ p: PartialParse, at i: Int) {
+  public mutating func reduce(_ p: PartialParse) {
     let lhs = self.lhs(p)
 
     if p.start < leoItems.count,

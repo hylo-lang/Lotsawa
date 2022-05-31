@@ -47,6 +47,27 @@ class LeoTest: XCTestCase {
 
     parser.recognize(repeatElement(.a, count: 5), as: .A)
 
+    print(#function)
+    print(parser)
+  }
+
+  func testRightRecursion2() {
+    enum Symbol: Int {
+      case a, A
+    }
+
+    let base = EarleyGrammar<Symbol>(
+      [
+        (lhs: .A, rhs: [.a, .A]),
+        (lhs: .A, rhs: [.a]),
+      ]
+    )
+    let rightRecursive = MyLeoGrammar(base: base)
+    var parser = LeoParser(rightRecursive)
+
+    parser.recognize(repeatElement(.a, count: 5), as: .A)
+
+    print(#function)
     print(parser)
   }
 }

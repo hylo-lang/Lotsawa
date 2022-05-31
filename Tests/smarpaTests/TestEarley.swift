@@ -64,6 +64,26 @@ class EarleyTest: XCTestCase {
 
     parser.recognize(repeatElement(.a, count: 5), as: .A)
 
+    print(#function)
+    print(parser)
+  }
+
+  func testRightRecursion2() {
+    enum Symbol: Int {
+      case a, A
+    }
+
+    let rightRecursive = EarleyGrammar<Symbol>(
+      [
+        (lhs: .A, rhs: [.a, .A]),
+        (lhs: .A, rhs: [.a]),
+      ]
+    )
+    var parser = EarleyParser(rightRecursive)
+
+    parser.recognize(repeatElement(.a, count: 5), as: .A)
+
+    print(#function)
     print(parser)
   }
 }
