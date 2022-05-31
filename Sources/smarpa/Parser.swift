@@ -52,9 +52,11 @@ extension Parser {
   var currentEarlemeStart: Array<PartialParse>.Index { earlemeStart.last! }
 
   /// Recognizes the sequence of symbols in `source` as a parse of `start`.
-  public mutating func recognize<Source: Collection>(_ source: Source, as start: Grammar.Symbol)
-    where Source.Element == Grammar.Symbol
+  public mutating func recognize<Source: Collection>(_ source: Source, as start: RawSymbol)
+    where Source.Element == RawSymbol
   {
+    let start = Grammar.Symbol.some(start)
+    let source = source.lazy.map { s in Grammar.Symbol.some(s) }
     let n = source.count
     partials.removeAll(keepingCapacity: true)
     earlemeStart.removeAll(keepingCapacity: true)
@@ -73,6 +75,7 @@ extension Parser {
 
     var i = 0
     while i != earlemeStart.count {
+      leoItems.append([:])
       var j = earlemeStart[i] // The partial parse within the current earleme
 
       while j < partials.count {
@@ -147,7 +150,6 @@ extension Parser {
 
   public mutating func addLeoItems(_ b: PartialParse) {
     let i = currentEarleme
-    leoItems.append([:])
     if !isLeoEligible(b.rule) { return }
     let p = g.penult(b.rule)!
     if let predecessor = leoPredecessor(b) {

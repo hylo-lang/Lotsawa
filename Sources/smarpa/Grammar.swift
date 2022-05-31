@@ -53,6 +53,15 @@ extension Grammar.Symbol {
   }
 }
 
+extension Grammar.Symbol: CustomStringConvertible {
+  var description: String {
+    switch self {
+    case let .some(r): return "\(r)"
+    case let .null(r): return "\(r)𝜀"
+    }
+  }
+}
+
 extension Grammar {
   /// The rules for a given LHS symbol.
   typealias Alternatives = [PartialRule]
