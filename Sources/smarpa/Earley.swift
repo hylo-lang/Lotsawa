@@ -62,6 +62,8 @@ struct MultiMap<K: Hashable, V> {
     get { storage.values }
   }
 
+  mutating func removeKey(_ k: K) { storage[k] = nil }
+  
   private(set) var storage: Storage = [:]
 }
 
