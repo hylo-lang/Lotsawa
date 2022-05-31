@@ -5,7 +5,7 @@ struct Parser<RawSymbol: Hashable> {
 
   public struct PartialParse {
     /// The positions in ruleStore of yet-to-be recognized RHS symbols.
-    var rule: Grammar.PartialRule
+    var rule: Grammar.DottedRule
 
     /// The position in the token stream where the partially-parsed input begins.
     let start: SourcePosition
@@ -24,13 +24,13 @@ struct Parser<RawSymbol: Hashable> {
 }
 
 extension Parser.PartialParse: Hashable {
-  init(expecting expected: Grammar<RawSymbol>.PartialRule, at start: SourcePosition) {
+  init(expecting expected: Grammar<RawSymbol>.DottedRule, at start: SourcePosition) {
     self.rule = expected
     self.start = start
   }
 
   /// Returns `self`, having advanced the forward by one position.
-  func advanced() -> Self { Self(expecting: rule.dropFirst(), at: start) }
+  func advanced() -> Self { Self(expecting: rule.advanced, at: start) }
 }
 
 // TODO: store Leo items at the end of the current earleme, sorted by transition symbol,
@@ -73,7 +73,7 @@ extension Parser {
     initialize(inputLength: source.count)
 
     for r in g.alternatives(start) {
-      partials.append(PartialParse(expecting: r, at: 0))
+      partials.append(PartialParse(expecting: r.dotted, at: 0))
     }
 
     // Recognize each token over its range in the source.
@@ -104,7 +104,7 @@ extension Parser {
 
   public mutating func predict(_ s: Grammar.Symbol, in p: PartialParse) {
     for rhs in g.alternatives(s) {
-      insert(PartialParse(expecting: rhs, at: currentEarleme))
+      insert(PartialParse(expecting: rhs.dotted, at: currentEarleme))
       if s.isNulling { insert(p.advanced()) }
     }
   }
@@ -176,12 +176,12 @@ extension Parser {
       .hasUniqueItem { p in g.penult(p.rule) == x }
   }
 
-  func isLeoUnique(_ x: Grammar.PartialRule) -> Bool {
+  func isLeoUnique(_ x: Grammar.DottedRule) -> Bool {
     if let p = g.penult(x) { return isPenultUnique(p) }
     return false
   }
 
-  func isLeoEligible(_ x: Grammar.PartialRule) -> Bool {
+  func isLeoEligible(_ x: Grammar.DottedRule) -> Bool {
     g.isRightRecursive(x) && isLeoUnique(x)
   }
 }
@@ -195,24 +195,15 @@ extension Parser: CustomStringConvertible {
         i += 1
         lines.append("\n=== \(i) ===")
         for (k, v) in leoItems[i] {
-          lines.append("  Leo \(k): \(ruleString(v))")
+          lines.append("  Leo \(k): \(description(v))")
         }
       }
-      lines.append(ruleString(partials[j]))
+      lines.append(description(partials[j]))
     }
     return lines.joined(separator: "\n")
   }
 
-  func ruleString(_ p: PartialParse) -> String {
-    var r = "\(lhs(p)) ->\t"
-    var all = g.alternatives(lhs(p)).first { $0.endIndex == p.rule.endIndex }!
-    while !g.isComplete(all) {
-      if all.count == p.rule.count { r += "• " }
-      r += "\(g.postdot(all)!) "
-      _ = all.popFirst()
-    }
-    if p.rule.isEmpty { r += "•" }
-    r += "\t(\(p.start))"
-    return r
+  func description(_ p: PartialParse) -> String {
+    "\(g.description(p.rule))\t(\(p.start))"
   }
 }
