@@ -2,14 +2,14 @@
 import XCTest
 
 /// Grammar definition
-class EarleyTest: XCTestCase {
+class LeoTest: XCTestCase {
   func testArithmetic() {
     enum Symbol: Int {
       case PLUS_MINUS, TIMES_DIVIDE, LPAREN, RPAREN, DIGIT
       case Sum, Product, Factor, Number
     }
 
-    let arithmetic = EarleyGrammar<Symbol>(
+    let base = EarleyGrammar<Symbol>(
       [
         (lhs: .Sum, rhs: [.Sum, .PLUS_MINUS, .Product]),
         (lhs: .Sum, rhs: [.Product]),
@@ -21,30 +21,12 @@ class EarleyTest: XCTestCase {
         (lhs: .Number, rhs: [.DIGIT]),
       ])
 
-    var parser = EarleyParser(arithmetic)
+    let arithmetic = MyLeoGrammar(base: base)
+    var parser = LeoParser(arithmetic)
 
     parser.recognize(
       [.DIGIT, .PLUS_MINUS, .LPAREN, .DIGIT, .TIMES_DIVIDE, .DIGIT, .PLUS_MINUS, .DIGIT, .RPAREN],
       as: .Sum)
-
-    print(parser)
-  }
-
-  func testEmptyRules() {
-    enum Symbol: Int {
-      case A, B
-    }
-
-    let empty = EarleyGrammar<Symbol>(
-      [
-        (lhs: .A, rhs: []),
-        (lhs: .A, rhs: [.B]),
-        (lhs: .B, rhs: [.A]),
-      ]
-    )
-    var parser = EarleyParser(empty)
-
-    parser.recognize([], as: .A)
 
     print(parser)
   }
@@ -54,13 +36,14 @@ class EarleyTest: XCTestCase {
       case a, A
     }
 
-    let rightRecursive = EarleyGrammar<Symbol>(
+    let base = EarleyGrammar<Symbol>(
       [
         (lhs: .A, rhs: [.a, .A]),
         (lhs: .A, rhs: []),
       ]
     )
-    var parser = EarleyParser(rightRecursive)
+    let rightRecursive = MyLeoGrammar(base: base)
+    var parser = LeoParser(rightRecursive)
 
     parser.recognize(repeatElement(.a, count: 5), as: .A)
 
