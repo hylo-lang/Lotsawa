@@ -33,6 +33,8 @@ extension Parser.PartialParse: Hashable {
   func advanced() -> Self { Self(expecting: rule.dropFirst(), at: start) }
 }
 
+// TODO: store Leo items at the end of the current earleme, sorted by transition symbol,
+// and remember where they start.
 extension Parser {
   /// Creates an instance for the given grammar.
   public init(_ g: Grammar) { self.g = g }
