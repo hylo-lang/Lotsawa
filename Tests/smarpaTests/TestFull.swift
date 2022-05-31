@@ -64,7 +64,7 @@ class FullTest: XCTestCase {
 
     parser.recognize(repeatElement(.a, count: 5), as: .A)
 
-    print(#function)
+    print(#file, #function)
     print(parser)
   }
 

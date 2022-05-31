@@ -64,7 +64,7 @@ class EarleyTest: XCTestCase {
 
     parser.recognize(repeatElement(.a, count: 5), as: .A)
 
-    print(#function)
+    print(#file, #function)
     print(parser)
   }
 
@@ -83,7 +83,7 @@ class EarleyTest: XCTestCase {
 
     parser.recognize(repeatElement(.a, count: 5), as: .A)
 
-    print(#function)
+    print(#file, #function)
     print(parser)
   }
 }

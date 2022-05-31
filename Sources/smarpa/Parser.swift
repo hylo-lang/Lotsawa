@@ -16,15 +16,16 @@ struct Parser<RawSymbol: Hashable> {
   let g: Grammar
 
   typealias Partials = [PartialParse]
+  typealias Leos = [(transition: Grammar.Symbol, parse: PartialParse)]
 
   /// All the partial parses, grouped by earleme.
   var partials: [PartialParse] = []
 
   /// The position in `partials` where each earleme begins.
-  var earlemeStart: [Array<PartialParse>.Index] = []
+  var earlemeStart: [(earley: Partials.Index, leo: Leos.Index)] = []
 
   /// Leo items, per the MARPA paper.
-  var leoItems: [[Grammar.Symbol: PartialParse]] = []
+  var leos: Leos = []
 }
 
 extension Parser.PartialParse: Hashable {
@@ -54,25 +55,43 @@ extension Parser {
   func lhs(_ p: PartialParse) -> Grammar.Symbol { g.lhs(p.rule) }
 
   /// Adds `p` to the latest earleme if it is not already there.
-  mutating func insert(_ p: PartialParse) {
-    if !partials[earlemeStart.last!...].contains(p) { partials.append(p) }
+  mutating func insertEarley(_ p: PartialParse) {
+    if !partials[currentEarlemeStart...].contains(p) { partials.append(p) }
+  }
+
+  /// Adds the Leo item (`s`, `p`) to the latest earleme if it is not already there.
+  mutating func insertLeo(_ p: PartialParse, transition s: Grammar.Symbol) {
+    if let i = leos[currentLeoStart...].firstIndex(where: { l in l.transition == s }) {
+      assert(leos[i].parse == p)
+      return
+    }
+    leos.append((s, p))
+  }
+
+  func leoItems(at l: SourcePosition) -> Leos.SubSequence {
+    l == currentEarleme ? leos[earlemeStart[l].leo...]
+      : leos[earlemeStart[l].leo..<earlemeStart[l+1].leo]
+  }
+
+  func leoParse(at i: SourcePosition, transition: Grammar.Symbol) -> PartialParse? {
+    leoItems(at: i).first { l in l.transition == transition }?.parse ?? nil
   }
 
   /// The earleme to which we're currently adding items.
   var currentEarleme: Int { earlemeStart.count - 1 }
 
   /// The index in `partials` at which the items in the current earleme begin.
-  var currentEarlemeStart: Partials.Index { earlemeStart.last! }
+  var currentEarlemeStart: Partials.Index { earlemeStart.last!.earley }
+  var currentLeoStart: Leos.Index { earlemeStart.last!.leo }
 
   /// Prepares `self` to recognize an input of length `n`.
   mutating func initialize(inputLength n: Int) {
     partials.removeAll(keepingCapacity: true)
     earlemeStart.removeAll(keepingCapacity: true)
-    leoItems.removeAll(keepingCapacity: true)
-    earlemeStart.reserveCapacity(n + 1)
+    leos.removeAll(keepingCapacity: true)
     earlemeStart.reserveCapacity(n + 1)
     partials.reserveCapacity(n + 1)
-    earlemeStart.append(0)
+    earlemeStart.append((earley: 0, leo: 0))
   }
 
   /// Recognizes the sequence of symbols in `source` as a parse of `start`.
@@ -92,8 +111,7 @@ extension Parser {
 
     var i = 0
     while i != earlemeStart.count {
-      leoItems.append([:])
-      var j = earlemeStart[i] // The partial parse within the current earleme
+      var j = earlemeStart[i].earley // The partial parse within the current earleme
 
       while j < partials.count {
         let p = partials[j]
@@ -117,15 +135,15 @@ extension Parser {
   public mutating func predict(_ p: PartialParse) {
     let s = postdot(p)!
     for rhs in g.alternatives(s) {
-      insert(PartialParse(expecting: rhs.dotted, at: currentEarleme))
-      if s.isNulling { insert(p.advanced()) }
+      insertEarley(PartialParse(expecting: rhs.dotted, at: currentEarleme))
+      if s.isNulling { insertEarley(p.advanced()) }
     }
   }
 
   /// Performs Leo reduction on `p`
   public mutating func reduce(_ p: PartialParse) {
-    if let predecessor = leoItems[p.start][lhs(p)] {
-      insert(PartialParse(expecting: predecessor.rule, at: predecessor.start))
+    if let predecessor = leoParse(at: p.start, transition: lhs(p)) {
+      insertEarley(PartialParse(expecting: predecessor.rule, at: predecessor.start))
     }
     else {
       earleyReduce(p)
@@ -139,16 +157,16 @@ extension Parser {
     /// Inserts partials[k].advanced() iff its postdot symbol is s0.
     func advanceIfPostdotS0(_ k: Int) {
       let p0 = partials[k]
-      if postdot(p0) == s0 { insert(p0.advanced()) }
+      if postdot(p0) == s0 { insertEarley(p0.advanced()) }
     }
 
     if p.start != currentEarleme {
-      for k in earlemeStart[p.start]..<earlemeStart[p.start + 1] {
+      for k in earlemeStart[p.start].earley..<earlemeStart[p.start + 1].earley {
         advanceIfPostdotS0(k)
       }
     }
     else { // TODO: can we eliminate this branch?
-      var k = earlemeStart[p.start]
+      var k = earlemeStart[p.start].earley
       while k < partials.count {
         advanceIfPostdotS0(k)
         k += 1
@@ -162,9 +180,9 @@ extension Parser {
     for j in partials[currentEarlemeStart...].indices {
       let p = partials[j]
       if postdot(p) == t {
-        if !found { earlemeStart.append(partials.count) }
+        if !found { earlemeStart.append((partials.count, leos.count)) }
         found = true
-        insert(p.advanced())
+        insertEarley(p.advanced())
       }
     }
   }
@@ -172,11 +190,11 @@ extension Parser {
   public mutating func addLeoItem(_ b: PartialParse) {
     if !isLeoEligible(b.rule) { return }
     let s = g.penult(b.rule)!
-    leoItems[currentEarleme][s] = leoPredecessor(b) ?? b.advanced()
+    insertLeo(leoPredecessor(b) ?? b.advanced(), transition: s)
   }
 
   func leoPredecessor(_ b: PartialParse) -> PartialParse? {
-    return leoItems[b.start][lhs(b)]
+    return leoParse(at: b.start, transition: lhs(b))
   }
 
   func isPenultUnique(_ x: Grammar.Symbol) -> Bool {
@@ -199,10 +217,10 @@ extension Parser: CustomStringConvertible {
     var lines: [String] = []
     var i = -1
     for j in partials.indices {
-      if earlemeStart.count > i + 1 && j == earlemeStart[i + 1] {
+      if earlemeStart.count > i + 1 && j == earlemeStart[i + 1].earley {
         i += 1
         lines.append("\n=== \(i) ===")
-        for (k, v) in leoItems[i] {
+        for (k, v) in leoItems(at: i) {
           lines.append("  Leo \(k): \(description(v))")
         }
       }
