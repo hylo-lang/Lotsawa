@@ -5,13 +5,16 @@ struct Parser<RawSymbol: Hashable> {
 
   public struct PartialParse {
     /// The positions in ruleStore of yet-to-be recognized RHS symbols.
-    var rule: Grammar.DottedRule
+    let rule: Grammar.DottedRule
 
     /// The position in the token stream where the partially-parsed input begins.
     let start: SourcePosition
   }
 
+  /// The grammar being recognized.
   let g: Grammar
+
+  typealias Partials = [PartialParse]
 
   /// All the partial parses, grouped by earleme.
   var partials: [PartialParse] = []
@@ -51,7 +54,7 @@ extension Parser {
   }
 
   var currentEarleme: Int { earlemeStart.count - 1 }
-  var currentEarlemeStart: Array<PartialParse>.Index { earlemeStart.last! }
+  var currentEarlemeStart: Partials.Index { earlemeStart.last! }
 
   /// Prepares to recognize input of length `n`
   mutating func initialize(inputLength n: Int) {
@@ -92,7 +95,7 @@ extension Parser {
         else {
           reduce(p)
         }
-        addLeoItems(p)
+        addLeoItem(p)
         j += 1
       }
 
@@ -110,7 +113,7 @@ extension Parser {
   }
 
   public mutating func reduce(_ p: PartialParse) {
-    if /*p.start < leoItems.count,*/ let predecessor = leoItems[p.start][lhs(p)] {
+    if let predecessor = leoItems[p.start][lhs(p)] {
       insert(PartialParse(expecting: predecessor.rule, at: predecessor.start))
     }
     else {
@@ -154,20 +157,13 @@ extension Parser {
     }
   }
 
-  public mutating func addLeoItems(_ b: PartialParse) {
-    let i = currentEarleme
+  public mutating func addLeoItem(_ b: PartialParse) {
     if !isLeoEligible(b.rule) { return }
-    let p = g.penult(b.rule)!
-    if let predecessor = leoPredecessor(b) {
-      leoItems[i][p] = predecessor
-    }
-    else {
-      leoItems[i][p] = b.advanced()
-    }
+    let s = g.penult(b.rule)!
+    leoItems[currentEarleme][s] = leoPredecessor(b) ?? b.advanced()
   }
 
   func leoPredecessor(_ b: PartialParse) -> PartialParse? {
-    /*if b.start >= leoItems.count { return nil }*/
     return leoItems[b.start][lhs(b)]
   }
 
