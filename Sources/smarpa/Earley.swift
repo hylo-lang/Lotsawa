@@ -39,6 +39,8 @@ extension AnyEarleyGrammar {
   func isTerminal(_ s: Symbol) -> Bool { return alternatives(s).isEmpty }
 }
 
+/// A mapping from keys `K` to arrays of valuese `[V]`, where by default every
+/// key maps to the empty array.
 struct MultiMap<K: Hashable, V> {
   typealias Storage = Dictionary<K, [V]>
 
@@ -63,6 +65,7 @@ struct MultiMap<K: Hashable, V> {
   }
 
   mutating func removeKey(_ k: K) { storage[k] = nil }
+  mutating func removeValues(forKey k: K) -> [V] { storage.removeValue(forKey: k) ?? [] }
   
   private(set) var storage: Storage = [:]
 }

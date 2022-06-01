@@ -12,12 +12,15 @@ extension Collection {
 }
 
 extension Array {
+  /// Version of reserveCapacity that ensures repeated increasing requests have
+  /// amortized complexity O(N), where N is the total capacity reserved.
   mutating func amortizedLinearReserveCapacity(_ minimumCapacity: Int) {
     let n = capacity > minimumCapacity ? capacity : Swift.max(2 * capacity, minimumCapacity)
     reserveCapacity(n) // Note: must reserve unconditionally to ensure uniqueness
   }
 }
 
+/// Storage and the types needed to declare it.
 public struct Grammar<RawSymbol: Hashable> {
 
   /// Symbols for the nihilist normal form (NNF) of the raw grammar, per Aycock and Horspool
@@ -51,6 +54,7 @@ public struct Grammar<RawSymbol: Hashable> {
 }
 
 extension Grammar {
+  /// A string of symbols found on the RHS of a rule.
   typealias SymbolString = LazyMapSequence<Range<RuleStore.Index>, Symbol>
 
   /// A suffix of a grammar rule's RHS, from which the rule's LHS symbol can also be identified.
@@ -83,13 +87,16 @@ extension Grammar.Symbol {
     if case .null = self { return true } else { return false }
   }
 
+  /// The underlying raw (client-facing) symbol value.
   var raw: RawSymbol {
     switch self { case let .some(r), let .null(r): return r }
   }
 
-  mutating func makeNull() {
-    self = .null(raw)
-  }
+  /// If `self`𝝐 (where X𝝐𝝐 ::= X𝝐)
+  var asNull: Self { .null(raw) }
+
+  /// Replaces `self` with `self.asNull`.
+  mutating func nullify() { self = self.asNull }
 }
 
 extension Grammar.Symbol: CustomStringConvertible {
@@ -128,11 +135,11 @@ extension Grammar {
       rulesByLHS[.some(s)].append(r)
     }
 
-    // Put the grammar in nihilist normal form (NNF), per Aycock and Horspool
     enterNihilistNormalForm()
-    findRightRecursions()
+    identifyRightRecursions()
   }
 
+  /// Puts the grammar in nihilist normal form (NNF), per Aycock and Horspool.
   mutating func enterNihilistNormalForm() {
     var rulesByRHS = MultiMap<Symbol, Rule>()
     for rules in rulesByLHS.values {
@@ -141,42 +148,47 @@ extension Grammar {
       }
     }
 
-    let (nullable, nulling) = discoverNulls(rulesByRHS: rulesByRHS)
+    let (nullable, nulling) = discoverNullSymbols(rulesByRHS: rulesByRHS)
     
-    // First the nulling symbols
     for s in nulling {
-      let firstRule = rulesByLHS[s].first!
-      rulesByLHS.removeKey(s)
-      // Change the LHS symbol
-      let nullS = Symbol.null(s.raw)
-      ruleStore[firstRule.lhsIndex] = nullS
-      // Register it in the new place
-      rulesByLHS[nullS].append(firstRule)
+      rewriteRules(withNullingLHS: s)
     }
 
     // Then the rules with nullable symbols on the RHS
-    let rulesToClone
+    let rulesWithANullableSymbolOnRHS
       = Set(nullable.lazy.map { s in rulesByRHS[s] }.joined())
 
-    for r in rulesToClone {
+    for r in rulesWithANullableSymbolOnRHS where !nulling.contains(lhs(r)) {
       clone(r, forNullablesStartingAt: 0)
     }
 
-    func clone(_ r: Rule, forNullablesStartingAt n: Int) {
-      // TODO: consider eliminating recursion
-      for i in n..<r.rhsCount where nullable.contains(rhs(r).nth(i)) {
-        // Reserve storage so we can safely insert from a pointer into self.
-        ruleStore.amortizedLinearReserveCapacity(ruleStore.count + r.rhsCount + 1)
+    /// Replaces rules producing `s` with rules producing `s`𝝐, with each symbol
+    /// B on the rhs of such a rule replaced with B𝝐.
+    func rewriteRules(withNullingLHS s: Symbol) {
+      let rules = rulesByLHS.removeValues(forKey: s)
+      rulesByLHS[s.asNull] = rules
+      for r in rules {
+        for i in r.rhsIndices { ruleStore[i].nullify() }
+        ruleStore[r.lhsIndex].nullify()
+      }
+    }
 
-        // Grab the buffer pointer.
-        let src = ruleStore.withUnsafeBufferPointer { b in b }
+    /// For each combination K of nullable symbol positions starting at
+    /// `rhsOffset` on `r`'s RHS, replicates `r` with symbols in positions K
+    /// replaced by their nulling counterparts.
+    func clone(_ r: Rule, forNullablesStartingAt rhsOffset: Int) {
+      // TODO: consider eliminating recursion
+      for i in rhsOffset..<r.rhsCount where nullable.contains(rhs(r).nth(i)) {
+        // Reserve storage so source of copy has a stable address.
+        ruleStore.amortizedLinearReserveCapacity(ruleStore.count + r.rhsCount + 1)
 
         // Copy the symbols, remembering where they went.
         let cloneStart = ruleStore.count
+        let src = ruleStore.withUnsafeBufferPointer { b in b }
         ruleStore.append(contentsOf: src[r.rhsIndices.lowerBound...r.rhsIndices.upperBound])
 
         // Replace the ith one with its nulling version.
-        ruleStore[cloneStart + i] = .null(rhs(r).nth(i).raw)
+        ruleStore[cloneStart + i] = rhs(r).nth(i).asNull
 
         // Register the new rule.
         let r1 = Rule(rhsIndices: cloneStart..<(ruleStore.count - 1))
@@ -188,7 +200,10 @@ extension Grammar {
     }
   }
 
-  func discoverNulls(rulesByRHS: MultiMap<Symbol, Rule>)
+  /// Returns the set of nullable symbols (which derive 𝝐) and the set of
+  /// nulling symbols (which always derive 𝝐) in a grammar not yet in nihilist
+  /// normal form.
+  func discoverNullSymbols(rulesByRHS: MultiMap<Symbol, Rule>)
     -> (nullable: Set<Symbol>, nulling: Set<Symbol>)
   {
     var nullable = Set<Symbol>()
@@ -225,7 +240,8 @@ extension Grammar {
     return (nullable, nulling)
   }
 
-  mutating func findRightRecursions() {
+  /// Identifies and memoizes the set of right-recursive rules in `self`.
+  mutating func identifyRightRecursions() {
     for rules in rulesByLHS.values {
       for r in rules {
         if computeIsRightRecursive(r) { rightRecursive.insert(r.id) }
