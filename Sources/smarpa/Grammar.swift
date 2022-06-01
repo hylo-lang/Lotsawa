@@ -148,7 +148,7 @@ extension Grammar {
       }
     }
 
-    let (nullable, nulling) = discoverNullSymbols(rulesByRHS: rulesByRHS)
+    let (nullable, nulling) = nullSymbolSets(rulesByRHS: rulesByRHS)
     
     for s in nulling {
       rewriteRules(withNullingLHS: s)
@@ -201,9 +201,9 @@ extension Grammar {
   }
 
   /// Returns the set of nullable symbols (which derive 𝝐) and the set of
-  /// nulling symbols (which always derive 𝝐) in a grammar not yet in nihilist
-  /// normal form.
-  func discoverNullSymbols(rulesByRHS: MultiMap<Symbol, Rule>)
+  /// nulling symbols (which always derive 𝝐) in a grammar that is not yet in
+  /// nihilist normal form.
+  func nullSymbolSets(rulesByRHS: MultiMap<Symbol, Rule>)
     -> (nullable: Set<Symbol>, nulling: Set<Symbol>)
   {
     var nullable = Set<Symbol>()
@@ -250,7 +250,7 @@ extension Grammar {
   }
 }
 
-/// Leo support
+/// Functions needed for Leo support.
 extension Grammar {
   // Note: UNUSED
   /// Returns `true` iff `s` is a terminal symbol.
@@ -264,10 +264,14 @@ extension Grammar {
   /// Returns the RHS symbols of `x`.
   func rhs(_ x: Rule) -> SymbolString { postdotRHS(x.dotted) }
 
+  /// Returns the rightmost non-nulling symbol of `r`.
   func rightmostNonNullingSymbol(_ r: Rule) -> Symbol? {
     rhs(r).last { s in !s.isNulling }
   }
 
+  /// Returns `true` iff x is right-recursive.
+  ///
+  /// - Note: this computation can be costly and the result should be memoized.
   func computeIsRightRecursive(_ x: Rule) -> Bool {
     guard let rnn = rightmostNonNullingSymbol(x) else {
       return false
@@ -287,12 +291,15 @@ extension Grammar {
     return false
   }
 
+  /// Returns returns `x.advanced` iff `x`'s dot precedes the rightmost
+  /// non-nulling symbol; returns `nil` otherwise.
   func penult(_ x: DottedRule) -> Symbol? {
     guard let next = postdot(x) else { return nil }
     return !next.isNulling && postdotRHS(x.advanced).allSatisfy { s in s.isNulling }
       ? next : nil
   }
 
+  /// Returns true iff `x`'s underlying rule is right-recursive.
   func isRightRecursive(_ x: DottedRule) -> Bool {
     rightRecursive.contains(x.ruleID)
   }

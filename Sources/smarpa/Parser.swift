@@ -3,6 +3,7 @@ typealias Grammar_<RawSymbol: Hashable> = Grammar<RawSymbol>
 struct Parser<RawSymbol: Hashable> {
   typealias Grammar = Grammar_<RawSymbol>
 
+  /// A partially-completed parse (AKA an Earley item).
   public struct PartialParse {
     /// The positions in ruleStore of yet-to-be recognized RHS symbols.
     let rule: Grammar.DottedRule
@@ -27,6 +28,8 @@ struct Parser<RawSymbol: Hashable> {
 }
 
 extension Parser.PartialParse: Hashable {
+  /// Creates an instance attempting to recognize `g.lhs(expected)` with
+  /// `g.postdotRHS(expected)` remaining to be parsed.
   init(expecting expected: Grammar<RawSymbol>.DottedRule, at start: SourcePosition) {
     self.rule = expected
     self.start = start
@@ -34,10 +37,12 @@ extension Parser.PartialParse: Hashable {
 
   /// Returns `self`, having advanced the forward by one position.
   func advanced() -> Self { Self(expecting: rule.advanced, at: start) }
+
+  /// `true` iff there are no symbols left to recognize on the RHS of `self.rule`.
+  var isComplete: Bool { return rule.isComplete }
 }
 
-// TODO: store Leo items at the end of the current earleme, sorted by transition symbol,
-// and remember where they start.
+// TODO: store Leo items more efficiently.
 extension Parser {
   /// Creates an instance for the given grammar.
   public init(_ g: Grammar) { self.g = g }
@@ -53,10 +58,13 @@ extension Parser {
     if !partials[earlemeStart.last!...].contains(p) { partials.append(p) }
   }
 
+  /// The earleme to which we're currently adding items.
   var currentEarleme: Int { earlemeStart.count - 1 }
+
+  /// The index in `partials` at which the items in the current earleme begin.
   var currentEarlemeStart: Partials.Index { earlemeStart.last! }
 
-  /// Prepares to recognize input of length `n`
+  /// Prepares `self` to recognize an input of length `n`.
   mutating func initialize(inputLength n: Int) {
     partials.removeAll(keepingCapacity: true)
     earlemeStart.removeAll(keepingCapacity: true)
@@ -89,8 +97,8 @@ extension Parser {
 
       while j < partials.count {
         let p = partials[j]
-        if let s = postdot(p) {
-          predict(s, in: p)
+        if !p.isComplete {
+          predict(p)
         }
         else {
           reduce(p)
@@ -105,13 +113,16 @@ extension Parser {
     }
   }
 
-  public mutating func predict(_ s: Grammar.Symbol, in p: PartialParse) {
+  /// Adds partial parses initiating recognition of `postdot(p)` at the current earleme.
+  public mutating func predict(_ p: PartialParse) {
+    let s = postdot(p)!
     for rhs in g.alternatives(s) {
       insert(PartialParse(expecting: rhs.dotted, at: currentEarleme))
       if s.isNulling { insert(p.advanced()) }
     }
   }
 
+  /// Performs Leo reduction on `p`
   public mutating func reduce(_ p: PartialParse) {
     if let predecessor = leoItems[p.start][lhs(p)] {
       insert(PartialParse(expecting: predecessor.rule, at: predecessor.start))
@@ -145,6 +156,7 @@ extension Parser {
     }
   }
 
+  /// Advances any partial parses expecting `t` at the current earleme.
   mutating func scan(_ t: Grammar.Symbol) {
     var found = false
     for j in partials[currentEarlemeStart...].indices {
