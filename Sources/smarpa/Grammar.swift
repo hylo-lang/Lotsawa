@@ -291,8 +291,8 @@ extension Grammar {
     return false
   }
 
-  /// Returns returns `x.advanced` iff `x`'s dot precedes the rightmost
-  /// non-nulling symbol; returns `nil` otherwise.
+  /// Returns `postdot(x)` iff it is the rightmost non-nulling symbol, and `nil`
+  /// otherwise.
   func penult(_ x: DottedRule) -> Symbol? {
     guard let next = postdot(x) else { return nil }
     return !next.isNulling && postdotRHS(x.advanced).allSatisfy { s in s.isNulling }
