@@ -92,7 +92,7 @@ extension Grammar.Symbol {
     switch self { case let .some(r), let .null(r): return r }
   }
 
-  /// If `self`𝝐 (where X𝝐𝝐 ::= X𝝐)
+  /// `self`𝝐 (where X𝝐𝝐 ::= X𝝐)
   var asNull: Self { .null(raw) }
 
   /// Replaces `self` with `self.asNull`.
