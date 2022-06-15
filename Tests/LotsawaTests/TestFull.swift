@@ -1,15 +1,15 @@
-@testable import smarpa
+@testable import Lotsawa
 import XCTest
 
 /// Grammar definition
-class LeoTest: XCTestCase {
+class FullTest: XCTestCase {
   func testArithmetic() {
     enum Symbol: Int {
       case PLUS_MINUS, TIMES_DIVIDE, LPAREN, RPAREN, DIGIT
       case Sum, Product, Factor, Number
     }
 
-    let base = EarleyGrammar<Symbol>(
+    let arithmetic = Grammar<Symbol>(
       [
         (lhs: .Sum, rhs: [.Sum, .PLUS_MINUS, .Product]),
         (lhs: .Sum, rhs: [.Product]),
@@ -21,12 +21,30 @@ class LeoTest: XCTestCase {
         (lhs: .Number, rhs: [.DIGIT]),
       ])
 
-    let arithmetic = MyLeoGrammar(base: base)
-    var parser = LeoParser(arithmetic)
+    var parser = Parser(arithmetic)
 
     parser.recognize(
       [.DIGIT, .PLUS_MINUS, .LPAREN, .DIGIT, .TIMES_DIVIDE, .DIGIT, .PLUS_MINUS, .DIGIT, .RPAREN],
       as: .Sum)
+
+    print(parser)
+  }
+
+  func testEmptyRules() {
+    enum Symbol: Int {
+      case A, B
+    }
+
+    let empty = Grammar<Symbol>(
+      [
+        (lhs: .A, rhs: []),
+        (lhs: .A, rhs: [.B]),
+        (lhs: .B, rhs: [.A]),
+      ]
+    )
+    var parser = Parser(empty)
+
+    parser.recognize([], as: .A)
 
     print(parser)
   }
@@ -36,14 +54,13 @@ class LeoTest: XCTestCase {
       case a, A
     }
 
-    let base = EarleyGrammar<Symbol>(
+    let rightRecursive = Grammar<Symbol>(
       [
         (lhs: .A, rhs: [.a, .A]),
         (lhs: .A, rhs: []),
       ]
     )
-    let rightRecursive = MyLeoGrammar(base: base)
-    var parser = LeoParser(rightRecursive)
+    var parser = Parser(rightRecursive)
 
     parser.recognize(repeatElement(.a, count: 5), as: .A)
 
@@ -56,14 +73,13 @@ class LeoTest: XCTestCase {
       case a, A
     }
 
-    let base = EarleyGrammar<Symbol>(
+    let rightRecursive = Grammar<Symbol>(
       [
         (lhs: .A, rhs: [.a, .A]),
         (lhs: .A, rhs: [.a]),
       ]
     )
-    let rightRecursive = MyLeoGrammar(base: base)
-    var parser = LeoParser(rightRecursive)
+    var parser = Parser(rightRecursive)
 
     parser.recognize(repeatElement(.a, count: 5), as: .A)
 

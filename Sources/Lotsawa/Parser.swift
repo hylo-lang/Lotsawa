@@ -1,4 +1,5 @@
 typealias Grammar_<RawSymbol: Hashable> = Grammar<RawSymbol>
+typealias SourcePosition = Int
 
 struct Parser<RawSymbol: Hashable> {
   typealias Grammar = Grammar_<RawSymbol>
@@ -199,7 +200,7 @@ extension Parser {
 
   func isPenultUnique(_ x: Grammar.Symbol) -> Bool {
     return partials[currentEarlemeStart...]
-      .hasUniqueItem { p in g.penult(p.rule) == x }
+      .hasUniqueElement { p in g.penult(p.rule) == x }
   }
 
   func isLeoUnique(_ x: Grammar.DottedRule) -> Bool {
