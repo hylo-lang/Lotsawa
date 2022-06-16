@@ -87,7 +87,7 @@ extension Grammar {
 }
 
 extension Grammar.Symbol {
-  /// `true` iff this symbol derives 𝝐 and only 𝝐
+  /// `true` iff this symbol is known to derive 𝝐 and only 𝝐
   var isNulling: Bool {
     if case .null = self { return true } else { return false }
   }
@@ -200,9 +200,8 @@ extension Grammar {
     }
   }
 
-  /// Returns the set of nullable symbols (which derive 𝝐) and the set of
-  /// nulling symbols (which always derive 𝝐) in a grammar that is not yet in
-  /// nihilist normal form.
+  /// Returns the set of nullable symbols (which sometimes derive 𝝐) and the subset of nulling
+  /// symbols (which always derive 𝝐) in a grammar that is not yet in nihilist normal form.
   func nullSymbolSets(rulesByRHS: MultiMap<Symbol, Rule>)
     -> (nullable: Set<Symbol>, nulling: Set<Symbol>)
   {
@@ -214,9 +213,12 @@ extension Grammar {
       else if x != .none { discoverNullable(s) }
     }
 
+    /// Marks `s` as nulling, and draws any consequent conlusions.
     func discoverNulling(_ s: Symbol) {
+      // Every nulling symbol is nullable
       if !nullable.contains(s) { discoverNullable(s) }
       nulling.insert(s)
+      // We may be able to conclude that other symbols are also nulling.
       for r in rulesByRHS[s] {
         let s0 = self.lhs(r)
         if nulling.contains(s0) { continue }
@@ -228,8 +230,10 @@ extension Grammar {
       }
     }
 
+    /// Marks `s` as nullable, and draws any consequent conlusions.
     func discoverNullable(_ s: Symbol) {
       nullable.insert(s)
+      // We may be able to conclude that other symbols are nullable.
       for r in rulesByRHS[s] {
         let s0 = lhs(r)
         if !nullable.contains(s0) && rhs(r).allSatisfy(nullable.contains) {
@@ -265,6 +269,8 @@ extension Grammar {
   func rhs(_ x: Rule) -> SymbolString { postdotRHS(x.dotted) }
 
   /// Returns the rightmost non-nulling symbol of `r`.
+  ///
+  /// - Precondition: `self` is in nihilist normal form.
   func rightmostNonNullingSymbol(_ r: Rule) -> Symbol? {
     rhs(r).last { s in !s.isNulling }
   }
@@ -272,6 +278,7 @@ extension Grammar {
   /// Returns `true` iff x is right-recursive.
   ///
   /// - Note: this computation can be costly and the result should be memoized.
+  /// - Precondition: `self` is in nihilist normal form.
   func computeIsRightRecursive(_ x: Rule) -> Bool {
     guard let rnn = rightmostNonNullingSymbol(x) else {
       return false
@@ -291,8 +298,9 @@ extension Grammar {
     return false
   }
 
-  /// Returns `postdot(x)` iff it is the rightmost non-nulling symbol, and `nil`
-  /// otherwise.
+  /// Returns `postdot(x)` iff it is the rightmost non-nulling symbol and `nil` otherwise.
+  ///
+  /// - Precondition: `self` is in nihilist normal form.
   func penult(_ x: DottedRule) -> Symbol? {
     guard let next = postdot(x) else { return nil }
     return !next.isNulling && postdotRHS(x.advanced).allSatisfy { s in s.isNulling }
@@ -300,12 +308,15 @@ extension Grammar {
   }
 
   /// Returns true iff `x`'s underlying rule is right-recursive.
+  ///
+  /// - Precondition: `self`'s right recursions have been computed.
   func isRightRecursive(_ x: DottedRule) -> Bool {
     rightRecursive.contains(x.ruleID)
   }
 }
 
 extension Grammar {
+  /// A string representation of `self`.
   func description(_ x: DottedRule) -> String {
     var r = "\(lhs(x)) ->\t"
     let fullRule = alternatives(lhs(x)).first { $0.id == x.ruleID }!
