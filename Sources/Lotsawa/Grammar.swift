@@ -1,25 +1,3 @@
-enum AllSomeNone { case all, some, none }
-
-extension Collection {
-  /// Returns an indication of whether all, some, or no elements satisfy `predicate`.
-  func satisfaction(_ predicate: (Element)->Bool) -> AllSomeNone {
-    guard let i = firstIndex(where: predicate) else { return .none }
-    if i == startIndex && dropFirst().allSatisfy(predicate) { return .all }
-    return .some
-  }
-
-  func nth(_ n: Int) -> Element { dropFirst(n).first! }
-}
-
-extension Array {
-  /// Version of reserveCapacity that ensures repeated increasing requests have
-  /// amortized complexity O(N), where N is the total capacity reserved.
-  mutating func amortizedLinearReserveCapacity(_ minimumCapacity: Int) {
-    let n = capacity > minimumCapacity ? capacity : Swift.max(2 * capacity, minimumCapacity)
-    reserveCapacity(n) // Note: must reserve unconditionally to ensure uniqueness
-  }
-}
-
 /// Storage and the types needed to declare it.
 public struct Grammar<RawSymbol: Hashable> {
 
@@ -318,4 +296,3 @@ extension Grammar {
     return r
   }
 }
-// typealias SourcePosition = Int

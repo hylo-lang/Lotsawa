@@ -1,7 +1,7 @@
 typealias Grammar_<RawSymbol: Hashable> = Grammar<RawSymbol>
 typealias SourcePosition = Int
 
-struct Parser<RawSymbol: Hashable> {
+struct Recognizer<RawSymbol: Hashable> {
   typealias Grammar = Grammar_<RawSymbol>
 
   /// A partially-completed parse (AKA an Earley item).
@@ -29,7 +29,7 @@ struct Parser<RawSymbol: Hashable> {
   var leos: Leos = []
 }
 
-extension Parser.PartialParse: Hashable {
+extension Recognizer.PartialParse: Hashable {
   /// Creates an instance attempting to recognize `g.lhs(expected)` with
   /// `g.postdotRHS(expected)` remaining to be parsed.
   init(expecting expected: Grammar<RawSymbol>.DottedRule, at start: SourcePosition) {
@@ -45,7 +45,7 @@ extension Parser.PartialParse: Hashable {
 }
 
 // TODO: store Leo items more efficiently.
-extension Parser {
+extension Recognizer {
   /// Creates an instance for the given grammar.
   public init(_ g: Grammar) { self.g = g }
 
@@ -213,7 +213,7 @@ extension Parser {
   }
 }
 
-extension Parser: CustomStringConvertible {
+extension Recognizer: CustomStringConvertible {
   public var description: String {
     var lines: [String] = []
     var i = -1

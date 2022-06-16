@@ -21,7 +21,7 @@ class FullTest: XCTestCase {
         (lhs: .Number, rhs: [.DIGIT]),
       ])
 
-    var parser = Parser(arithmetic)
+    var parser = Recognizer(arithmetic)
 
     parser.recognize(
       [.DIGIT, .PLUS_MINUS, .LPAREN, .DIGIT, .TIMES_DIVIDE, .DIGIT, .PLUS_MINUS, .DIGIT, .RPAREN],
@@ -42,7 +42,7 @@ class FullTest: XCTestCase {
         (lhs: .B, rhs: [.A]),
       ]
     )
-    var parser = Parser(empty)
+    var parser = Recognizer(empty)
 
     parser.recognize([], as: .A)
 
@@ -60,7 +60,7 @@ class FullTest: XCTestCase {
         (lhs: .A, rhs: []),
       ]
     )
-    var parser = Parser(rightRecursive)
+    var parser = Recognizer(rightRecursive)
 
     parser.recognize(repeatElement(.a, count: 5), as: .A)
 
@@ -79,7 +79,7 @@ class FullTest: XCTestCase {
         (lhs: .A, rhs: [.a]),
       ]
     )
-    var parser = Parser(rightRecursive)
+    var parser = Recognizer(rightRecursive)
 
     parser.recognize(repeatElement(.a, count: 5), as: .A)
 
