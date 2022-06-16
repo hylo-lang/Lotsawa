@@ -115,7 +115,7 @@ extension Grammar {
   func lhs(_ t: DottedRule) -> Symbol { ruleStore[t.lhsIndex] }
 
   /// Returns the LHS symbol of `r`.
-  func lhs(_ r: Rule) -> Symbol { ruleStore[t.lhsIndex] }
+  func lhs(_ r: Rule) -> Symbol { ruleStore[r.lhsIndex] }
 
   /// Returns the next expected symbol of `t`, or `nil` if `t.isComplete`.
   func postdot(_ t: DottedRule) -> Symbol? { ruleStore[t.postdotIndices].first }
@@ -141,7 +141,7 @@ extension Grammar {
 
   /// Puts the grammar in nihilist normal form (NNF), per Aycock and Horspool.
   mutating func enterNihilistNormalForm() {
-    // Create a mapping from symbol to the set of rules on whose RHS the symbol appears.
+    // Build a mapping from symbol to the set of rules on whose RHS the symbol appears.
     var rulesByRHS = MultiMap<Symbol, Rule>()
     for rules in rulesByLHS.values {
       for r in rules {
@@ -150,17 +150,15 @@ extension Grammar {
     }
 
     // Discover which symbols sometimes derive (nullable) and always (nulling) derive 𝝐.
-    let (nullable, nulling) = nullSymbolSets(rulesByRHS: rulesByRHS)
-    
-    for s in nulling {
-      rewriteRules(withNullingLHS: s)
-    }
+    let (nullableSymbols, nullingSymbols) = nullSymbolSets(rulesByRHS: rulesByRHS)
 
-    // Then the rules with nullable symbols on the RHS
-    let rulesWithANullableSymbolOnRHS
-      = Set(nullable.lazy.map { s in rulesByRHS[s] }.joined())
+    // Rules for nulling symbols have a simple rewrite.
+    for s in nullingSymbols { rewriteRules(withNullingLHS: s) }
 
-    for r in rulesWithANullableSymbolOnRHS where !nulling.contains(lhs(r)) {
+    // Other rules with nullable symbols on the RHS
+    let rulesWithNullableParts = Set(nullableSymbols.lazy.map { s in rulesByRHS[s] }.joined())
+
+    for r in rulesWithNullableParts where !nullingSymbols.contains(lhs(r)) {
       clone(r, forNullablesStartingAt: 0)
     }
 
@@ -180,7 +178,7 @@ extension Grammar {
     /// replaced by their nulling counterparts.
     func clone(_ r: Rule, forNullablesStartingAt rhsOffset: Int) {
       // TODO: consider eliminating recursion
-      for i in rhsOffset..<r.rhsCount where nullable.contains(rhs(r).nth(i)) {
+      for i in rhsOffset..<r.rhsCount where nullableSymbols.contains(rhs(r).nth(i)) {
         // Reserve storage so source of copy has a stable address.
         ruleStore.amortizedLinearReserveCapacity(ruleStore.count + r.rhsCount + 1)
 
