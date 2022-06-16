@@ -7,7 +7,7 @@ public struct Grammar<RawSymbol: Hashable> {
   /// and Horspool.
   ///
   /// During NNF transformation, each nullable `RawSymbol` is divided into two
-  /// versions: `.some,` which never derives the empty string, and `.null`,
+  /// versions: `.some,` which never derives the empty string 𝝐, and `.null`,
   /// which always does.  Before NNF transformation, all symbols are stored in
   /// the `.some` form.
   enum Symbol: Hashable {
@@ -28,11 +28,23 @@ public struct Grammar<RawSymbol: Hashable> {
 
   /// A Backus-Naur Form (BNF) production.
   struct Rule: Hashable {
-    /// A value that uniquely identifies this rule in the grammar.
+    /// The indices in `rulestore` of this rule's RHS symbols.
+    var rhsIndices: Range<RuleStore.Index>
+
+    /// The index in `ruleStore` where the LHS symbol can be found.
+    var lhsIndex: Grammar.RuleStore.Index { rhsIndices.upperBound }
+
+    /// A value that can uniquely identify a rule in the grammar.
     struct ID: Hashable { var lhsIndex: RuleStore.Index }
 
-    /// The indices of this rule's RHS symbols in RuleStore.
-    var rhsIndices: Range<RuleStore.Index>
+    /// A value that uniquely identifies this rule in the grammar.
+    var id: ID { .init(lhsIndex: lhsIndex) }
+
+    /// `self`, with the recognition marker (dot) before its first RHS symbol.
+    var dotted: Grammar.DottedRule { .init(postdotIndices: rhsIndices) }
+
+    /// The length of this rule's RHS.
+    var rhsCount: Int { rhsIndices.count }
   }
 
   /// The RHS alternatives for each nonterminal symbol.
@@ -46,29 +58,32 @@ extension Grammar {
   /// A string of symbols found on the RHS of a rule.
   typealias SymbolString = LazyMapSequence<Range<RuleStore.Index>, Symbol>
 
-  /// A suffix of a grammar rule's RHS from which the rule itself can also be
-  /// identified.
+  /// A partially-recognized suffix of a grammar rule's RHS, where a notional
+  /// “dot” marks the end of the recognized symbols of the RHS.
   struct DottedRule: Hashable {
+    /// The indices in `rulestore` of the unrecognized RHS symbols.
     var postdotIndices: Range<RuleStore.Index>
-  }
-}
 
-extension Grammar.DottedRule {
-  var lhsIndex: Grammar.RuleStore.Index { postdotIndices.upperBound }
-  var postdotIndex: Grammar.RuleStore.Index? { postdotIndices.first }
-  var postdotCount: Int { postdotIndices.count }
-  var advanced: Self {
-    Self(postdotIndices: postdotIndices.dropFirst())
-  }
-  var ruleID: Grammar.Rule.ID { .init(lhsIndex: lhsIndex) }
-  var isComplete: Bool { postdotIndices.isEmpty }
-}
+    /// The index in ruleStore where the rule's LHS symbol can be found.
+    var lhsIndex: RuleStore.Index { postdotIndices.upperBound }
 
-extension Grammar.Rule {
-  var lhsIndex: Grammar.RuleStore.Index { rhsIndices.upperBound }
-  var id: ID { .init(lhsIndex: lhsIndex) }
-  var dotted: Grammar.DottedRule { .init(postdotIndices: rhsIndices) }
-  var rhsCount: Int { rhsIndices.count }
+    /// The index in `ruleStore` of the symbol following the dot.
+    var postdotIndex: RuleStore.Index? { postdotIndices.first }
+
+    /// The number of symbols following the dot.
+    var postdotCount: Int { postdotIndices.count }
+
+    /// `self`, but with the dot advanced by one position.
+    var advanced: Self {
+      Self(postdotIndices: postdotIndices.dropFirst())
+    }
+
+    /// The identity of the full rule of which `self` is a suffix.
+    var ruleID: Rule.ID { .init(lhsIndex: lhsIndex) }
+
+    /// True iff the rule is fully-recognized.
+    var isComplete: Bool { postdotIndices.isEmpty }
+  }
 }
 
 extension Grammar.Symbol {
@@ -89,15 +104,6 @@ extension Grammar.Symbol {
   mutating func nullify() { self = self.asNull }
 }
 
-extension Grammar.Symbol: CustomStringConvertible {
-  var description: String {
-    switch self {
-    case let .some(r): return "\(r)"
-    case let .null(r): return "\(r)𝜀"
-    }
-  }
-}
-
 extension Grammar {
   /// The rules for a given LHS symbol.
   typealias Alternatives = [Rule]
@@ -108,15 +114,18 @@ extension Grammar {
   /// Returns the LHS symbol for the rule corresponding to `t`.
   func lhs(_ t: DottedRule) -> Symbol { ruleStore[t.lhsIndex] }
 
-  /// Returns the LHS symbol for the rule corresponding to `t`.
-  func lhs(_ t: Rule) -> Symbol { ruleStore[t.lhsIndex] }
+  /// Returns the LHS symbol of `r`.
+  func lhs(_ r: Rule) -> Symbol { ruleStore[t.lhsIndex] }
 
-  /// Returns the next expected symbol of `t`, .
+  /// Returns the next expected symbol of `t`, or `nil` if `t.isComplete`.
   func postdot(_ t: DottedRule) -> Symbol? { ruleStore[t.postdotIndices].first }
 
+  /// Creates an preprocessed version of `rawRules` suitable for use by a
+  /// `Recognizer`, where `rawRules` is a BNF grammar of `RawSymbol`s.
   init<RawRules: Collection, RHS: Collection>(_ rawRules: RawRules)
     where RawRules.Element == (lhs: RawSymbol, rhs: RHS), RHS.Element == RawSymbol
   {
+    // Build an organized representation of the raw rules.
     for (s, rhs) in rawRules {
       let start = ruleStore.count
       ruleStore.append(contentsOf: rhs.lazy.map { s in .some(s) } )
@@ -125,12 +134,14 @@ extension Grammar {
       rulesByLHS[.some(s)].append(r)
     }
 
+    // Preprocessing steps.
     enterNihilistNormalForm()
     identifyRightRecursions()
   }
 
   /// Puts the grammar in nihilist normal form (NNF), per Aycock and Horspool.
   mutating func enterNihilistNormalForm() {
+    // Create a mapping from symbol to the set of rules on whose RHS the symbol appears.
     var rulesByRHS = MultiMap<Symbol, Rule>()
     for rules in rulesByLHS.values {
       for r in rules {
@@ -138,6 +149,7 @@ extension Grammar {
       }
     }
 
+    // Discover which symbols sometimes derive (nullable) and always (nulling) derive 𝝐.
     let (nullable, nulling) = nullSymbolSets(rulesByRHS: rulesByRHS)
     
     for s in nulling {
@@ -308,3 +320,14 @@ extension Grammar {
     return r
   }
 }
+
+extension Grammar.Symbol: CustomStringConvertible {
+  /// A string representation of `self`.
+  var description: String {
+    switch self {
+    case let .some(r): return "\(r)"
+    case let .null(r): return "\(r)𝜀"
+    }
+  }
+}
+
