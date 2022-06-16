@@ -1,9 +1,17 @@
-/// Storage and the types needed to declare it.
+/// A collection of Backus-Naur Form (BNF) productions, each defining a symbol
+/// on its left-hand side in terms of a string of symbols on its right-hand
+/// side, where a symbol is an enhanced `RawSymbol` (see `Symbol`).
 public struct Grammar<RawSymbol: Hashable> {
 
-  /// Symbols for the nihilist normal form (NNF) of the raw grammar, per Aycock and Horspool
+  /// A symbol for the nihilist normal form (NNF) of the raw grammar, per Aycock
+  /// and Horspool.
+  ///
+  /// During NNF transformation, each nullable `RawSymbol` is divided into two
+  /// versions: `.some,` which never derives the empty string, and `.null`,
+  /// which always does.  Before NNF transformation, all symbols are stored in
+  /// the `.some` form.
   enum Symbol: Hashable {
-    /// The plain raw symbol
+    /// The non-nulling plain raw symbol
     case some(RawSymbol)
     
     /// The nulling version of the symbol.
@@ -18,16 +26,19 @@ public struct Grammar<RawSymbol: Hashable> {
   /// Storage for all the rules.
   private var ruleStore: [Symbol] = []
 
-
+  /// A Backus-Naur Form (BNF) production.
   struct Rule: Hashable {
+    /// A value that uniquely identifies this rule in the grammar.
     struct ID: Hashable { var lhsIndex: RuleStore.Index }
+
+    /// The indices of this rule's RHS symbols in RuleStore.
     var rhsIndices: Range<RuleStore.Index>
   }
 
-  /// The right-hand side alternatives for each nonterminal symbol.
+  /// The RHS alternatives for each nonterminal symbol.
   private var rulesByLHS = MultiMap<Symbol, Rule>()
 
-  /// The lhsIndex of all right-recursive rules.
+  /// The IDs of all right-recursive rules.
   private var rightRecursive: Set<Rule.ID> = []
 }
 
@@ -35,7 +46,8 @@ extension Grammar {
   /// A string of symbols found on the RHS of a rule.
   typealias SymbolString = LazyMapSequence<Range<RuleStore.Index>, Symbol>
 
-  /// A suffix of a grammar rule's RHS, from which the rule's LHS symbol can also be identified.
+  /// A suffix of a grammar rule's RHS from which the rule itself can also be
+  /// identified.
   struct DottedRule: Hashable {
     var postdotIndices: Range<RuleStore.Index>
   }
