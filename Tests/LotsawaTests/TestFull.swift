@@ -1,4 +1,4 @@
-@testable import Lotsawa
+import Lotsawa
 import XCTest
 
 /// Grammar definition

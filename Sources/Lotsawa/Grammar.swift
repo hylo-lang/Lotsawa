@@ -122,7 +122,7 @@ extension Grammar {
 
   /// Creates an preprocessed version of `rawRules` suitable for use by a
   /// `Recognizer`, where `rawRules` is a BNF grammar of `RawSymbol`s.
-  init<RawRules: Collection, RHS: Collection>(_ rawRules: RawRules)
+  public init<RawRules: Collection, RHS: Collection>(_ rawRules: RawRules)
     where RawRules.Element == (lhs: RawSymbol, rhs: RHS), RHS.Element == RawSymbol
   {
     // Build an organized representation of the raw rules.
