@@ -207,20 +207,29 @@ extension Recognizer {
     insertLeo(leoPredecessor(b) ?? b.advanced(), transition: s)
   }
 
+  /// Returns the Leo item in the earleme where `b` starts, with transition symbol matching `b`'s
+  /// LHS, or `nil` if no such item exists.
   private func leoPredecessor(_ b: PartialParse) -> PartialParse? {
     return leoParse(at: b.start, transition: lhs(b))
   }
 
+  /// Returns `true` iff the current earleme contains exactly one partial parse of a rule whose
+  /// rightmost non-nulling symbol is `x`.
   private func isPenultUnique(_ x: Grammar.Symbol) -> Bool {
     return partialParses[currentEarlemeStart...]
       .hasUniqueElement { p in g.penult(p.expected) == x }
   }
 
+  /// Returns `true` iff the current earleme contains exactly one partial parse of a rule whose
+  /// rightmost non-nulling symbol (RNN) is the same as the RNN of `x`.
   private func isLeoUnique(_ x: Grammar.DottedRule) -> Bool {
     if let p = g.penult(x) { return isPenultUnique(p) }
     return false
   }
 
+  /// Returns `true` iff the `x`'s rule is right recursive and the current earleme contains exactly
+  /// one partial parse of a rule whose rightmost non-nulling symbol (RNN) is the same as the RNN of
+  /// `x`.
   private func isLeoEligible(_ x: Grammar.DottedRule) -> Bool {
     g.isRightRecursive(x) && isLeoUnique(x)
   }
