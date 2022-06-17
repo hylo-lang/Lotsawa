@@ -5,8 +5,9 @@ A parsing library and tool with the essential features of
 
 In particular, like MARPA, Lotsawa:
 
-- Parses any context-free grammar in linear time.
-- Can handle ambiguous grammars
+- Parses any [LR-regular](https://www.sciencedirect.com/science/article/pii/S0022000073800509) grammar in linear time.
+- Parses some non-LR-regular grammars in linear time.
+- Produces the parse forests for any CFG.
 
 Lotsawa owes almost everything of value to MARPA and its author, Jeffrey Kegler, for uncovering the
 [thread of progress in parsing technology](https://jeffreykegler.github.io/personal/timeline_v3),
