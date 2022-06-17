@@ -82,7 +82,8 @@ extension Recognizer {
       : leoItems[earlemeStart[l].leo..<earlemeStart[l+1].leo]
   }
 
-  /// Returns the partial parse for the Leo item at `i` with the given `transition` symbol.
+  /// Returns the partial parse for the Leo item at `i` with the given `transition` symbol, or `nil`
+  /// if no such leo item exists.
   private func leoParse(at i: SourcePosition, transition: Grammar.Symbol) -> PartialParse? {
     leoItems(at: i).first { l in l.transition == transition }?.parse ?? nil
   }
@@ -199,6 +200,7 @@ extension Recognizer {
     }
   }
 
+  /// If the addition of a Leo item is implied by the processing of `b`, adds it.
   private mutating func addAnyLeoItem(_ b: PartialParse) {
     if !isLeoEligible(b.expected) { return }
     let s = g.penult(b.expected)!
