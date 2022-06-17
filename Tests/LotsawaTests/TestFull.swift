@@ -21,13 +21,13 @@ class FullTest: XCTestCase {
         (lhs: .Number, rhs: [.DIGIT]),
       ])
 
-    var parser = Recognizer(arithmetic)
+    var r = Recognizer(arithmetic)
 
-    parser.recognize(
-      [.DIGIT, .PLUS_MINUS, .LPAREN, .DIGIT, .TIMES_DIVIDE, .DIGIT, .PLUS_MINUS, .DIGIT, .RPAREN],
-      as: .Sum)
-
-    print(parser)
+    let sentence: [Symbol]
+      = [.DIGIT, .PLUS_MINUS, .LPAREN, .DIGIT, .TIMES_DIVIDE, .DIGIT, .PLUS_MINUS, .DIGIT, .RPAREN]
+    XCTAssert(r.recognize(sentence, as: .Sum))
+    XCTAssertFalse(r.recognize(sentence.dropLast(), as: .Sum))
+    XCTAssertFalse(r.recognize(sentence.dropFirst(), as: .Sum))
   }
 
   func testEmptyRules() {
@@ -42,11 +42,9 @@ class FullTest: XCTestCase {
         (lhs: .B, rhs: [.A]),
       ]
     )
-    var parser = Recognizer(empty)
+    var r = Recognizer(empty)
 
-    parser.recognize([], as: .A)
-
-    print(parser)
+    XCTAssert(r.recognize(EmptyCollection(), as: .A))
   }
 
   func testRightRecursion() {
@@ -60,12 +58,10 @@ class FullTest: XCTestCase {
         (lhs: .A, rhs: []),
       ]
     )
-    var parser = Recognizer(rightRecursive)
+    var r = Recognizer(rightRecursive)
 
-    parser.recognize(repeatElement(.a, count: 5), as: .A)
-
-    print(#file, #function)
-    print(parser)
+    XCTAssert(r.recognize(repeatElement(.a, count: 5), as: .A))
+    XCTAssert(r.recognize(EmptyCollection(), as: .A))
   }
 
   func testRightRecursion2() {
@@ -79,11 +75,9 @@ class FullTest: XCTestCase {
         (lhs: .A, rhs: [.a]),
       ]
     )
-    var parser = Recognizer(rightRecursive)
+    var r = Recognizer(rightRecursive)
 
-    parser.recognize(repeatElement(.a, count: 5), as: .A)
-
-    print(#file, #function)
-    print(parser)
+    XCTAssert(r.recognize(repeatElement(.a, count: 5), as: .A))
+    XCTAssertFalse(r.recognize(EmptyCollection(), as: .A))
   }
 }

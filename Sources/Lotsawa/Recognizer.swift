@@ -44,7 +44,7 @@ extension Recognizer.PartialParse: Hashable {
     self.start = start
   }
 
-  /// Returns `self`, having advanced the dot forward by one position.
+  /// Returns `self`, but with the dot moved forward by one position.
   func advanced() -> Self { Self(expecting: expected.advanced, at: start) }
 
   /// `true` iff there are no symbols left to recognize on the RHS of `self.rule`.
@@ -107,7 +107,7 @@ extension Recognizer {
   }
 
   /// Recognizes the sequence of symbols in `source` as a parse of `start`.
-  public mutating func recognize<Source: Collection>(_ source: Source, as start: RawSymbol)
+  public mutating func recognize<Source: Collection>(_ source: Source, as start: RawSymbol) -> Bool
     where Source.Element == RawSymbol
   {
     let start = Grammar.Symbol.some(start)
@@ -127,13 +127,9 @@ extension Recognizer {
 
       while j < partialParses.count {
         let p = partialParses[j]
-        if !p.isComplete {
-          predict(p)
-        }
-        else {
-          reduce(p)
-        }
-        addLeoItem(p)
+        if !p.isComplete { predict(p) }
+        else { reduce(p) }
+        addAnyLeoItem(p)
         j += 1
       }
 
@@ -141,6 +137,10 @@ extension Recognizer {
       if let t = tokens.next() { scan(t) }
       i += 1
     }
+    return tokens.next() == nil
+      && partialParses[currentEarlemeStart...].contains { p in
+        p.start == 0 && p.isComplete && lhs(p) == start
+      }
   }
 
   /// Adds partial parses initiating recognition of `postdot(p)` at the current earleme.
@@ -199,7 +199,7 @@ extension Recognizer {
     }
   }
 
-  public mutating func addLeoItem(_ b: PartialParse) {
+  public mutating func addAnyLeoItem(_ b: PartialParse) {
     if !isLeoEligible(b.expected) { return }
     let s = g.penult(b.expected)!
     insertLeo(leoPredecessor(b) ?? b.advanced(), transition: s)
