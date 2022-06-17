@@ -11,7 +11,7 @@ struct Recognizer<RawSymbol: Hashable> {
   /// A partially-completed parse (AKA an Earley item).
   public struct PartialParse {
     /// The positions in ruleStore of yet-to-be recognized RHS symbols.
-    let rule: Grammar.DottedRule
+    let expected: Grammar.DottedRule
 
     /// The position in the token stream where the partially-parsed input begins.
     let start: SourcePosition
@@ -40,15 +40,15 @@ extension Recognizer.PartialParse: Hashable {
   /// Creates an instance attempting to recognize `g.lhs(expected)` with
   /// `g.postdotRHS(expected)` remaining to be parsed.
   init(expecting expected: Grammar<RawSymbol>.DottedRule, at start: SourcePosition) {
-    self.rule = expected
+    self.expected = expected
     self.start = start
   }
 
   /// Returns `self`, having advanced the dot forward by one position.
-  func advanced() -> Self { Self(expecting: rule.advanced, at: start) }
+  func advanced() -> Self { Self(expecting: expected.advanced, at: start) }
 
   /// `true` iff there are no symbols left to recognize on the RHS of `self.rule`.
-  var isComplete: Bool { return rule.isComplete }
+  var isComplete: Bool { return expected.isComplete }
 }
 
 // TODO: store Leo items more efficiently.  Various
@@ -60,8 +60,8 @@ extension Recognizer {
   /// A position in the input.
   public typealias SourcePosition = Int
 
-  func postdot(_ p: PartialParse) -> Grammar.Symbol? { g.postdot(p.rule) }
-  func lhs(_ p: PartialParse) -> Grammar.Symbol { g.lhs(p.rule) }
+  func postdot(_ p: PartialParse) -> Grammar.Symbol? { g.postdot(p.expected) }
+  func lhs(_ p: PartialParse) -> Grammar.Symbol { g.lhs(p.expected) }
 
   /// Adds `p` to the latest earleme if it is not already there.
   mutating func insertEarley(_ p: PartialParse) {
@@ -152,7 +152,7 @@ extension Recognizer {
   /// Performs Leo reduction on `p`
   public mutating func reduce(_ p: PartialParse) {
     if let predecessor = leoParse(at: p.start, transition: lhs(p)) {
-      insertEarley(PartialParse(expecting: predecessor.rule, at: predecessor.start))
+      insertEarley(PartialParse(expecting: predecessor.expected, at: predecessor.start))
     }
     else {
       earleyReduce(p)
@@ -197,8 +197,8 @@ extension Recognizer {
   }
 
   public mutating func addLeoItem(_ b: PartialParse) {
-    if !isLeoEligible(b.rule) { return }
-    let s = g.penult(b.rule)!
+    if !isLeoEligible(b.expected) { return }
+    let s = g.penult(b.expected)!
     insertLeo(leoPredecessor(b) ?? b.advanced(), transition: s)
   }
 
@@ -208,7 +208,7 @@ extension Recognizer {
 
   func isPenultUnique(_ x: Grammar.Symbol) -> Bool {
     return partialParses[currentEarlemeStart...]
-      .hasUniqueElement { p in g.penult(p.rule) == x }
+      .hasUniqueElement { p in g.penult(p.expected) == x }
   }
 
   func isLeoUnique(_ x: Grammar.DottedRule) -> Bool {
@@ -239,6 +239,6 @@ extension Recognizer: CustomStringConvertible {
   }
 
   func description(_ p: PartialParse) -> String {
-    "\(g.description(p.rule))\t(\(p.start))"
+    "\(g.description(p.expected))\t(\(p.start))"
   }
 }
