@@ -14,7 +14,7 @@ gathering it together into one group of algorithms, proving important properties
 contributing some key innovations.  This project exists primarily because MARPA is [missing
 functionality](https://github.com/jeffreykegler/libmarpa/issues/117) needed by the [Val
 language](https://github.com/val-lang/val) implementation.  Secondary reasons Lotsawa might be
-useful
+useful:
 
 - Lotsawa supports high-level usage from a safe, statically-typed language that compiles to efficient
   native code.
@@ -23,3 +23,5 @@ useful
   high-level code; it may serve as a better reference for understanding the technology than either
   the highly theoretical Marpa paper or from libmarpa's C implementation, which must be extracted
   from a CWeb document.
+- Lotsawa can be used to precompile a grammar into static tables, eliminating some initial startup
+  cost.
