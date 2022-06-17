@@ -1,6 +1,10 @@
+/// A trampoline typelias that lets us create `Recognizer`'s `Grammar` type.
 typealias Grammar_<RawSymbol: Hashable> = Grammar<RawSymbol>
+
+/// A position in the source text; also an Earleme ID.
 typealias SourcePosition = Int
 
+/// A process that creates the parse forest for a token stream with respect to a `Grammar`.
 struct Recognizer<RawSymbol: Hashable> {
   typealias Grammar = Grammar_<RawSymbol>
 
@@ -16,17 +20,20 @@ struct Recognizer<RawSymbol: Hashable> {
   /// The grammar being recognized.
   let g: Grammar
 
-  typealias Partials = [PartialParse]
-  typealias Leos = [(transition: Grammar.Symbol, parse: PartialParse)]
+  /// Storage for all Earley items, grouped by Earleme.
+  typealias PartialParses = [PartialParse]
+
+  /// Storage for all Leo items, grouped by Earleme.
+  typealias LeoItems = [(transition: Grammar.Symbol, parse: PartialParse)]
 
   /// All the partial parses, grouped by earleme.
-  var partials: [PartialParse] = []
+  var partialParses: [PartialParse] = []
 
-  /// The position in `partials` where each earleme begins.
-  var earlemeStart: [(earley: Partials.Index, leo: Leos.Index)] = []
+  /// The position in `partialParses` where each earleme begins.
+  var earlemeStart: [(earley: PartialParses.Index, leo: LeoItems.Index)] = []
 
   /// Leo items, per the MARPA paper.
-  var leos: Leos = []
+  var leoItems: LeoItems = []
 }
 
 extension Recognizer.PartialParse: Hashable {
@@ -37,14 +44,15 @@ extension Recognizer.PartialParse: Hashable {
     self.start = start
   }
 
-  /// Returns `self`, having advanced the forward by one position.
+  /// Returns `self`, having advanced the dot forward by one position.
   func advanced() -> Self { Self(expecting: rule.advanced, at: start) }
 
   /// `true` iff there are no symbols left to recognize on the RHS of `self.rule`.
   var isComplete: Bool { return rule.isComplete }
 }
 
-// TODO: store Leo items more efficiently.
+// TODO: store Leo items more efficiently.  Various
+
 extension Recognizer {
   /// Creates an instance for the given grammar.
   public init(_ g: Grammar) { self.g = g }
@@ -57,21 +65,21 @@ extension Recognizer {
 
   /// Adds `p` to the latest earleme if it is not already there.
   mutating func insertEarley(_ p: PartialParse) {
-    if !partials[currentEarlemeStart...].contains(p) { partials.append(p) }
+    if !partialParses[currentEarlemeStart...].contains(p) { partialParses.append(p) }
   }
 
   /// Adds the Leo item (`s`, `p`) to the latest earleme if it is not already there.
   mutating func insertLeo(_ p: PartialParse, transition s: Grammar.Symbol) {
-    if let i = leos[currentLeoStart...].firstIndex(where: { l in l.transition == s }) {
-      assert(leos[i].parse == p)
+    if let i = leoItems[currentLeoStart...].firstIndex(where: { l in l.transition == s }) {
+      assert(leoItems[i].parse == p)
       return
     }
-    leos.append((s, p))
+    leoItems.append((s, p))
   }
 
-  func leoItems(at l: SourcePosition) -> Leos.SubSequence {
-    l == currentEarleme ? leos[earlemeStart[l].leo...]
-      : leos[earlemeStart[l].leo..<earlemeStart[l+1].leo]
+  func leoItems(at l: SourcePosition) -> LeoItems.SubSequence {
+    l == currentEarleme ? leoItems[earlemeStart[l].leo...]
+      : leoItems[earlemeStart[l].leo..<earlemeStart[l+1].leo]
   }
 
   func leoParse(at i: SourcePosition, transition: Grammar.Symbol) -> PartialParse? {
@@ -81,17 +89,17 @@ extension Recognizer {
   /// The earleme to which we're currently adding items.
   var currentEarleme: Int { earlemeStart.count - 1 }
 
-  /// The index in `partials` at which the items in the current earleme begin.
-  var currentEarlemeStart: Partials.Index { earlemeStart.last!.earley }
-  var currentLeoStart: Leos.Index { earlemeStart.last!.leo }
+  /// The index in `partialParses` at which the items in the current earleme begin.
+  var currentEarlemeStart: PartialParses.Index { earlemeStart.last!.earley }
+  var currentLeoStart: LeoItems.Index { earlemeStart.last!.leo }
 
   /// Prepares `self` to recognize an input of length `n`.
   mutating func initialize(inputLength n: Int) {
-    partials.removeAll(keepingCapacity: true)
+    partialParses.removeAll(keepingCapacity: true)
     earlemeStart.removeAll(keepingCapacity: true)
-    leos.removeAll(keepingCapacity: true)
+    leoItems.removeAll(keepingCapacity: true)
     earlemeStart.reserveCapacity(n + 1)
-    partials.reserveCapacity(n + 1)
+    partialParses.reserveCapacity(n + 1)
     earlemeStart.append((earley: 0, leo: 0))
   }
 
@@ -104,7 +112,7 @@ extension Recognizer {
     initialize(inputLength: source.count)
 
     for r in g.alternatives(start) {
-      partials.append(PartialParse(expecting: r.dotted, at: 0))
+      partialParses.append(PartialParse(expecting: r.dotted, at: 0))
     }
 
     // Recognize each token over its range in the source.
@@ -114,8 +122,8 @@ extension Recognizer {
     while i != earlemeStart.count {
       var j = earlemeStart[i].earley // The partial parse within the current earleme
 
-      while j < partials.count {
-        let p = partials[j]
+      while j < partialParses.count {
+        let p = partialParses[j]
         if !p.isComplete {
           predict(p)
         }
@@ -155,9 +163,9 @@ extension Recognizer {
   public mutating func earleyReduce(_ p: PartialParse) {
     let s0 = lhs(p)
 
-    /// Inserts partials[k].advanced() iff its postdot symbol is s0.
+    /// Inserts partialParses[k].advanced() iff its postdot symbol is s0.
     func advanceIfPostdotS0(_ k: Int) {
-      let p0 = partials[k]
+      let p0 = partialParses[k]
       if postdot(p0) == s0 { insertEarley(p0.advanced()) }
     }
 
@@ -168,7 +176,7 @@ extension Recognizer {
     }
     else { // TODO: can we eliminate this branch?
       var k = earlemeStart[p.start].earley
-      while k < partials.count {
+      while k < partialParses.count {
         advanceIfPostdotS0(k)
         k += 1
       }
@@ -178,10 +186,10 @@ extension Recognizer {
   /// Advances any partial parses expecting `t` at the current earleme.
   mutating func scan(_ t: Grammar.Symbol) {
     var found = false
-    for j in partials[currentEarlemeStart...].indices {
-      let p = partials[j]
+    for j in partialParses[currentEarlemeStart...].indices {
+      let p = partialParses[j]
       if postdot(p) == t {
-        if !found { earlemeStart.append((partials.count, leos.count)) }
+        if !found { earlemeStart.append((partialParses.count, leoItems.count)) }
         found = true
         insertEarley(p.advanced())
       }
@@ -199,7 +207,7 @@ extension Recognizer {
   }
 
   func isPenultUnique(_ x: Grammar.Symbol) -> Bool {
-    return partials[currentEarlemeStart...]
+    return partialParses[currentEarlemeStart...]
       .hasUniqueElement { p in g.penult(p.rule) == x }
   }
 
@@ -217,7 +225,7 @@ extension Recognizer: CustomStringConvertible {
   public var description: String {
     var lines: [String] = []
     var i = -1
-    for j in partials.indices {
+    for j in partialParses.indices {
       if earlemeStart.count > i + 1 && j == earlemeStart[i + 1].earley {
         i += 1
         lines.append("\n=== \(i) ===")
@@ -225,7 +233,7 @@ extension Recognizer: CustomStringConvertible {
           lines.append("  Leo \(k): \(description(v))")
         }
       }
-      lines.append(description(partials[j]))
+      lines.append(description(partialParses[j]))
     }
     return lines.joined(separator: "\n")
   }
