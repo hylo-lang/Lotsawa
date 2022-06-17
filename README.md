@@ -14,8 +14,9 @@ Lotsawa owes almost everything of value to MARPA and its author, Jeffrey Kegler,
 gathering it together into one group of algorithms, proving important properties about them, and
 contributing some key innovations.  This project exists primarily because MARPA is [missing
 functionality](https://github.com/jeffreykegler/libmarpa/issues/117) needed by the [Val
-language](https://github.com/val-lang/val) implementation.  Secondary reasons Lotsawa might be
-useful:
+language](https://github.com/val-lang/val) implementation.
+
+Secondary reasons Lotsawa might be useful:
 
 - Lotsawa supports high-level usage from a safe, statically-typed language that compiles to efficient
   native code.
