@@ -56,6 +56,11 @@ extension Recognizer {
   /// Creates an instance that recognizes the given grammar.
   public init(_ g: Lotsawa.Grammar<RawSymbol>) { self.g = g }
 
+  /// The partial parses in the current earleme.
+  private var currentEarleme: Array<PartialParse>.SubSequence {
+    partialParses[currentEarlemeStart...]
+  }
+
   /// Returns the next symbol to be recognized in `p`, or `nil` if `p.isComplete`.
   private func postdot(_ p: PartialParse) -> Grammar.Symbol? { g.postdot(p.expected) }
 
@@ -64,7 +69,7 @@ extension Recognizer {
 
   /// Adds `p` to the latest earleme if it is not already there.
   private mutating func insertEarley(_ p: PartialParse) {
-    if !partialParses[currentEarlemeStart...].contains(p) { partialParses.append(p) }
+    if !currentEarleme.contains(p) { partialParses.append(p) }
   }
 
   /// Adds the Leo item (`s`, `p`) to the latest earleme if it is not already there.
@@ -78,7 +83,7 @@ extension Recognizer {
 
   /// Returns the Leo items for Earleme `l`.
   private func leoItems(at l: SourcePosition) -> LeoItems.SubSequence {
-    l == currentEarleme ? leoItems[earlemeStart[l].leo...]
+    l == currentEarlemeIndex ? leoItems[earlemeStart[l].leo...]
       : leoItems[earlemeStart[l].leo..<earlemeStart[l+1].leo]
   }
 
@@ -89,7 +94,7 @@ extension Recognizer {
   }
 
   /// The earleme to which we're currently adding items.
-  private var currentEarleme: Int { earlemeStart.count - 1 }
+  private var currentEarlemeIndex: Int { earlemeStart.count - 1 }
 
   /// The index in `partialParses` at which the Earley items in the current earleme begin.
   private var currentEarlemeStart: PartialParses.Index { earlemeStart.last!.earley }
@@ -138,17 +143,19 @@ extension Recognizer {
       if let t = tokens.next() { scan(t) }
       i += 1
     }
-    return tokens.next() == nil
-      && partialParses[currentEarlemeStart...].contains { p in
-        p.start == 0 && p.isComplete && lhs(p) == start
-      }
+
+    // If tokens are exhausted and the start symbol was recognized from 0 to the end, a valid parse
+    // exists.
+    return tokens.next() == nil && currentEarleme.contains { p in
+      p.start == 0 && p.isComplete && lhs(p) == start
+    }
   }
 
   /// Adds partial parses initiating recognition of `postdot(p)` at the current earleme.
   private mutating func predict(_ p: PartialParse) {
     let s = postdot(p)!
     for rhs in g.alternatives(s) {
-      insertEarley(PartialParse(expecting: rhs.dotted, at: currentEarleme))
+      insertEarley(PartialParse(expecting: rhs.dotted, at: currentEarlemeIndex))
       if s.isNulling { insertEarley(p.advanced()) }
     }
   }
@@ -173,7 +180,7 @@ extension Recognizer {
       if postdot(p0) == s0 { insertEarley(p0.advanced()) }
     }
 
-    if p.start != currentEarleme {
+    if p.start != currentEarlemeIndex {
       for k in earlemeStart[p.start].earley..<earlemeStart[p.start + 1].earley {
         advanceIfPostdotS0(k)
       }
@@ -190,7 +197,7 @@ extension Recognizer {
   /// Advances any partial parses expecting `t` at the current earleme.
   private mutating func scan(_ t: Grammar.Symbol) {
     var found = false
-    for j in partialParses[currentEarlemeStart...].indices {
+    for j in currentEarleme.indices {
       let p = partialParses[j]
       if postdot(p) == t {
         if !found { earlemeStart.append((partialParses.count, leoItems.count)) }
@@ -216,8 +223,7 @@ extension Recognizer {
   /// Returns `true` iff the current earleme contains exactly one partial parse of a rule whose
   /// rightmost non-nulling symbol is `x`.
   private func isPenultUnique(_ x: Grammar.Symbol) -> Bool {
-    return partialParses[currentEarlemeStart...]
-      .hasUniqueElement { p in g.penult(p.expected) == x }
+    return currentEarleme.hasUniqueElement { p in g.penult(p.expected) == x }
   }
 
   /// Returns `true` iff the current earleme contains exactly one partial parse of a rule whose
