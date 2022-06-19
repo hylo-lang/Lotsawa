@@ -27,3 +27,6 @@ Secondary reasons Lotsawa might be useful:
   from a CWeb document.
 - Lotsawa can be used to precompile a grammar into static tables, eliminating some initial startup
   cost.
+- Lotsawa uses pure [Mutable Value
+  Semantics](https://www.quora.com/What-is-mutable-value-semantics/answer/Dave-Abrahams), thus
+  eliminating many possible sources of bugs, including data races.
