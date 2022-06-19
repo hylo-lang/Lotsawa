@@ -61,6 +61,13 @@ extension Recognizer {
     partialParses[currentEarlemeStart...]
   }
 
+  /// Returns the partial parses in the `i`th earleme.
+  private func earleme(i: Int) -> Array<PartialParse>.SubSequence {
+    return i + 1 == earlemeStart.count
+      ? currentEarleme
+      : partialParses[earlemeStart[i].earley..<earlemeStart[i + 1].earley]
+  }
+
   /// Returns the next symbol to be recognized in `p`, or `nil` if `p.isComplete`.
   private func postdot(_ p: PartialParse) -> Grammar.Symbol? { g.postdot(p.expected) }
 
