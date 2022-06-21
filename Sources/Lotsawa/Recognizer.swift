@@ -8,8 +8,8 @@ typealias SourcePosition = Int
 public struct Recognizer<RawSymbol: Hashable> {
   fileprivate typealias Grammar = Grammar_<RawSymbol>
 
-  /// A partially-completed parse (AKA an Earley item).
-  fileprivate struct PartialParse {
+  /// A partially-completed parse
+  fileprivate struct EarleyItem {
     /// The positions in ruleStore of yet-to-be recognized RHS symbols.
     let expected: Grammar.DottedRule
 
@@ -21,22 +21,22 @@ public struct Recognizer<RawSymbol: Hashable> {
   private let g: Grammar
 
   /// Storage for all Earley items, grouped by Earleme.
-  private typealias PartialParses = [PartialParse]
+  private typealias EarleyItems = [EarleyItem]
 
   /// Storage for all Leo items, grouped by Earleme.
-  private typealias LeoItems = [(transition: Grammar.Symbol, parse: PartialParse)]
+  private typealias LeoItems = [(transition: Grammar.Symbol, parse: EarleyItem)]
 
   /// All the partial parses, grouped by earleme.
-  private var partialParses: [PartialParse] = []
+  private var partialParses: [EarleyItem] = []
 
   /// The position in `partialParses` and `leoItems` where each earleme begins.
-  private var earlemeStart: [(earley: PartialParses.Index, leo: LeoItems.Index)] = []
+  private var earlemeStart: [(earley: EarleyItems.Index, leo: LeoItems.Index)] = []
 
   /// Leo items, per the MARPA paper.
   private var leoItems: LeoItems = []
 }
 
-extension Recognizer.PartialParse: Hashable {
+extension Recognizer.EarleyItem: Hashable {
   /// Creates an instance recognizing `g.lhs(expected)` with `g.postdotRHS(expected)` remaining to
   /// be parsed.
   init(expecting expected: Grammar<RawSymbol>.DottedRule, at start: SourcePosition) {
@@ -57,30 +57,30 @@ extension Recognizer {
   public init(_ g: Lotsawa.Grammar<RawSymbol>) { self.g = g }
 
   /// The partial parses in the current earleme.
-  private var currentEarleme: Array<PartialParse>.SubSequence {
+  private var currentEarleme: Array<EarleyItem>.SubSequence {
     partialParses[currentEarlemeStart...]
   }
 
   /// Returns the partial parses in the `i`th earleme.
-  private func earleme(i: Int) -> Array<PartialParse>.SubSequence {
+  private func earleme(i: Int) -> Array<EarleyItem>.SubSequence {
     return i + 1 == earlemeStart.count
       ? currentEarleme
       : partialParses[earlemeStart[i].earley..<earlemeStart[i + 1].earley]
   }
 
   /// Returns the next symbol to be recognized in `p`, or `nil` if `p.isComplete`.
-  private func postdot(_ p: PartialParse) -> Grammar.Symbol? { g.postdot(p.expected) }
+  private func postdot(_ p: EarleyItem) -> Grammar.Symbol? { g.postdot(p.expected) }
 
   /// Returns the LHS symbol of the rule `p` is recognizing.
-  private func lhs(_ p: PartialParse) -> Grammar.Symbol { g.lhs(p.expected) }
+  private func lhs(_ p: EarleyItem) -> Grammar.Symbol { g.lhs(p.expected) }
 
   /// Adds `p` to the latest earleme if it is not already there.
-  private mutating func insertEarley(_ p: PartialParse) {
+  private mutating func insertEarley(_ p: EarleyItem) {
     if !currentEarleme.contains(p) { partialParses.append(p) }
   }
 
   /// Adds the Leo item (`s`, `p`) to the latest earleme if it is not already there.
-  private mutating func insertLeo(_ p: PartialParse, transition s: Grammar.Symbol) {
+  private mutating func insertLeo(_ p: EarleyItem, transition s: Grammar.Symbol) {
     if let i = leoItems[currentLeoStart...].firstIndex(where: { l in l.transition == s }) {
       assert(leoItems[i].parse == p)
       return
@@ -96,7 +96,7 @@ extension Recognizer {
 
   /// Returns the partial parse for the Leo item at `i` with the given `transition` symbol, or `nil`
   /// if no such leo item exists.
-  private func leoParse(at i: SourcePosition, transition: Grammar.Symbol) -> PartialParse? {
+  private func leoParse(at i: SourcePosition, transition: Grammar.Symbol) -> EarleyItem? {
     leoItems(at: i).first { l in l.transition == transition }?.parse ?? nil
   }
 
@@ -104,7 +104,7 @@ extension Recognizer {
   private var currentEarlemeIndex: Int { earlemeStart.count - 1 }
 
   /// The index in `partialParses` at which the Earley items in the current earleme begin.
-  private var currentEarlemeStart: PartialParses.Index { earlemeStart.last!.earley }
+  private var currentEarlemeStart: EarleyItems.Index { earlemeStart.last!.earley }
 
   /// The index in `leoItems` at which the Leo items in the current earleme begin.
   private var currentLeoStart: LeoItems.Index { earlemeStart.last!.leo }
@@ -128,7 +128,7 @@ extension Recognizer {
     initialize(inputLength: source.count)
 
     for r in g.alternatives(start) {
-      partialParses.append(PartialParse(expecting: r.dotted, at: 0))
+      partialParses.append(EarleyItem(expecting: r.dotted, at: 0))
     }
 
     // Recognize each token over its range in the source.
@@ -159,18 +159,18 @@ extension Recognizer {
   }
 
   /// Adds partial parses initiating recognition of `postdot(p)` at the current earleme.
-  private mutating func predict(_ p: PartialParse) {
+  private mutating func predict(_ p: EarleyItem) {
     let s = postdot(p)!
     for rhs in g.alternatives(s) {
-      insertEarley(PartialParse(expecting: rhs.dotted, at: currentEarlemeIndex))
+      insertEarley(EarleyItem(expecting: rhs.dotted, at: currentEarlemeIndex))
       if s.isNulling { insertEarley(p.advanced()) }
     }
   }
 
   /// Performs Leo reduction on `p`
-  private mutating func reduce(_ p: PartialParse) {
+  private mutating func reduce(_ p: EarleyItem) {
     if let predecessor = leoParse(at: p.start, transition: lhs(p)) {
-      insertEarley(PartialParse(expecting: predecessor.expected, at: predecessor.start))
+      insertEarley(EarleyItem(expecting: predecessor.expected, at: predecessor.start))
     }
     else {
       earleyReduce(p)
@@ -178,7 +178,7 @@ extension Recognizer {
   }
 
   /// Performs Earley reduction on p.
-  private mutating func earleyReduce(_ p: PartialParse) {
+  private mutating func earleyReduce(_ p: EarleyItem) {
     let s0 = lhs(p)
 
     /// Inserts partialParses[k].advanced() iff its postdot symbol is s0.
@@ -215,7 +215,7 @@ extension Recognizer {
   }
 
   /// If the addition of a Leo item is implied by the processing of `b`, adds it.
-  private mutating func addAnyLeoItem(_ b: PartialParse) {
+  private mutating func addAnyLeoItem(_ b: EarleyItem) {
     if !isLeoEligible(b.expected) { return }
     let s = g.penult(b.expected)!
     insertLeo(leoPredecessor(b) ?? b.advanced(), transition: s)
@@ -223,7 +223,7 @@ extension Recognizer {
 
   /// Returns the Leo item in the earleme where `b` starts, with transition symbol matching `b`'s
   /// LHS, or `nil` if no such item exists.
-  private func leoPredecessor(_ b: PartialParse) -> PartialParse? {
+  private func leoPredecessor(_ b: EarleyItem) -> EarleyItem? {
     return leoParse(at: b.start, transition: lhs(b))
   }
 
@@ -265,7 +265,7 @@ extension Recognizer: CustomStringConvertible {
     return lines.joined(separator: "\n")
   }
 
-  private func description(_ p: PartialParse) -> String {
+  private func description(_ p: EarleyItem) -> String {
     "\(g.description(p.expected))\t(\(p.start))"
   }
 }

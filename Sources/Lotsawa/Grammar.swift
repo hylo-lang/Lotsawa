@@ -38,7 +38,7 @@ public struct Grammar<RawSymbol: Hashable> {
     struct ID: Hashable { var lhsIndex: RuleStore.Index }
 
     /// A value that uniquely identifies this rule in the grammar.
-    var id: ID { .init(lhsIndex: lhsIndex) }
+    var id: ID { ID(lhsIndex: lhsIndex) }
 
     /// `self`, with the recognition marker (dot) before its first RHS symbol.
     var dotted: Grammar.DottedRule { .init(postdotIndices: rhsIndices) }
@@ -205,6 +205,7 @@ extension Grammar {
   func nullSymbolSets(rulesByRHS: MultiMap<Symbol, Rule>)
     -> (nullable: Set<Symbol>, nulling: Set<Symbol>)
   {
+    // Note: Warshall's algorithm for transitive closure can help here.
     var nullable = Set<Symbol>()
     var nulling = Set<Symbol>()
     for (s, alternatives) in rulesByLHS.storage {
@@ -280,6 +281,7 @@ extension Grammar {
   /// - Note: this computation can be costly and the result should be memoized.
   /// - Precondition: `self` is in nihilist normal form.
   func computeIsRightRecursive(_ x: Rule) -> Bool {
+    // Warshall works here.
     guard let rnn = rightmostNonNullingSymbol(x) else {
       return false
     }
