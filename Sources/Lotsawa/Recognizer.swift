@@ -34,9 +34,13 @@ public struct Recognizer<RawSymbol: Hashable> {
     let lhs: RawSymbol
   }
 
+  struct CompleteParse: Hashable {
+    let end: SourcePosition
+    let rule: Grammar_<RawSymbol>.Rule.ID
+  }
+
   /// All complete recognitions of any symbol.
-  private var completeParses
-    = MultiMap<CompleteParseKey, (end: SourcePosition, rule: Grammar.Rule.ID)>()
+  private var completeParses: [CompleteParseKey: Set<CompleteParse>] = [:]
 
   /// The position in `partialParses` and `leoItems` where each earleme begins.
   private var earlemeStart: [(earley: EarleyItems.Index, leo: LeoItems.Index)] = []
@@ -151,8 +155,8 @@ extension Recognizer {
         let p = partialParses[j]
         if !p.isComplete { predict(p) }
         else {
-          completeParses[.init(start: p.start, lhs: lhs(p).raw)]
-            .append((end: i, rule: p.expected.ruleID))
+          completeParses[.init(start: p.start, lhs: lhs(p).raw), default: []]
+            .insert(.init(end: i, rule: p.expected.ruleID))
           reduce(p)
         }
         addAnyLeoItem(p)
