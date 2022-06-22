@@ -89,6 +89,10 @@ extension Recognizer {
 
   /// Adds `p` to the latest earleme if it is not already there.
   private mutating func insertEarley(_ p: EarleyItem) {
+    if p.isComplete {
+      completeParses[.init(start: p.start, lhs: lhs(p).raw), default: []]
+        .insert(.init(end: currentEarlemeIndex, rule: p.expected.ruleID))
+    }
     if !currentEarleme.contains(p) { partialParses.append(p) }
   }
 
@@ -141,7 +145,7 @@ extension Recognizer {
     initialize(inputLength: source.count)
 
     for r in g.alternatives(start) {
-      partialParses.append(EarleyItem(expecting: r.dotted, at: 0))
+      insertEarley(EarleyItem(expecting: r.dotted, at: 0))
     }
 
     // Recognize each token over its range in the source.
@@ -154,11 +158,7 @@ extension Recognizer {
       while j < partialParses.count {
         let p = partialParses[j]
         if !p.isComplete { predict(p) }
-        else {
-          completeParses[.init(start: p.start, lhs: lhs(p).raw), default: []]
-            .insert(.init(end: i, rule: p.expected.ruleID))
-          reduce(p)
-        }
+        else { reduce(p) }
         addAnyLeoItem(p)
         j += 1
       }
