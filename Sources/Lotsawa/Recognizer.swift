@@ -53,8 +53,8 @@ extension Recognizer.EarleyItem: Hashable {
     self.start = start
   }
 
-  /// Returns `self`, but with the dot moved forward by one position.
-  func advanced() -> Self { Self(expecting: expected.advanced, at: start) }
+  /// `self`, but with the dot moved forward by one position.
+  var advanced: Self { Self(expecting: expected.advanced, at: start) }
 
   /// `true` iff there are no symbols left to recognize on the RHS of `self.rule`.
   var isComplete: Bool { return expected.isComplete }
@@ -176,7 +176,7 @@ extension Recognizer {
     let s = postdot(p)!
     for rhs in g.alternatives(s) {
       insertEarley(EarleyItem(expecting: rhs.dotted, at: currentEarlemeIndex))
-      if s.isNulling { insertEarley(p.advanced()) }
+      if s.isNulling { insertEarley(p.advanced) }
     }
   }
 
@@ -194,10 +194,10 @@ extension Recognizer {
   private mutating func earleyReduce(_ p: EarleyItem) {
     let s0 = lhs(p)
 
-    /// Inserts partialParses[k].advanced() iff its postdot symbol is s0.
+    /// Inserts partialParses[k].advanced iff its postdot symbol is s0.
     func advanceIfPostdotS0(_ k: Int) {
       let p0 = partialParses[k]
-      if postdot(p0) == s0 { insertEarley(p0.advanced()) }
+      if postdot(p0) == s0 { insertEarley(p0.advanced) }
     }
 
     if p.start != currentEarlemeIndex {
@@ -222,7 +222,7 @@ extension Recognizer {
       if postdot(p) == t {
         if !found { earlemeStart.append((partialParses.count, leoItems.count)) }
         found = true
-        insertEarley(p.advanced())
+        insertEarley(p.advanced)
       }
     }
   }
@@ -231,7 +231,7 @@ extension Recognizer {
   private mutating func addAnyLeoItem(_ b: EarleyItem) {
     if !isLeoEligible(b.expected) { return }
     let s = g.penult(b.expected)!
-    insertLeo(leoPredecessor(b) ?? b.advanced(), transition: s)
+    insertLeo(leoPredecessor(b) ?? b.advanced, transition: s)
   }
 
   /// Returns the Leo item in the earleme where `b` starts, with transition symbol matching `b`'s
