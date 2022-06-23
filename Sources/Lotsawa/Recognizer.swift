@@ -94,12 +94,6 @@ extension Recognizer {
       : leoItems[earlemeStart[l].leo..<earlemeStart[l+1].leo]
   }
 
-  /// Returns the partial parse for the Leo item at `i` with the given `transition` symbol, or `nil`
-  /// if no such leo item exists.
-  private func leoParse(at i: SourcePosition, transition: Grammar.Symbol) -> EarleyItem? {
-    leoItems(at: i).first { l in l.transition == transition }?.parse ?? nil
-  }
-
   /// The earleme to which we're currently adding items.
   private var currentEarlemeIndex: Int { earlemeStart.count - 1 }
 
@@ -169,8 +163,8 @@ extension Recognizer {
 
   /// Performs Leo reduction on `p`
   private mutating func reduce(_ p: EarleyItem) {
-    if let predecessor = leoParse(at: p.start, transition: lhs(p)) {
-      insertEarley(EarleyItem(expecting: predecessor.expected, at: predecessor.start))
+    if let p0 = leoPredecessor(p) {
+      insertEarley(EarleyItem(expecting: p0.expected, at: p0.start))
     }
     else {
       earleyReduce(p)
@@ -221,10 +215,12 @@ extension Recognizer {
     insertLeo(leoPredecessor(b) ?? b.advanced(), transition: s)
   }
 
-  /// Returns the Leo item in the earleme where `b` starts, with transition symbol matching `b`'s
-  /// LHS, or `nil` if no such item exists.
+  /// Returns the parse of the Leo item in `b`'s start earleme having transition symbol `lhs(b)`, or
+  /// `nil` if no such item exists.
   private func leoPredecessor(_ b: EarleyItem) -> EarleyItem? {
-    return leoParse(at: b.start, transition: lhs(b))
+    leoItems(at: b.start)
+      .first(where: { l in l.transition == lhs(b) })
+      .map { l in l.parse }
   }
 
   /// Returns `true` iff the current earleme contains exactly one partial parse of a rule whose
