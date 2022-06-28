@@ -1,32 +1,44 @@
+protocol GrammarConfiguration {
+  associatedtype SymbolNumber: BinaryInteger
+  associatedtype RuleNumber: BinaryInteger
+}
+
+public struct Symbol<Ordinal: BinaryInteger>: Hashable {
+  let ordinal: Ordinal
+}
+
+public struct Rule<Ordinal: BinaryInteger>: Hashable {
+  let ordinal: Ordinal
+}
+
+extension GrammarConfiguration {
+  typealias Symbol = Lotsawa.Symbol<SymbolNumber>
+  typealias Rule = Lotsawa.Rule<RuleNumber>
+}
+
 /// A collection of Backus-Naur Form (BNF) productions, each defining a symbol
 /// on its left-hand side in terms of a string of symbols on its right-hand
-/// side, where a symbol is an enhanced `RawSymbol` (see `Symbol`).
-public struct Grammar<RawSymbol: Hashable> {
+/// side.
+public struct Grammar<Config: GrammarConfiguration> {
 
-  /// A symbol for the nihilist normal form (NNF) of the raw grammar, per Aycock
-  /// and Horspool.
-  ///
-  /// During NNF transformation, each nullable `RawSymbol` is divided into two
-  /// versions: `.some,` which never derives the empty string 𝝐, and `.null`,
-  /// which always does.  Before NNF transformation, all symbols are stored in
-  /// the `.some` form.
-  enum Symbol: Hashable {
-    /// The non-nulling plain raw symbol
-    case some(RawSymbol)
-    
-    /// The nulling version of the symbol.
-    case null(RawSymbol)
-  }
-  
-  /// A type that stores all productions packed end-to-end, with the LHS symbol following the RHS symbols.
+  public typealias Symbol = Config.Symbol
+  public typealias Rule = Config.Rule
+
+  /// The number of symbols in this grammar.
+  private var symbolCount: Config.SymbolNumber
+
+  /// A type that stores all rules packed end-to-end, with the LHS symbol following the RHS symbols.
   ///
   /// For example A -> B C is stored as the subsequence [B, C, A].
   typealias ProductionStore = [Symbol]
-  
-  /// Storage for all the productions.
-  private var productionStore: [Symbol] = []
 
-  /// A Backus-Naur Form (BNF) production.
+  /// Storage for all the productions.
+  private var productionStore: RuleStore = []
+
+  /// Where each numbered rule begins in `ruleStore`, in sorted order.
+  private var ruleStart: [RuleStore.Index]
+
+  /// A CFG production.
   struct Production: Hashable {
     /// The indices in `productionstore` of this production's RHS symbols.
     var rhsIndices: Range<ProductionStore.Index>
@@ -47,7 +59,7 @@ public struct Grammar<RawSymbol: Hashable> {
     var rhsCount: Int { rhsIndices.count }
   }
 
-  /// The RHS definitions for each nonterminal symbol.
+  /// The possible right-hand sides for each nonterminal symbol.
   private var productionsByLHS = MultiMap<Symbol, Production>()
 
   /// The IDs of all right-recursive productions.
@@ -86,24 +98,6 @@ extension Grammar {
   }
 }
 
-extension Grammar.Symbol {
-  /// `true` iff this symbol is known to derive 𝝐 and only 𝝐
-  var isNulling: Bool {
-    if case .null = self { return true } else { return false }
-  }
-
-  /// The underlying raw (client-facing) symbol value.
-  var raw: RawSymbol {
-    switch self { case let .some(r), let .null(r): return r }
-  }
-
-  /// `self`𝝐 (where X𝝐𝝐 ::= X𝝐)
-  var asNull: Self { .null(raw) }
-
-  /// Replaces `self` with `self.asNull`.
-  mutating func nullify() { self = self.asNull }
-}
-
 extension Grammar {
   /// Returns the right-hand side definitions for lhs, or an empty collection if lhs is a terminal.
   func definitions(_ lhs: Symbol) -> [Production] { productionsByLHS[lhs] }
@@ -116,6 +110,13 @@ extension Grammar {
 
   /// Returns the next expected symbol of `t`, or `nil` if `t.isComplete`.
   func postdot(_ t: DottedRule) -> Symbol? { productionStore[t.postdotIndices].first }
+
+  /// Returns a new symbol in the grammar.
+  public mutating func addSymbol() -> Symbol {
+    precondition(symbolCount > Symbol.max, "Symbol capacity of \(Symbol.self) exceeded.")
+    defer { symbolCount += 1 }
+    return Symbol(truncatingIfNeeded: symbolCount)
+  }
 
   /// Creates an preprocessed version of `rawProductions` suitable for use by a
   /// `Recognizer`, where `rawProductions` is a BNF grammar of `RawSymbol`s.
@@ -338,4 +339,3 @@ extension Grammar.Symbol: CustomStringConvertible {
     }
   }
 }
-
