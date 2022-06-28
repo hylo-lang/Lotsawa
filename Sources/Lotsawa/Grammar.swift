@@ -47,7 +47,7 @@ public struct Grammar<RawSymbol: Hashable> {
     var rhsCount: Int { rhsIndices.count }
   }
 
-  /// The RHS alternatives for each nonterminal symbol.
+  /// The RHS definitions for each nonterminal symbol.
   private var rulesByLHS = MultiMap<Symbol, Rule>()
 
   /// The IDs of all right-recursive rules.
@@ -105,11 +105,8 @@ extension Grammar.Symbol {
 }
 
 extension Grammar {
-  /// The rules for a given LHS symbol.
-  typealias Alternatives = [Rule]
-
-  /// Returns the right-hand side alternatives for lhs, or an empty collection if lhs is a terminal.
-  func alternatives(_ lhs: Symbol) -> Alternatives { rulesByLHS[lhs] }
+  /// Returns the right-hand side definitions for lhs, or an empty collection if lhs is a terminal.
+  func definitions(_ lhs: Symbol) -> [Rule] { rulesByLHS[lhs] }
 
   /// Returns the LHS symbol for the rule corresponding to `t`.
   func lhs(_ t: DottedRule) -> Symbol { ruleStore[t.lhsIndex] }
@@ -208,10 +205,10 @@ extension Grammar {
     // Note: Warshall's algorithm for transitive closure can help here.
     var nullable = Set<Symbol>()
     var nulling = Set<Symbol>()
-    for (s, alternatives) in rulesByLHS.storage {
-      let x = alternatives.satisfaction { r in r.rhsCount == 0 }
-      if x == .all { discoverNulling(s) }
-      else if x != .none { discoverNullable(s) }
+    for (lhs, definitions) in rulesByLHS.storage {
+      let x = definitions.satisfaction { r in r.rhsCount == 0 }
+      if x == .all { discoverNulling(lhs) }
+      else if x != .none { discoverNullable(lhs) }
     }
 
     /// Marks `s` as nulling, and draws any consequent conlusions.
@@ -259,7 +256,7 @@ extension Grammar {
 extension Grammar {
   // Note: UNUSED
   /// Returns `true` iff `s` is a terminal symbol.
-  func isTerminal(_ s: Symbol) -> Bool { return alternatives(s).isEmpty }
+  func isTerminal(_ s: Symbol) -> Bool { return definitions(s).isEmpty }
 
   /// Returns the RHS symbols of `x` that have yet to be recognized.
   func postdotRHS(_ x: DottedRule) -> SymbolString {
@@ -291,7 +288,7 @@ extension Grammar {
 
     while let s = q.popFirst() {
       visited.insert(s)
-      for r in alternatives(s) {
+      for r in definitions(s) {
         guard let rnn = rightmostNonNullingSymbol(r) else { continue }
         if rnn == lhs(x) { return true }
         if !visited.contains(rnn) { q.insert(rnn) }
@@ -321,7 +318,7 @@ extension Grammar {
   /// A string representation of `self`.
   func description(_ x: DottedRule) -> String {
     var r = "\(lhs(x)) ->\t"
-    let fullRule = alternatives(lhs(x)).first { $0.id == x.ruleID }!
+    let fullRule = definitions(lhs(x)).first { $0.id == x.ruleID }!
     var toPrint = fullRule.rhsIndices
     if toPrint.isEmpty { r += "•" }
     while let i = toPrint.popFirst() {

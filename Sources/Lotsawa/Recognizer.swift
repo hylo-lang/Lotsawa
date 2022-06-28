@@ -138,7 +138,7 @@ extension Recognizer {
     let source = source.lazy.map { s in Grammar.Symbol.some(s) }
     initialize(inputLength: source.count)
 
-    for r in g.alternatives(start) {
+    for r in g.definitions(start) {
       insertEarley(EarleyItem(expecting: r.dotted, at: 0))
     }
 
@@ -172,7 +172,7 @@ extension Recognizer {
   /// Adds partial parses initiating recognition of `postdot(p)` at the current earleme.
   private mutating func predict(_ p: EarleyItem) {
     let s = postdot(p)!
-    for rhs in g.alternatives(s) {
+    for rhs in g.definitions(s) {
       insertEarley(EarleyItem(expecting: rhs.dotted, at: currentEarlemeIndex))
       if s.isNulling { insertEarley(p.advanced) }
     }
