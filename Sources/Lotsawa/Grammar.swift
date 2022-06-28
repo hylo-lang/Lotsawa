@@ -41,7 +41,7 @@ public struct Grammar<RawSymbol: Hashable> {
     var id: ID { ID(lhsIndex: lhsIndex) }
 
     /// `self`, with the recognition marker (dot) before its first RHS symbol.
-    var dotted: Grammar.DottedProduction { .init(postdotIndices: rhsIndices) }
+    var dotted: Grammar.DottedRule { .init(postdotIndices: rhsIndices) }
 
     /// The length of this production's RHS.
     var rhsCount: Int { rhsIndices.count }
@@ -60,7 +60,7 @@ extension Grammar {
 
   /// A partially-recognized suffix of a grammar production's RHS, where a notional
   /// “dot” marks the end of the recognized symbols of the RHS.
-  struct DottedProduction: Hashable {
+  struct DottedRule: Hashable {
     /// The indices in `productionstore` of the unrecognized RHS symbols.
     var postdotIndices: Range<ProductionStore.Index>
 
@@ -109,13 +109,13 @@ extension Grammar {
   func definitions(_ lhs: Symbol) -> [Production] { productionsByLHS[lhs] }
 
   /// Returns the LHS symbol for the production corresponding to `t`.
-  func lhs(_ t: DottedProduction) -> Symbol { productionStore[t.lhsIndex] }
+  func lhs(_ t: DottedRule) -> Symbol { productionStore[t.lhsIndex] }
 
   /// Returns the LHS symbol of `r`.
   func lhs(_ r: Production) -> Symbol { productionStore[r.lhsIndex] }
 
   /// Returns the next expected symbol of `t`, or `nil` if `t.isComplete`.
-  func postdot(_ t: DottedProduction) -> Symbol? { productionStore[t.postdotIndices].first }
+  func postdot(_ t: DottedRule) -> Symbol? { productionStore[t.postdotIndices].first }
 
   /// Creates an preprocessed version of `rawProductions` suitable for use by a
   /// `Recognizer`, where `rawProductions` is a BNF grammar of `RawSymbol`s.
@@ -259,7 +259,7 @@ extension Grammar {
   func isTerminal(_ s: Symbol) -> Bool { return definitions(s).isEmpty }
 
   /// Returns the RHS symbols of `x` that have yet to be recognized.
-  func postdotRHS(_ x: DottedProduction) -> SymbolString {
+  func postdotRHS(_ x: DottedRule) -> SymbolString {
     x.postdotIndices.lazy.map { i in productionStore[i] }
   }
 
@@ -300,7 +300,7 @@ extension Grammar {
   /// Returns `postdot(x)` iff it is the rightmost non-nulling symbol and `nil` otherwise.
   ///
   /// - Precondition: `self` is in nihilist normal form.
-  func penult(_ x: DottedProduction) -> Symbol? {
+  func penult(_ x: DottedRule) -> Symbol? {
     guard let next = postdot(x) else { return nil }
     return !next.isNulling && postdotRHS(x.advanced).allSatisfy { s in s.isNulling }
       ? next : nil
@@ -309,14 +309,14 @@ extension Grammar {
   /// Returns true iff `x`'s underlying production is right-recursive.
   ///
   /// - Precondition: `self`'s right recursions have been computed.
-  func isRightRecursive(_ x: DottedProduction) -> Bool {
+  func isRightRecursive(_ x: DottedRule) -> Bool {
     rightRecursive.contains(x.productionID)
   }
 }
 
 extension Grammar {
   /// A string representation of `self`.
-  func description(_ x: DottedProduction) -> String {
+  func description(_ x: DottedRule) -> String {
     var r = "\(lhs(x)) ->\t"
     let fullProduction = definitions(lhs(x)).first { $0.id == x.productionID }!
     var toPrint = fullProduction.rhsIndices
