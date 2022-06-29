@@ -79,8 +79,7 @@ extension Bits: MutableCollection
   }
 }
 
-
-struct BitSet: SetAlgebra {
+struct BitSet: SetAlgebra, Hashable {
   typealias Element = Int
   typealias ArrayLiteralElement = Int
 
@@ -90,7 +89,7 @@ struct BitSet: SetAlgebra {
   }
 
   /// Creates an empty set with storage preallocated to accomodate elements in
-  /// `0,,,maxElementEstimate`
+  /// `0...maxElementEstimate`
   init(elementMax maxElementEstimate: Int) {
     storage = []
     if maxElementEstimate > 0 {
@@ -98,8 +97,7 @@ struct BitSet: SetAlgebra {
     }
   }
 
-  /// The number of storage elements required to accomodate elements in accomodate elements in
-  /// `0,,,maxElement`.
+  /// The number of storage words required to accomodate elements in `0...maxElement`.
   private func storageCapacity(maxElement: Int) -> Int {
     (maxElement + Word.bitWidth) / Word.bitWidth
   }
@@ -107,12 +105,12 @@ struct BitSet: SetAlgebra {
   /// Creates an instance using `storage` as its underlying storage.
   private init(storage: [Word]) { self.storage = storage }
 
-  /// Returns `true` if `n` is a member of `self`.
+  /// Returns `true` if `n` is a element of `self`.
   func contains<N: BinaryInteger>(_ n: N) -> Bool {
     n >= 0 && n < bits.count && bits[Int(n)]
   }
 
-  /// Returns a new set containing the elements in `self` and the elements in `other`.
+  /// Returns the set of elements in either `self` or `other` (or both).
   func union(_ other: Self) -> Self {
     storage.withUnsafeBufferPointer{ b0 in
       other.storage.withUnsafeBufferPointer { b1 in
@@ -124,7 +122,7 @@ struct BitSet: SetAlgebra {
     }
   }
 
-  /// Adds the elements of `other` to `self`.
+  /// Inserts the elements of `other` that are not already in `self`.
   mutating func formUnion(_ other: Self) {
     self.storage.reserveCapacity(other.storage.count)
     let overlap = min(storage.count, other.storage.count)
@@ -138,7 +136,7 @@ struct BitSet: SetAlgebra {
     }
   }
 
-  /// Returns a new set containing the elements that appear in both `self` and `other`.
+  /// Returns the set of elements of `self` that are also in `other`.
   func intersection(_ other: Self) -> Self {
     storage.withUnsafeBufferPointer{ b0 in
       other.storage.withUnsafeBufferPointer { b1 in
@@ -150,7 +148,7 @@ struct BitSet: SetAlgebra {
     }
   }
 
-  /// Adds the elements of `other` to `self`.
+  /// Removes any elements of `self` that are not in `other`.
   mutating func formIntersection(_ other: Self) {
     let newCount = min(storage.count, other.storage.count)
     storage.removeLast(storage.count - newCount)
@@ -163,7 +161,7 @@ struct BitSet: SetAlgebra {
     }
   }
 
-  /// Returns a new set containing the elements that are in either `self` or `other`, but not both.
+  /// Returns the set of elements that are in `self` or `other`, but not both.
   func symmetricDifference(_ other: Self) -> Self {
     storage.withUnsafeBufferPointer{ b0 in
       other.storage.withUnsafeBufferPointer { b1 in
@@ -189,41 +187,42 @@ struct BitSet: SetAlgebra {
     }
   }
 
-  /// Inserts newMember if it was not already present, returing `true` and `newMember` if so, and
-  /// returning `false` and `newMember` otherwise.
+  /// Inserts newElement if it was not already present, returing `true` and `newElement` if so, and
+  /// returning `false` and `newElement` otherwise.
   @discardableResult
-  mutating func insert<I: BinaryInteger>(_ newMember: I) -> (inserted: Bool, memberAfterInsert: I)
+  mutating func insert<I: BinaryInteger>(_ newElement: I) -> (inserted: Bool, memberAfterInsert: I)
   {
-    precondition(newMember >= 0, "BitSet can't store negative value \(newMember)")
-    if newMember < bits.count {
-      let r = (bits[Int(newMember)], newMember)
-      bits[Int(newMember)] = true
+    precondition(newElement >= 0, "BitSet can't store negative value \(newElement)")
+    if newElement < bits.count {
+      let r = (bits[Int(newElement)], newElement)
+      bits[Int(newElement)] = true
       return r
     }
-    let newCapacity = storageCapacity(maxElement: Int(newMember))
+    let newCapacity = storageCapacity(maxElement: Int(newElement))
     storage.amortizedLinearReserveCapacity(newCapacity)
     storage.append(contentsOf: repeatElement(0, count: max(0, newCapacity - storage.count - 1)))
-    storage.append(1 &<< (Int(newMember) % Word.bitWidth))
-    return (true, newMember)
+    storage.append(1 &<< (Int(newElement) % Word.bitWidth))
+    return (true, newElement)
   }
 
-  /// Removes `member` if it is a member of `self`, returning `member` if so, and `nil` otherwise.
-  @discardableResult
-  mutating func remove<I: BinaryInteger>(_ member: I) -> I?
-  {
-    if member < 0 || member >= bits.count || !bits[Int(member)] { return nil }
-    bits[Int(member)] = false
-    return member
-  }
-
-  /// Inserts `newMember` if it was not already present, returing `nil` if so, and `newMember`
+  /// Removes `element` if it is a element of `self`, returning `element` if so, and `nil`
   /// otherwise.
   @discardableResult
-  mutating func update<I: BinaryInteger>(with newMember: I) -> I? {
-    self.insert(newMember).inserted ? newMember : nil
+  mutating func remove<I: BinaryInteger>(_ element: I) -> I?
+  {
+    if element < 0 || element >= bits.count || !bits[Int(element)] { return nil }
+    bits[Int(element)] = false
+    return element
   }
 
-  /// Returns `true` iff every member of `self` is in `other`.
+  /// Inserts `newElement` if it was not already present, returing `nil` if so, and `newElement`
+  /// otherwise.
+  @discardableResult
+  mutating func update<I: BinaryInteger>(with newElement: I) -> I? {
+    self.insert(newElement).inserted ? newElement : nil
+  }
+
+  /// Returns `true` iff every element of `self` is in `other`.
   func isSubset(of other: Self) -> Bool {
     storage.withUnsafeBufferPointer { b0 in
       other.storage.withUnsafeBufferPointer { b1 in
@@ -235,7 +234,7 @@ struct BitSet: SetAlgebra {
     }
   }
 
-  /// Returns `true` iff no member of `self` is in `other`.
+  /// Returns `true` iff no element of `self` is in `other`.
   func isDisjoint(with other: Self) -> Bool {
     storage.withUnsafeBufferPointer { b0 in
       other.storage.withUnsafeBufferPointer { b1 in
@@ -244,7 +243,7 @@ struct BitSet: SetAlgebra {
     }
   }
 
-  /// Returns a new set containing the members of `self` that are not members of `other`.
+  /// Returns the elements of `self` that are not in `other`.
   public func subtracting(_ other: Self) -> Self {
     storage.withUnsafeBufferPointer{ b0 in
       other.storage.withUnsafeBufferPointer { b1 in
@@ -253,7 +252,7 @@ struct BitSet: SetAlgebra {
     }
   }
 
-  /// Removes the members of other from `self`
+  /// Removes the elements of `other` from `self`
   mutating func subtract(_ other: Self) {
     storage.withUnsafeMutableBufferPointer{ b0 in
       other.storage.withUnsafeBufferPointer { b1 in
@@ -264,7 +263,7 @@ struct BitSet: SetAlgebra {
     }
   }
 
-  /// True iff `self` has no members.
+  /// True iff `self` has no elements.
   var isEmpty: Bool { storage.allSatisfy { x in x == 0 } }
 
   /// A projection of the bits of `self` as a collection of `Bool`.
@@ -279,8 +278,6 @@ struct BitSet: SetAlgebra {
     }
   }
 
-  /// Storage for (at least) one `Bool` per member of `self`, packed into words.
+  /// Storage for (at least) one `Bool` per element of `self`, packed into words.
   private var storage: [Word]
 }
-
-// Array(Bits(base: [-128 as Int8]))
