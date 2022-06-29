@@ -191,13 +191,14 @@ extension Grammar {
 
     /// Constructs a preprocessed version of a raw grammar.
     init(_ raw: Grammar) {
+      fatalError()
     }
   }
 }
 
 extension Grammar {
+  /// Returns a mapping from symbol to the set of rules on whose RHS the symbol appears.
   func rulesByRHS() -> MultiMap<Symbol, Rule> {
-    // Build a mapping from symbol to the set of rules on whose RHS the symbol appears.
     var result = MultiMap<Symbol, Rule>()
 
     for rules in rulesByLHS.values {

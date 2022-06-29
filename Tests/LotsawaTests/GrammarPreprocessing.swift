@@ -1,4 +1,4 @@
-import Lotsawa
+/*import Lotsawa
 
 import XCTest
 
@@ -514,3 +514,4 @@ let valWithExplicitWhitespace: [(lhs: Int, rhs: [Int])] = [
   (lhs: 364, rhs: [368]),
   (lhs: 368, rhs: [369, 370]),
   (lhs: 368, rhs: [369, 368, 370])]
+*/

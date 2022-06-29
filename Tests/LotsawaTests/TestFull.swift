@@ -1,4 +1,4 @@
-import Lotsawa
+/*import Lotsawa
 import XCTest
 
 /// Grammar definition
@@ -79,5 +79,6 @@ class FullTest: XCTestCase {
 
     XCTAssert(r.recognize(repeatElement(.a, count: 5), as: .A))
     XCTAssertFalse(r.recognize(EmptyCollection(), as: .A))
-  }
+b  }
 }
+*/
