@@ -1,86 +1,95 @@
-protocol GrammarConfiguration {
-  associatedtype SymbolNumber: BinaryInteger
-  associatedtype RuleNumber: BinaryInteger
-}
-
-public struct Symbol<Ordinal: BinaryInteger>: Hashable {
-  let ordinal: Ordinal
-}
-
-public struct Rule<Ordinal: BinaryInteger>: Hashable {
-  let ordinal: Ordinal
-}
-
-extension GrammarConfiguration {
-  typealias Symbol = Lotsawa.Symbol<SymbolNumber>
-  typealias Rule = Lotsawa.Rule<RuleNumber>
-}
-
-/// A collection of Backus-Naur Form (BNF) productions, each defining a symbol
+/// A collection of Backus-Naur Form (BNF) rules, each defining a symbol
 /// on its left-hand side in terms of a string of symbols on its right-hand
 /// side.
-public struct Grammar<Config: GrammarConfiguration> {
+///
+/// - Parameters:
+///   - Size: a type that can represent the size of this grammar (the total length of all right-hand
+///     sides of the rules plus the number of rules.
+///
+///   - SymbolID: a type that can represent the number of symbols used in this grammar.
+public struct Grammar<SymbolCount: BinaryInteger, Size: BinaryInteger>
+  where Size.Stride: SignedInteger
+{
+  /// The possible right-hand sides for each nonterminal symbol.
+  private var rulesByLHS = MultiMap<Symbol, Rule>()
 
-  public typealias Symbol = Config.Symbol
-  public typealias Rule = Config.Rule
+  /// The IDs of all right-recursive rules.
+  private var rightRecursive: Set<Rule.ID> = []
 
-  /// The number of symbols in this grammar.
-  private var symbolCount: Config.SymbolNumber
+  /// Storage for all the rules.
+  private var ruleStore: RuleStore = []
+
+  /// Where each rule begins in `ruleStore`, in sorted order, plus a sentinel that is the start of
+  /// the next rule to be added.
+  private var ruleStart: [RuleStore.Index] = [0]
+
+  /// The number of symbols, and ID of the next symbol to be added.
+  public private(set) var symbolCount: SymbolCount = 0
+}
+
+/// A grammar symbol (see https://en.wikipedia.org/wiki/Context-free_grammar).
+public struct Symbol<ID: BinaryInteger>: Hashable {
+  /// An ordinal identifier for this symbol
+  let id: ID
+}
+
+extension Grammar {
+  public typealias Symbol = Lotsawa.Symbol<SymbolCount>
 
   /// A type that stores all rules packed end-to-end, with the LHS symbol following the RHS symbols.
   ///
   /// For example A -> B C is stored as the subsequence [B, C, A].
-  typealias ProductionStore = [Symbol]
+  typealias RuleStore = [Symbol]
 
-  /// Storage for all the productions.
-  private var productionStore: RuleStore = []
+  /// A production rule (see https://en.wikipedia.org/wiki/Context-free_grammar).
+  public struct Rule: Hashable {
+    /// The indices in `rulestore` of this rule's RHS symbols.
+    var rhsIndices: Range<Size>
 
-  /// Where each numbered rule begins in `ruleStore`, in sorted order.
-  private var ruleStart: [RuleStore.Index]
+    /// The index in `ruleStore` where the LHS symbol can be found.
+    var lhsIndex: RuleStore.Index { RuleStore.Index(rhsIndices.upperBound) }
 
-  /// A CFG production.
-  struct Production: Hashable {
-    /// The indices in `productionstore` of this production's RHS symbols.
-    var rhsIndices: Range<ProductionStore.Index>
+    /// A type that can uniquely identify a rule in the grammar.
+    public struct ID: Hashable { var lhsIndex: Size }
 
-    /// The index in `productionStore` where the LHS symbol can be found.
-    var lhsIndex: Grammar.ProductionStore.Index { rhsIndices.upperBound }
-
-    /// A value that can uniquely identify a production in the grammar.
-    struct ID: Hashable { var lhsIndex: ProductionStore.Index }
-
-    /// A value that uniquely identifies this production in the grammar.
-    var id: ID { ID(lhsIndex: lhsIndex) }
+    /// A value that uniquely identifies this rule in the grammar.
+    public var id: ID { ID(lhsIndex: rhsIndices.upperBound) }
 
     /// `self`, with the recognition marker (dot) before its first RHS symbol.
-    var dotted: Grammar.DottedRule { .init(postdotIndices: rhsIndices) }
+    var dotted: DottedRule { .init(postdotIndices: rhsIndices) }
 
-    /// The length of this production's RHS.
-    var rhsCount: Int { rhsIndices.count }
+    /// The length of this rule's RHS.
+    public var rhsCount: Int { rhsIndices.count }
   }
 
-  /// The possible right-hand sides for each nonterminal symbol.
-  private var productionsByLHS = MultiMap<Symbol, Production>()
+  /// Returns the RHS symbols of `x`.
+  func rhs(_ x: Rule) -> SymbolString { string(x.rhsIndices) }
 
-  /// The IDs of all right-recursive productions.
-  private var rightRecursive: Set<Production.ID> = []
+  /// The sum, over all rules `r`, of `r.rhsCount + 1`.
+  public var size: Size {
+    return Size(ruleStore.count)
+  }
 }
 
 extension Grammar {
-  /// A string of symbols found on the RHS of a production.
-  typealias SymbolString = LazyMapSequence<Range<ProductionStore.Index>, Symbol>
+  /// A string of symbols found on the RHS of a rule.
+  typealias SymbolString = RuleStore.SubSequence
 
-  /// A partially-recognized suffix of a grammar production's RHS, where a notional
+  func string(_ indices: Range<Size>) -> SymbolString {
+    ruleStore[RuleStore.Index(indices.lowerBound)..<RuleStore.Index(indices.upperBound)]
+  }
+
+  /// A partially-recognized suffix of a grammar rule's RHS, where a notional
   /// “dot” marks the end of the recognized symbols of the RHS.
   struct DottedRule: Hashable {
-    /// The indices in `productionstore` of the unrecognized RHS symbols.
-    var postdotIndices: Range<ProductionStore.Index>
+    /// The indices in `rulestore` of the unrecognized RHS symbols.
+    var postdotIndices: Range<Size>
 
-    /// The index in productionStore where the production's LHS symbol can be found.
-    var lhsIndex: ProductionStore.Index { postdotIndices.upperBound }
+    /// The index in ruleStore where the rule's LHS symbol can be found.
+    var lhsIndex: RuleStore.Index { RuleStore.Index(postdotIndices.upperBound) }
 
-    /// The index in `productionStore` of the symbol following the dot.
-    var postdotIndex: ProductionStore.Index? { postdotIndices.first }
+    /// The index in `ruleStore` of the symbol following the dot.
+    var postdotIndex: RuleStore.Index? { postdotIndices.first.map(RuleStore.Index.init) }
 
     /// The number of symbols following the dot.
     var postdotCount: Int { postdotIndices.count }
@@ -90,123 +99,124 @@ extension Grammar {
       Self(postdotIndices: postdotIndices.dropFirst())
     }
 
-    /// The identity of the full production of which `self` is a suffix.
-    var productionID: Production.ID { .init(lhsIndex: lhsIndex) }
+    /// The identity of the full rule of which `self` is a suffix.
+    var ruleID: Rule.ID { .init(lhsIndex: postdotIndices.upperBound) }
 
-    /// True iff the production is fully-recognized.
+    /// True iff the rule is fully-recognized.
     var isComplete: Bool { postdotIndices.isEmpty }
   }
+
+  /// Returns the RHS symbols of `x` that have yet to be recognized.
+  func postdotRHS(_ x: DottedRule) -> SymbolString {
+    string(x.postdotIndices)
+  }
+
 }
 
 extension Grammar {
   /// Returns the right-hand side definitions for lhs, or an empty collection if lhs is a terminal.
-  func definitions(_ lhs: Symbol) -> [Production] { productionsByLHS[lhs] }
+  func definitions(_ lhs: Symbol) -> [Rule] { rulesByLHS[lhs] }
 
-  /// Returns the LHS symbol for the production corresponding to `t`.
-  func lhs(_ t: DottedRule) -> Symbol { productionStore[t.lhsIndex] }
+  /// Returns the LHS symbol for the rule corresponding to `t`.
+  func lhs(_ t: DottedRule) -> Symbol { ruleStore[t.lhsIndex] }
 
   /// Returns the LHS symbol of `r`.
-  func lhs(_ r: Production) -> Symbol { productionStore[r.lhsIndex] }
+  func lhs(_ r: Rule) -> Symbol { ruleStore[r.lhsIndex] }
 
   /// Returns the next expected symbol of `t`, or `nil` if `t.isComplete`.
-  func postdot(_ t: DottedRule) -> Symbol? { productionStore[t.postdotIndices].first }
+  func postdot(_ t: DottedRule) -> Symbol? { string(t.postdotIndices).first }
 
-  /// Returns a new symbol in the grammar.
+  /// The number of rules and the ordinal of the next rule to be added.
+  public var ruleCount: Int { ruleStart.count - 1 }
+
+  /// Returns a new symbol.
+  ///
+  /// Repeated calls return `Symbol`s with a consecutive series of ordinals starting at zero.
+  ///
+  /// - Precondition: `symbolCount < Config.SymbolNumber.max`.
   public mutating func addSymbol() -> Symbol {
-    precondition(symbolCount > Symbol.max, "Symbol capacity of \(Symbol.self) exceeded.")
     defer { symbolCount += 1 }
-    return Symbol(truncatingIfNeeded: symbolCount)
+    return Symbol(id: symbolCount)
   }
 
-  /// Creates an preprocessed version of `rawProductions` suitable for use by a
-  /// `Recognizer`, where `rawProductions` is a BNF grammar of `RawSymbol`s.
-  public init<RawProductions: Collection, RHS: Collection>(_ rawProductions: RawProductions)
-    where RawProductions.Element == (lhs: RawSymbol, rhs: RHS), RHS.Element == RawSymbol
+  /// Returns a new rule deriving the given `rhs` from `lhs`.
+  ///
+  /// Repeated calls return `Rules`s with an increasing (but nonconsecutive) series of `id`s.
+  ///
+  /// - Precondition: `ruleCount < Config.SymbolNumber.max`.
+  public mutating func addRule<RHS: Collection>(lhs: Symbol, rhs: RHS) -> Rule
+    where RHS.Element == Symbol
   {
-    // Build an organized representation of the raw productions.
-    for (s, rhs) in rawProductions {
-      let start = productionStore.count
-      productionStore.append(contentsOf: rhs.lazy.map { s in .some(s) } )
-      let r = Production(rhsIndices: start..<productionStore.endIndex)
-      productionStore.append(.some(s))
-      productionsByLHS[.some(s)].append(r)
-    }
-
-    // Preprocessing steps.
-    enterNihilistNormalForm()
-    identifyRightRecursions()
+    assert(ruleStore.count == ruleStart.last)
+    ruleStore.amortizedLinearReserveCapacity(rhs.count + 1)
+    let start = ruleStore.count
+    ruleStore.append(contentsOf: rhs)
+    let end = ruleStore.count
+    ruleStore.append(lhs)
+    ruleStart.append(ruleStore.count)
+    return Rule(rhsIndices: Size(start)..<Size(end))
   }
 
-  /// Puts the grammar in nihilist normal form (NNF), per Aycock and Horspool.
-  mutating func enterNihilistNormalForm() {
-    // Build a mapping from symbol to the set of productions on whose RHS the symbol appears.
-    var productionsByRHS = MultiMap<Symbol, Production>()
-    for productions in productionsByLHS.values {
-      for r in productions {
-        for s in rhs(r) { productionsByRHS[s].append(r) }
+  /// Returns the ordinal of the rule identified by `r`.
+  ///
+  /// Added rules are assigned consecutive ordinal values, starting from zero.
+  ///
+  /// - Complexity: O(log `ruleCount`).
+  public func ordinal(_ r: Rule.ID) -> Int {
+    let nextOrdinal = ruleStart.partitionPoint { i in i > r.lhsIndex }
+    precondition(nextOrdinal > 0, "rule not found.")
+    if nextOrdinal < ruleCount {
+      precondition(ruleStart[nextOrdinal] == r.lhsIndex + 1, "rule not found.")
+    }
+    return nextOrdinal - 1
+  }
+
+  /// Returns the rule with ordinal `n`.
+  ///
+  /// - Precondition: `n >= 0 && n < ruleCount`
+  public func nthRule(_ n: Int) -> Rule {
+    return Rule(rhsIndices: Size(ruleStart[n])..<Size(ruleStart[n + 1]))
+  }
+}
+
+extension Grammar {
+  struct Preprocessed {
+    var content = Grammar()
+    /// Sorted mapping from positions in `self` into corresponding positions in the raw grammar from
+    /// which `self` was derived.
+    ///
+    /// Many cooked positions need not be represented explicitly, as any unrepresented position `u`
+    /// maps to `p.raw + (u - p.cooked)` where `p` is the previous representation in the positionMap.
+    var positionMap: [(cooked: RuleStore.Index, raw: RuleStore.Index)] = []
+
+    /// Constructs a preprocessed version of a raw grammar.
+    init(_ raw: Grammar) {
+    }
+  }
+}
+
+extension Grammar {
+  func rulesByRHS() -> MultiMap<Symbol, Rule> {
+    // Build a mapping from symbol to the set of rules on whose RHS the symbol appears.
+    var result = MultiMap<Symbol, Rule>()
+
+    for rules in rulesByLHS.values {
+      for r in rules {
+        for s in rhs(r) { result[s].append(r) }
       }
     }
-
-    // Discover which symbols sometimes derive (nullable) and always (nulling) derive 𝝐.
-    let (nullableSymbols, nullingSymbols) = nullSymbolSets(productionsByRHS: productionsByRHS)
-
-    // Productions for nulling symbols have a simple rewrite.
-    for s in nullingSymbols { rewriteProductions(withNullingLHS: s) }
-
-    // Other productions with nullable symbols on the RHS
-    let productionsWithNullableParts = Set(nullableSymbols.lazy.map { s in productionsByRHS[s] }.joined())
-
-    for r in productionsWithNullableParts where !nullingSymbols.contains(lhs(r)) {
-      clone(r, forNullablesStartingAt: 0)
-    }
-
-    /// Replaces productions producing `s` with productions producing `s`𝝐, with each symbol
-    /// B on the rhs of such a production replaced with B𝝐.
-    func rewriteProductions(withNullingLHS s: Symbol) {
-      let productions = productionsByLHS.removeValues(forKey: s)
-      productionsByLHS[s.asNull] = productions
-      for r in productions {
-        for i in r.rhsIndices { productionStore[i].nullify() }
-        productionStore[r.lhsIndex].nullify()
-      }
-    }
-
-    /// For each combination K of nullable symbol positions starting at
-    /// `rhsOffset` on `r`'s RHS, replicates `r` with symbols in positions K
-    /// replaced by their nulling counterparts.
-    func clone(_ r: Production, forNullablesStartingAt rhsOffset: Int) {
-      // TODO: consider eliminating recursion
-      for i in rhsOffset..<r.rhsCount where nullableSymbols.contains(rhs(r).nth(i)) {
-        // Reserve storage so source of copy has a stable address.
-        productionStore.amortizedLinearReserveCapacity(productionStore.count + r.rhsCount + 1)
-
-        // Copy the symbols, remembering where they went.
-        let cloneStart = productionStore.count
-        let src = productionStore.withUnsafeBufferPointer { b in b }
-        productionStore.append(contentsOf: src[r.rhsIndices.lowerBound...r.rhsIndices.upperBound])
-
-        // Replace the ith one with its nulling version.
-        productionStore[cloneStart + i] = rhs(r).nth(i).asNull
-
-        // Register the new production.
-        let r1 = Production(rhsIndices: cloneStart..<(productionStore.count - 1))
-        productionsByLHS[lhs(r1)].append(r1)
-
-        // Be sure to clone again for any remaining nulling symbols in the clone.
-        clone(r1, forNullablesStartingAt: i + 1)
-      }
-    }
+    return result
   }
 
   /// Returns the set of nullable symbols (which sometimes derive 𝝐) and the subset of nulling
   /// symbols (which always derive 𝝐) in a grammar that is not yet in nihilist normal form.
-  func nullSymbolSets(productionsByRHS: MultiMap<Symbol, Production>)
+  func nullSymbolSets(rulesByRHS: MultiMap<Symbol, Rule>)
     -> (nullable: Set<Symbol>, nulling: Set<Symbol>)
   {
     // Note: Warshall's algorithm for transitive closure can help here.
     var nullable = Set<Symbol>()
     var nulling = Set<Symbol>()
-    for (lhs, definitions) in productionsByLHS.storage {
+    for (lhs, definitions) in rulesByLHS.storage {
       let x = definitions.satisfaction { r in r.rhsCount == 0 }
       if x == .all { discoverNulling(lhs) }
       else if x != .none { discoverNullable(lhs) }
@@ -218,10 +228,10 @@ extension Grammar {
       if !nullable.contains(s) { discoverNullable(s) }
       nulling.insert(s)
       // We may be able to conclude that other symbols are also nulling.
-      for r in productionsByRHS[s] {
+      for r in rulesByRHS[s] {
         let s0 = self.lhs(r)
         if nulling.contains(s0) { continue }
-        if productionsByLHS[s0]
+        if rulesByLHS[s0]
              .allSatisfy({ r in rhs(r).allSatisfy(nulling.contains) })
         {
           discoverNulling(s0)
@@ -233,7 +243,7 @@ extension Grammar {
     func discoverNullable(_ s: Symbol) {
       nullable.insert(s)
       // We may be able to conclude that other symbols are nullable.
-      for r in productionsByRHS[s] {
+      for r in rulesByRHS[s] {
         let s0 = lhs(r)
         if !nullable.contains(s0) && rhs(r).allSatisfy(nullable.contains) {
           discoverNullable(s0)
@@ -242,11 +252,64 @@ extension Grammar {
     }
     return (nullable, nulling)
   }
+}
+/*
+    // Discover which symbols sometimes derive (nullable) and always (nulling) derive 𝝐.
+    let (nullableSymbols, nullingSymbols) = nullSymbolSets(rulesByRHS: rulesByRHS)
 
-  /// Identifies and memoizes the set of right-recursive productions in `self`.
+    // Rules for nulling symbols have a simple rewrite.
+    for s in nullingSymbols { rewriteRules(withNullingLHS: s) }
+
+    // Other rules with nullable symbols on the RHS
+    let rulesWithNullableParts = Set(nullableSymbols.lazy.map { s in rulesByRHS[s] }.joined())
+
+    for r in rulesWithNullableParts where !nullingSymbols.contains(lhs(r)) {
+      clone(r, forNullablesStartingAt: 0)
+    }
+
+    /// Replaces rules producing `s` with rules producing `s`𝝐, with each symbol
+    /// B on the rhs of such a rule replaced with B𝝐.
+    func rewriteRules(withNullingLHS s: Symbol) {
+      let rules = rulesByLHS.removeValues(forKey: s)
+      rulesByLHS[s.asNull] = rules
+      for r in rules {
+        for i in r.rhsIndices { ruleStore[i].nullify() }
+        ruleStore[r.lhsIndex].nullify()
+      }
+    }
+
+    /// For each combination K of nullable symbol positions starting at
+    /// `rhsOffset` on `r`'s RHS, replicates `r` with symbols in positions K
+    /// replaced by their nulling counterparts.
+    func clone(_ r: Rule, forNullablesStartingAt rhsOffset: Int) {
+      // TODO: consider eliminating recursion
+      for i in rhsOffset..<r.rhsCount where nullableSymbols.contains(rhs(r).nth(i)) {
+        // Reserve storage so source of copy has a stable address.
+        ruleStore.amortizedLinearReserveCapacity(ruleStore.count + r.rhsCount + 1)
+
+        // Copy the symbols, remembering where they went.
+        let cloneStart = ruleStore.count
+        let src = ruleStore.withUnsafeBufferPointer { b in b }
+        ruleStore.append(contentsOf: src[r.rhsIndices.lowerBound...r.rhsIndices.upperBound])
+
+        // Replace the ith one with its nulling version.
+        ruleStore[cloneStart + i] = rhs(r).nth(i).asNull
+
+        // Register the new rule.
+        let r1 = Rule(rhsIndices: cloneStart..<(ruleStore.count - 1))
+        rulesByLHS[lhs(r1)].append(r1)
+
+        // Be sure to clone again for any remaining nulling symbols in the clone.
+        clone(r1, forNullablesStartingAt: i + 1)
+      }
+    }
+  }
+
+
+  /// Identifies and memoizes the set of right-recursive rules in `self`.
   mutating func identifyRightRecursions() {
-    for productions in productionsByLHS.values {
-      for r in productions {
+    for rules in rulesByLHS.values {
+      for r in rules {
         if computeIsRightRecursive(r) { rightRecursive.insert(r.id) }
       }
     }
@@ -259,18 +322,10 @@ extension Grammar {
   /// Returns `true` iff `s` is a terminal symbol.
   func isTerminal(_ s: Symbol) -> Bool { return definitions(s).isEmpty }
 
-  /// Returns the RHS symbols of `x` that have yet to be recognized.
-  func postdotRHS(_ x: DottedRule) -> SymbolString {
-    x.postdotIndices.lazy.map { i in productionStore[i] }
-  }
-
-  /// Returns the RHS symbols of `x`.
-  func rhs(_ x: Production) -> SymbolString { postdotRHS(x.dotted) }
-
   /// Returns the rightmost non-nulling symbol of `r`.
   ///
   /// - Precondition: `self` is in nihilist normal form.
-  func rightmostNonNullingSymbol(_ r: Production) -> Symbol? {
+  func rightmostNonNullingSymbol(_ r: Rule) -> Symbol? {
     rhs(r).last { s in !s.isNulling }
   }
 
@@ -278,7 +333,7 @@ extension Grammar {
   ///
   /// - Note: this computation can be costly and the result should be memoized.
   /// - Precondition: `self` is in nihilist normal form.
-  func computeIsRightRecursive(_ x: Production) -> Bool {
+  func computeIsRightRecursive(_ x: Rule) -> Bool {
     // Warshall works here.
     guard let rnn = rightmostNonNullingSymbol(x) else {
       return false
@@ -307,11 +362,11 @@ extension Grammar {
       ? next : nil
   }
 
-  /// Returns true iff `x`'s underlying production is right-recursive.
+  /// Returns true iff `x`'s underlying rule is right-recursive.
   ///
   /// - Precondition: `self`'s right recursions have been computed.
   func isRightRecursive(_ x: DottedRule) -> Bool {
-    rightRecursive.contains(x.productionID)
+    rightRecursive.contains(x.ruleID)
   }
 }
 
@@ -319,11 +374,11 @@ extension Grammar {
   /// A string representation of `self`.
   func description(_ x: DottedRule) -> String {
     var r = "\(lhs(x)) ->\t"
-    let fullProduction = definitions(lhs(x)).first { $0.id == x.productionID }!
-    var toPrint = fullProduction.rhsIndices
+    let fullRule = definitions(lhs(x)).first { $0.id == x.ruleID }!
+    var toPrint = fullRule.rhsIndices
     if toPrint.isEmpty { r += "•" }
     while let i = toPrint.popFirst() {
-      r += "\(productionStore[i]) "
+      r += "\(ruleStore[i]) "
       if toPrint.count == x.postdotCount { r += "• " }
     }
     return r
@@ -339,3 +394,4 @@ extension Grammar.Symbol: CustomStringConvertible {
     }
   }
 }
+*/

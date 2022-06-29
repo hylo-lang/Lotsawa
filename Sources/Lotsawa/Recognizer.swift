@@ -1,3 +1,4 @@
+/*
 /// A trampoline typelias that lets us create `Recognizer`'s `Grammar` type.
 typealias Grammar_<RawSymbol: Hashable> = Grammar<RawSymbol>
 
@@ -282,3 +283,4 @@ extension Recognizer: CustomStringConvertible {
     "\(g.description(p.expected))\t(\(p.start))"
   }
 }
+*/
