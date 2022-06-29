@@ -70,3 +70,12 @@ extension Collection {
     return l
   }
 }
+
+extension BidirectionalCollection {
+  /// Returns `self` sans any suffix elements satisfying `predicate`.
+  public func dropLast(while predicate: (Element) throws -> Bool) rethrows -> Self.SubSequence {
+    let head = try self.reversed().drop(while: predicate)
+    return self[head.endIndex.base..<head.startIndex.base]
+  }
+}
+

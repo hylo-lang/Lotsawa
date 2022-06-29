@@ -1,5 +1,5 @@
 private typealias Word = UInt
-
+/*
 /// Returns the offset at which the `i`th bit can be found in an array of
 /// `Word`s.
 private func wordOffset(ofBit i: Int) -> Int {
@@ -13,6 +13,7 @@ private func wordMask(ofBit i: Int) -> Word {
   precondition(i >= 0)
   return (1 as Word) << (i % Word.bitWidth)
 }
+*/
 
 struct Bits<Base: Sequence>: Sequence
   where Base.Element: FixedWidthInteger
@@ -52,12 +53,25 @@ extension Bits: RandomAccessCollection, BidirectionalCollection, Collection
   var startIndex: Index { return 0 }
   var endIndex: Index { return base.count * Base.Element.bitWidth }
 
+  /// Returns the offset at which the `i`th bit can be found in Base.
+  func baseOffset(ofBit i: Int) -> Int {
+    precondition(i >= 0)
+    return i / Base.Element.bitWidth
+  }
+
+  /// Returns a mask that isolates the `i`th bit within its element in Base.
+  func baseMask(ofBit i: Int) -> Base.Element {
+    precondition(i >= 0)
+    return (1 as Base.Element) &<< i
+  }
+
+
   fileprivate func baseIndex(_ i: Index) -> Base.Index {
-    base.index(base.startIndex, offsetBy: i / Base.Element.bitWidth)
+    base.index(base.startIndex, offsetBy: baseOffset(ofBit: i))
   }
 
   subscript(i: Index) -> Bool {
-    base[baseIndex(i)] & (1 << (i % Base.Element.bitWidth)) != 0
+    base[baseIndex(i)] & ((1 as Base.Element) << (i % Base.Element.bitWidth)) != 0
   }
 }
 
@@ -66,14 +80,14 @@ extension Bits: MutableCollection
 {
   subscript(i: Int) -> Bool {
     get {
-      base[baseIndex(i)] & (1 << (i % Base.Element.bitWidth)) != 0
+      base[baseIndex(i)] & baseMask(ofBit: i) != 0
     }
     set {
       if newValue {
-        base[baseIndex(i)] |= (1 << (i % Base.Element.bitWidth))
+        base[baseIndex(i)] |= baseMask(ofBit: i)
       }
       else {
-        base[baseIndex(i)] &= ~(1 << (i % Base.Element.bitWidth))
+        base[baseIndex(i)] &= ~baseMask(ofBit: i)
       }
     }
   }
@@ -103,7 +117,10 @@ struct BitSet: SetAlgebra, Hashable {
   }
 
   /// Creates an instance using `storage` as its underlying storage.
-  private init(storage: [Word]) { self.storage = storage }
+  private init(storage: [Word]) {
+    self.storage = storage
+    trim()
+  }
 
   /// Returns `true` if `n` is a element of `self`.
   func contains<N: BinaryInteger>(_ n: N) -> Bool {
@@ -140,35 +157,37 @@ struct BitSet: SetAlgebra, Hashable {
   func intersection(_ other: Self) -> Self {
     storage.withUnsafeBufferPointer{ b0 in
       other.storage.withUnsafeBufferPointer { b1 in
-        Self(
-          storage: (0..<min(b0.count, b1.count)).map { i in
-            b0[i] & b1[i]
-          })
+        let newContents = (0..<min(b0.count, b1.count))
+          .lazy.map { i in b0[i] & b1[i] }
+          .dropLast { w in w == 0 }
+        return Self(storage: Array(newContents))
       }
     }
   }
 
   /// Removes any elements of `self` that are not in `other`.
   mutating func formIntersection(_ other: Self) {
-    let newCount = min(storage.count, other.storage.count)
-    storage.removeLast(storage.count - newCount)
+    var newCount: Int = min(storage.count, other.storage.count)
     storage.withUnsafeMutableBufferPointer{ b0 in
       other.storage.withUnsafeBufferPointer { b1 in
         for i in 0..<newCount {
           b0[i] &= b1[i]
         }
+        newCount = b0[..<newCount].dropLast { w in w == 0 }.count
       }
     }
+    storage.removeSubrange(newCount...)
   }
 
   /// Returns the set of elements that are in `self` or `other`, but not both.
   func symmetricDifference(_ other: Self) -> Self {
     storage.withUnsafeBufferPointer{ b0 in
       other.storage.withUnsafeBufferPointer { b1 in
-        Self(
-          storage: (0..<max(b0.count, b1.count)).map { i in
-            i < b0.count ? i < b1.count ? b0[i] ^ b1[i] : b0[i] : b1[i]
-          })
+        let indices = 0..<max(b0.count, b1.count)
+        let newContents = indices.lazy.map { i in
+          i < b0.count ? i < b1.count ? b0[i] ^ b1[i] : b0[i] : b1[i]
+        }
+        return Self(storage: Array(newContents.dropLast { w in w == 0 }))
       }
     }
   }
@@ -183,7 +202,10 @@ struct BitSet: SetAlgebra, Hashable {
           b0[i] ^= b1[i]
         }
       }
-      self.storage.append(contentsOf: b1.dropFirst(overlap))
+      if b1.count > storage.count {
+        storage.append(contentsOf: b1.dropFirst(overlap))
+      }
+      else if b1.count == storage.count { trim() }
     }
   }
 
@@ -201,7 +223,7 @@ struct BitSet: SetAlgebra, Hashable {
     let newCapacity = storageCapacity(maxElement: Int(newElement))
     storage.amortizedLinearReserveCapacity(newCapacity)
     storage.append(contentsOf: repeatElement(0, count: max(0, newCapacity - storage.count - 1)))
-    storage.append(1 &<< (Int(newElement) % Word.bitWidth))
+    storage.append(bits.baseMask(ofBit: Int(newElement)))
     return (true, newElement)
   }
 
@@ -212,6 +234,7 @@ struct BitSet: SetAlgebra, Hashable {
   {
     if element < 0 || element >= bits.count || !bits[Int(element)] { return nil }
     bits[Int(element)] = false
+    if bits.baseOffset(ofBit: Int(element)) + 1 == storage.count { trim() }
     return element
   }
 
@@ -224,12 +247,10 @@ struct BitSet: SetAlgebra, Hashable {
 
   /// Returns `true` iff every element of `self` is in `other`.
   func isSubset(of other: Self) -> Bool {
-    storage.withUnsafeBufferPointer { b0 in
+    if storage.count > other.storage.count { return false }
+    return storage.withUnsafeBufferPointer { b0 in
       other.storage.withUnsafeBufferPointer { b1 in
-        let overlap = min(b0.count, b1.count)
-        guard (0..<overlap).allSatisfy({ i in b0[i] & b1[i] == b0[i] })
-        else { return false }
-        return b0[overlap...].allSatisfy { x in x == 0 }
+        zip(b0, b1).allSatisfy { x0, x1 in x0 & x1 == x0 }
       }
     }
   }
@@ -238,7 +259,7 @@ struct BitSet: SetAlgebra, Hashable {
   func isDisjoint(with other: Self) -> Bool {
     storage.withUnsafeBufferPointer { b0 in
       other.storage.withUnsafeBufferPointer { b1 in
-        (0..<min(b0.count, b1.count)).allSatisfy({ i in b0[i] & b1[i] == 0 })
+        zip(b0, b1).allSatisfy { x0, x1 in x0 & x1 == 0 }
       }
     }
   }
@@ -247,7 +268,8 @@ struct BitSet: SetAlgebra, Hashable {
   public func subtracting(_ other: Self) -> Self {
     storage.withUnsafeBufferPointer{ b0 in
       other.storage.withUnsafeBufferPointer { b1 in
-        Self(storage: b0.indices.map { i in i < b1.count ? b0[i] & ~b1[i] : b0[i] })
+        let newContents =  b0.indices.lazy.map { i in i < b1.count ? b0[i] & ~b1[i] : b0[i] }
+        return Self(storage: Array(newContents.dropLast { w in w == 0 }))
       }
     }
   }
@@ -261,10 +283,16 @@ struct BitSet: SetAlgebra, Hashable {
         }
       }
     }
+    if storage.count == other.storage.count { trim() }
   }
 
   /// True iff `self` has no elements.
   var isEmpty: Bool { storage.allSatisfy { x in x == 0 } }
+
+  /// Returns the number of elements.
+  func count() -> Int {
+    storage.lazy.map(\.nonzeroBitCount).reduce(0, +)
+  }
 
   /// A projection of the bits of `self` as a collection of `Bool`.
   private var bits: Bits<[Word]> {
@@ -276,6 +304,14 @@ struct BitSet: SetAlgebra, Hashable {
       defer { swap(&tmp.base, &storage) }
       yield &tmp
     }
+  }
+
+  /// Removes any stored zeros at the end.
+  private mutating func trim() {
+    let nonZeroEnd = storage.withUnsafeBufferPointer { b in
+      b.dropLast { w in w == 0 }.endIndex
+    }
+    storage.removeSubrange(nonZeroEnd...)
   }
 
   /// Storage for (at least) one `Bool` per element of `self`, packed into words.
