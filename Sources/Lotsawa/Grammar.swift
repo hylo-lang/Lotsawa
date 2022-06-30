@@ -19,8 +19,8 @@ public struct Grammar<SymbolCount: BinaryInteger, Size: BinaryInteger>
   /// Storage for all the rules.
   private var ruleStore: RuleStore = []
 
-  /// Where each rule begins in `ruleStore`, in sorted order, plus a sentinel that is the start of
-  /// the next rule to be added.
+  /// Where each rule begins in `ruleStore`, in sorted order, plus a sentinel that marks the end of
+  /// rule storage.
   private var ruleStart: [RuleStore.Index] = [0]
 
   /// The number of symbols, and ID of the next symbol to be added.
