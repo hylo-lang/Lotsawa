@@ -62,6 +62,14 @@ extension Grammar {
     public var rhsCount: Int { rhsIndices.count }
   }
 
+  public var rules: LazyMapSequence<Range<Int>, Rule> {
+    return ruleStart.indices.dropLast().lazy.map { i in
+      let start = ruleStart[i]
+      let end = ruleStore.index(before: ruleStart[i+1])
+      return Rule(rhsIndices: Size(start)..<Size(end))
+    }
+  }
+
   /// Returns the RHS symbols of `x`.
   func rhs(_ x: Rule) -> SymbolString { string(x.rhsIndices) }
 
