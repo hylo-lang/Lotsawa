@@ -180,12 +180,8 @@ extension Recognizer {
 
   /// Performs Leo reduction on `p`
   private mutating func reduce(_ p: EarleyItem) {
-    if let p0 = leoPredecessor(p) {
-      insertEarley(EarleyItem(expecting: p0.expected, at: p0.start))
-    }
-    else {
-      earleyReduce(p)
-    }
+    if let p0 = leoPredecessor(p) { insertEarley(p0) }
+    else { earleyReduce(p) }
   }
 
   /// Performs Earley reduction on p.
