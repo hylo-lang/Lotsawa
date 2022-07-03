@@ -151,9 +151,11 @@ extension Recognizer {
 
       while j < partialParses.count {
         let p = partialParses[j]
-        if !p.isComplete { predict(p) }
+        if !p.isComplete {
+          predict(p)
+          addAnyLeoItem(p)
+        }
         else { reduce(p) }
-        addAnyLeoItem(p)
         j += 1
       }
 
