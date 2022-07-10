@@ -1,32 +1,41 @@
+/// A collection of parameter types for configuring a grammar.
+public protocol GrammarConfiguration {
+  /// A type that can represent the size of the grammar (the total length of all right-hand sides
+  /// of the rules plus the number of rules. Requires `Size.max <= Int.max`.
+  associatedtype Size: FixedWidthInteger = Int
+
+  /// A type that can represent the number of symbols used in the grammar. Requires `Size.max <=
+  /// Int.max`.
+  associatedtype Symbol: SignedInteger & FixedWidthInteger = Int
+}
+
 /// A collection of Backus-Naur Form (BNF) rules, each defining a symbol
 /// on its left-hand side in terms of a string of symbols on its right-hand
 /// side.
-///
-/// - Parameters:
-///   - Size: a type that can represent the size of this grammar (the total length of all right-hand
-///     sides of the rules plus the number of rules. Requires `Size.max <= Int.max`.
-///
-///   - Symbol: a type that can represent the number of symbols used in this grammar. Negative
-///     values are used internally. Requires `Size.max <= Int.max`.
-///
-public struct Grammar<Symbol: SignedInteger & FixedWidthInteger, Size: FixedWidthInteger> {
+public struct Grammar<Configuration: GrammarConfiguration> {
   /// Storage for all the rules.
   ///
   /// Rules are packed end-to-end, with the RHS symbols in order, followed by the LHS symbol with
   /// its high bit set.
   ///
   /// For example A -> B C is stored as the subsequence [B, C, A | *highbit*].
-  private var ruleStore: [Symbol] = []
+  private var ruleStore: [Configuration.Symbol] = []
 
   /// Where each rule begins in `ruleStore`, in sorted order, plus a sentinel that marks the end of
   /// rule storage.
-  private var ruleStart: [Size] = [0]
+  private var ruleStart: [Configuration.Size] = [0]
 
   /// Creates an empty instance.
   public init() {  }
 }
 
 extension Grammar {
+  /// The symbol identifier type (positive values only).
+  public typealias Symbol = Configuration.Symbol
+
+  /// The grammar size representation.
+  public typealias Size = Configuration.Size
+
   /// Returns the size of `self` (the sum of the length of each rule's RHS plus the number of rules,
   /// to account for left-hand side symbols).
   public var size: Int {
