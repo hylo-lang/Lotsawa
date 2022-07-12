@@ -1,5 +1,5 @@
 /// A collection of parameter types for configuring a grammar.
-public protocol GrammarConfiguration {
+public protocol GrammarConfig {
   /// A type that can represent the size of the grammar (the total length of all right-hand sides
   /// of the rules plus the number of rules. Requires `Size.max <= Int.max`.
   associatedtype Size: FixedWidthInteger = Int
@@ -12,18 +12,18 @@ public protocol GrammarConfiguration {
 /// A collection of Backus-Naur Form (BNF) rules, each defining a symbol
 /// on its left-hand side in terms of a string of symbols on its right-hand
 /// side.
-public struct Grammar<Configuration: GrammarConfiguration> {
+public struct Grammar<Config: GrammarConfig> {
   /// Storage for all the rules.
   ///
   /// Rules are packed end-to-end, with the RHS symbols in order, followed by the LHS symbol with
   /// its high bit set.
   ///
   /// For example A -> B C is stored as the subsequence [B, C, A | *highbit*].
-  private var ruleStore: [Configuration.Symbol] = []
+  private var ruleStore: [Config.Symbol] = []
 
   /// Where each rule begins in `ruleStore`, in sorted order, plus a sentinel that marks the end of
   /// rule storage.
-  private var ruleStart: [Configuration.Size] = [0]
+  private var ruleStart: [Config.Size] = [0]
 
   /// Creates an empty instance.
   public init() {  }
@@ -31,10 +31,10 @@ public struct Grammar<Configuration: GrammarConfiguration> {
 
 extension Grammar {
   /// The symbol identifier type (positive values only).
-  public typealias Symbol = Configuration.Symbol
+  public typealias Symbol = Config.Symbol
 
   /// The grammar size representation.
-  public typealias Size = Configuration.Size
+  public typealias Size = Config.Size
 
   /// Returns the size of `self` (the sum of the length of each rule's RHS plus the number of rules,
   /// to account for left-hand side symbols).
@@ -90,3 +90,11 @@ extension Grammar {
     return RuleID(ordinal: Size(ruleStart.count - 2))
   }
 }
+
+/// A configuration that can be used to represent just about any logical grammar, but may waste
+/// storage space and thus cost some performance due to poor locality-of-reference.
+public struct DefaultGrammarConfig: GrammarConfig {}
+
+/// A grammar type that represent just about any logical grammar, but may waste
+/// storage space and thus cost some performance due to poor locality-of-reference.
+public typealias DefaultGrammar = Grammar<DefaultGrammarConfig>

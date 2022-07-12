@@ -2,22 +2,16 @@ import Lotsawa
 
 import XCTest
 
-
-
-
 class GrammarTests: XCTestCase {
   func testEmpty() {
-    struct DefaultConfig: GrammarConfiguration {}
-    let g = Grammar<DefaultConfig>()
+    let g = DefaultGrammar()
     XCTAssertEqual(g.size, 0)
     XCTAssert(g.ruleIDs.isEmpty)
     XCTAssert(g.rules.isEmpty)
   }
 
   func test1ByteSymbols() {
-    struct OneByteSymbols: GrammarConfiguration {
-      typealias Symbol = Int8
-    }
+    struct OneByteSymbols: GrammarConfig { typealias Symbol = Int8 }
     var g = Grammar<OneByteSymbols>()
     let r0 = g.addRule(lhs: 0, rhs: EmptyCollection())
     XCTAssertEqual(r0.ordinal, 0)
@@ -47,7 +41,7 @@ class GrammarTests: XCTestCase {
   }
 
   func test2ByteSymbols1ByteSize() {
-    struct TwoByteSymbolsOneByteSize: GrammarConfiguration {
+    struct TwoByteSymbolsOneByteSize: GrammarConfig {
       typealias Symbol = Int16
       typealias Size = UInt8
     }
