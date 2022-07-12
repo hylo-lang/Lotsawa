@@ -1,0 +1,52 @@
+%class_name TestGrammarParser
+
+%preface {
+  import CitronParserModule
+  import CitronLexerModule
+
+  extension _CitronParserUnexpectedTokenError : CustomDebugStringConvertible {
+    public var debugDescription: String {
+      if let t = token as? Token {
+        return "\n\(t.position): error: unexpected token (\(t), tokenCode: \(tokenCode))"
+      }
+      return "error: unexpected token (\(token), tokenCode: \(tokenCode))"
+    }
+  }
+}
+
+%default_nonterminal_type Void
+
+%start_symbol grammar
+%token_type {TestGrammarToken}
+
+%token ILLEGAL_CHARACTER.
+
+horizontal_space_opt ::= . {}
+horizontal_space_opt ::= horizontal_space_opt HORIZONTAL_SPACE. {}
+
+whitespace_opt ::= horizontal_space_opt. {}
+whitespace_opt ::= LINE_BREAK. {}
+whitespace_opt ::= MULTIPLE_LINE_BREAKS. {}
+
+grammar ::= whitespace_opt. {[]}
+grammar ::= whitespace_opt rule_list(l) whitespace_opt. {l}
+
+rule_list ::= rule(r). {[r]}
+rule_list ::= rule_list(l) MULTIPLE_LINE_BREAKS rule(r). {l + CollectionOfOne(r)}
+
+rule ::= SYMBOL(l) horizontal_space_opt COLON COLON EQUALS LINE_BREAK alternative_list(r).
+{ .init(key: .init(String(l.text)), value: r) }
+
+alternative_list ::= rhs(r). { [r] }
+alternative_list ::= alternative_list(l) LINE_BREAK rhs(r). { l +  [r] }
+
+rhs ::= rhs_element(r). {r}
+rhs ::= rhs(l) HORIZONTAL_SPACE rhs_element(r). {l+r}
+
+rhs_element ::= UNDERSCORE. { [] }
+rhs_element ::= SYMBOL(e). { String(e.text) }
+rhs_element ::= LITERAL(e). { String(e.text) }
+
+/* Local Variables: */
+/* mode: lemon */
+/* End: */
