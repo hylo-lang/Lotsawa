@@ -1,14 +1,15 @@
 import CitronLexerModule
 
 // One horizontal space character
-let hspace_char = #"[\p{gc=Space_Separator} \N{CHARACTER TABULATION}]"#
+let hspace_char = #"[\p{gc=Space_Separator}\t]"#
 
 /// "//" followed by any number of non-newlines (See
 /// https://unicode-org.github.io/icu/userguide/strings/regexp.html#regular-expression-metacharacters
 /// and https://www.unicode.org/reports/tr44/#BC_Values_Table).
 let comment = #"(?://\P{Bidi_Class=B}*)"#
 
-let line_break_prefix = "\(hspace_char)*\(comment)?\p{Bidi_Class=B}"
+/// any amount of horizontal space (including comments) followed by a newline character.
+let line_break_head = "\(hspace_char)*\(comment)?" + #"\p{Bidi_Class=B}"#
 
 let testGrammarScanner = Scanner<TestGrammarParser.CitronTokenCode>(
   literalStrings: [
@@ -21,8 +22,8 @@ let testGrammarScanner = Scanner<TestGrammarParser.CitronTokenCode>(
     #"[A-Za-z][-_A-Za-z0-9]*"#: .SYMBOL,
     #"'([^\\']|\\.)*'"#: .LITERAL,
     "\(hspace_char)*\(comment)|\(hspace_char)+": .HORIZONTAL_SPACE, // 1-line comment
-    "\(line_break_prefix)\(hspace_char)*": .LINE_BREAK,
-    "\(line_break_prefix)\(line_break_prefix)+\(hspace_char)*": .MULTIPLE_LINE_BREAKS
+    "\(line_break_head)\(hspace_char)*": .LINE_BREAK,
+    "\(line_break_head)\(line_break_head)+\(hspace_char)*": .MULTIPLE_LINE_BREAKS
   ]
 )
 
@@ -32,18 +33,18 @@ struct TestGrammarToken: Hashable {
   init(_ id: ID, _ content: Substring, at position: SourceRegion) {
     self.id = id
     self.text = content
-    self.position = position
+    self.position = .init(position)
   }
 
   let id: ID
   let text: Substring
-  let position: SourceRegion
+  let position: Incidental<SourceRegion>
 
   var dump: String { String(text) }
 }
 
 extension TestGrammarToken: CustomStringConvertible {
   var description: String {
-    "Token(.\(id), \(String(reflecting: text)), at: \(String(reflecting: position)))"
+    "Token(.\(id), \(String(reflecting: text)), at: \(position.value))"
   }
 }

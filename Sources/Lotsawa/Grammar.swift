@@ -66,8 +66,11 @@ extension Grammar {
     public var rhs: Array<Symbol>.SubSequence { storage.dropLast() }
   }
 
+  /// A random-access collection of Rules.
+  public typealias Rules = LazyMapSequence<Range<Int>, Rule>
+
   /// The collection of all rules in the grammar.
-  public var rules: LazyMapSequence<Range<Int>, Rule> {
+  public var rules: Rules {
     ruleStart.indices.dropLast().lazy.map {
       i in Rule(storage: ruleStore[Int(ruleStart[i])..<Int(ruleStart[i + 1])])
     }
@@ -88,6 +91,16 @@ extension Grammar {
     ruleStore.append(lhs | Symbol.min)
     ruleStart.append(Size(ruleStore.count))
     return RuleID(ordinal: Size(ruleStart.count - 2))
+  }
+}
+
+internal extension Grammar {
+  func lhs(_ r: RuleID) -> Symbol {
+    rules[Int(r.ordinal)].lhs
+  }
+
+  func rhs(_ r: RuleID) -> Array<Symbol>.SubSequence {
+    rules[Int(r.ordinal)].rhs
   }
 }
 
