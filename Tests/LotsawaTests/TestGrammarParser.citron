@@ -22,14 +22,15 @@
 %token ILLEGAL_CHARACTER.
 
 horizontal_space_opt ::= . {}
-horizontal_space_opt ::= horizontal_space_opt HORIZONTAL_SPACE. {}
+horizontal_space_opt ::= HORIZONTAL_SPACE. {}
 
-whitespace_opt ::= horizontal_space_opt. {}
-whitespace_opt ::= LINE_BREAK. {}
-whitespace_opt ::= MULTIPLE_LINE_BREAKS. {}
+whitespace_opt ::= . {}
+whitespace_opt ::= whitespace_opt HORIZONTAL_SPACE. {}
+whitespace_opt ::= whitespace_opt LINE_BREAK. {}
+whitespace_opt ::= whitespace_opt MULTIPLE_LINE_BREAKS. {}
 
 grammar ::= whitespace_opt. {[]}
-grammar ::= whitespace_opt rule_list(l) whitespace_opt. {l}
+grammar ::= whitespace_opt rule_list(l). {l}
 
 rule_list ::= rule(r). {[r]}
 rule_list ::= rule_list(l) MULTIPLE_LINE_BREAKS rule(r). {l + CollectionOfOne(r)}
@@ -44,8 +45,8 @@ rhs ::= rhs_element(r). {r}
 rhs ::= rhs(l) HORIZONTAL_SPACE rhs_element(r). {l+r}
 
 rhs_element ::= UNDERSCORE. { [] }
-rhs_element ::= SYMBOL(e). { String(e.text) }
-rhs_element ::= LITERAL(e). { String(e.text) }
+rhs_element ::= SYMBOL(e). { [String(e.text)] }
+rhs_element ::= LITERAL(e). { [String(e.text)] }
 
 /* Local Variables: */
 /* mode: lemon */
