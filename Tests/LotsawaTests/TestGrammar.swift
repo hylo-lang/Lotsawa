@@ -4,9 +4,8 @@ import Lotsawa
 struct TestGrammar {
   /// Representation produced by Citron parser from the string.
   enum AST {
-    typealias Token = TestGrammarToken
     typealias RuleList = [Rule]
-    typealias Rule = (lhs: TestGrammarToken, alternatives: [RHS])
+    typealias Rule = (lhs: Token, alternatives: [RHS])
     typealias RHS = [Token]
   }
 
@@ -27,7 +26,7 @@ extension TestGrammar {
       in: bnf, fromFile: file, unrecognizedToken: .ILLEGAL_CHARACTER)
     let parser = TestGrammarParser()
     for (id, text, position) in tokens {
-      try parser.consume(token: TestGrammarToken(id, text, at: position), code: id)
+      try parser.consume(token: AST.Token(id, text, at: position), code: id)
     }
     let rules: AST.RuleList = try parser.endParsing()
 

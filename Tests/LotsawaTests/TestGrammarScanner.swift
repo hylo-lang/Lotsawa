@@ -22,24 +22,22 @@ let testGrammarScanner = Scanner<TestGrammarParser.CitronTokenCode>(
   ]
 )
 
-struct TestGrammarToken: Hashable {
-  typealias ID = TestGrammarParser.CitronTokenCode
+extension TestGrammar.AST {
+  struct Token: Hashable, CustomStringConvertible {
+    typealias ID = TestGrammarParser.CitronTokenCode
 
-  init(_ id: ID, _ content: Substring, at position: SourceRegion) {
-    self.id = id
-    self.text = content
-    self.position = .init(position)
-  }
+    init(_ id: ID, _ content: Substring, at position: SourceRegion) {
+      self.id = id
+      self.text = content
+      self.position = .init(position)
+    }
 
-  let id: ID
-  let text: Substring
-  let position: Incidental<SourceRegion>
+    let id: ID
+    let text: Substring
+    let position: Incidental<SourceRegion>
 
-  var dump: String { String(text) }
-}
-
-extension TestGrammarToken: CustomStringConvertible {
-  var description: String {
-    "Token(.\(id), \(String(reflecting: text)), at: \(position.value))"
+    var description: String {
+      "Token(.\(id), \(String(reflecting: text)), at: \(position.value))"
+    }
   }
 }

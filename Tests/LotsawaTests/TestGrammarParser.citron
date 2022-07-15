@@ -6,7 +6,7 @@
 
   extension _CitronParserUnexpectedTokenError : CustomDebugStringConvertible {
     public var debugDescription: String {
-      if let t = token as? TestGrammarToken {
+      if let t = token as? TestGrammar.AST.Token {
         return "\n\(t.position): error: unexpected token (\(t), tokenCode: \(tokenCode))"
       }
       return "error: unexpected token (\(token), tokenCode: \(tokenCode))"
@@ -24,7 +24,7 @@
 %nonterminal_type rhs_element {[TestGrammar.AST.Token]}
 
 %start_symbol grammar
-%token_type {TestGrammarToken}
+%token_type {TestGrammar.AST.Token}
 
 %token ILLEGAL_CHARACTER.
 
