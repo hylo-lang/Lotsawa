@@ -8,8 +8,7 @@ fileprivate extension BinaryInteger {
 extension Grammar {
   /// Returns the set of nullable symbols (which sometimes derive 𝝐) and the subset of nulling
   /// symbols (which always derive 𝝐) in a grammar that is not yet in nihilist normal form.
-  func nullSymbolSets(rulesByRHS: MultiMap<Symbol, Rule>)
-    -> (nullable: Set<Symbol>, nulling: Set<Symbol>)
+  func nullSymbolSets() -> (nullable: Set<Symbol>, nulling: Set<Symbol>)
   {
     // - Common setup.
 
@@ -44,7 +43,7 @@ extension Grammar {
       let newlyAdded = nulling.insert(s).inserted
       assert(newlyAdded, "expecting to only discover a nulling symbol once")
 
-      for lhs in lhsSymbolsByRHS[s]! {
+      for lhs in lhsSymbolsByRHS[s, default: []] {
         if maybeNonNullingRHSCount[lhs]!.decrementIsZero() {
           unprocessed.append(lhs)
         }

@@ -16,40 +16,31 @@
 
 %default_nonterminal_type Void
 
-%nonterminal_type grammar TestGrammar
-%nonterminal_type rule_list TestGrammar
-%nonterminal_type rule TestGrammarRule
-%nonterminal_type alternative_list {[TestGrammarRHS]}
-%nonterminal_type rhs TestGrammarRHS
-%nonterminal_type rhs_element {[TestGrammarToken]}
+%nonterminal_type grammar {TestGrammar.AST.RuleList}
+%nonterminal_type rule_list {TestGrammar.AST.RuleList}
+%nonterminal_type rule {TestGrammar.AST.Rule}
+%nonterminal_type alternative_list {[TestGrammar.AST.RHS]}
+%nonterminal_type rhs {TestGrammar.AST.RHS}
+%nonterminal_type rhs_element {[TestGrammar.AST.Token]}
 
 %start_symbol grammar
 %token_type {TestGrammarToken}
 
 %token ILLEGAL_CHARACTER.
 
-horizontal_space_opt ::= . {}
-horizontal_space_opt ::= HORIZONTAL_SPACE. {}
-
-whitespace_opt ::= . {}
-whitespace_opt ::= whitespace_opt HORIZONTAL_SPACE. {}
-whitespace_opt ::= whitespace_opt LINE_BREAK. {}
-whitespace_opt ::= whitespace_opt MULTIPLE_LINE_BREAKS. {}
-
-grammar ::= whitespace_opt. {[]}
-grammar ::= whitespace_opt rule_list(l). {l}
+grammar ::= rule_list(r). {r}
 
 rule_list ::= rule(r). {[r]}
-rule_list ::= rule_list(l) MULTIPLE_LINE_BREAKS rule(r). {l + CollectionOfOne(r)}
+rule_list ::= rule_list(l) rule(r). {l + CollectionOfOne(r)}
 
-rule ::= SYMBOL(l) horizontal_space_opt IS_DEFINED_AS LINE_BREAK alternative_list(r).
+rule ::= LHS(l) IS_DEFINED_AS alternative_list(r).
 { (lhs: l, alternatives: r) }
 
 alternative_list ::= rhs(r). { [r] }
-alternative_list ::= alternative_list(l) LINE_BREAK rhs(r). { l +  [r] }
+alternative_list ::= alternative_list(l) ALTERNATION rhs(r). { l +  [r] }
 
 rhs ::= rhs_element(r). {r}
-rhs ::= rhs(l) HORIZONTAL_SPACE rhs_element(r). {l+r}
+rhs ::= rhs(l) rhs_element(r). {l+r}
 
 rhs_element ::= UNDERSCORE. { [] }
 rhs_element ::= SYMBOL(e). { [e] }
