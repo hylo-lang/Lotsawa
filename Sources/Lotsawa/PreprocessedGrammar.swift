@@ -116,6 +116,32 @@ extension Grammar {
                            if 𝛃- is 1 symbol, x1 is 𝛃;   else (x1 -> 𝛃-)
 
    */
+  func rewrite(
+    lhs: Symbol, rhs allRHS: Symbols, firstNullable: Symbols.Index,
+    nullableTailStart: Symbols.Index
+  ) {
+    var rhs = allRHS[...]
+    while !rhs.isEmpty {
+      let nonNullablePrefix = rhs.prefix { x in !x.isNullable }
+      let alpha = firstNullable >= nullableTailStart ? nonNullablePrefix.dropLast() : nonNullablePrefix
+      let a = nonNullablePrefix.suffix(firstNullable >= nullableTailStart ? 1 : 0)
+      let beta = rhs[firstNullable...].dropFirst()
+
+      var x0: Symbol = alpha.isEmpty ? lhs : newSymbol()
+      if x0 != lhs { addRule(lhs: lhs, rhs: alpha + [x0]) }
+      let x1 = beta.count <= 1 ? beta.prefix(1) : [newSymbol()][...]
+
+      if !a.isEmpty { addRule(lhs: x0, rhs: a) }
+      if !q.isEmpty {
+        addRule(lhs: x0, rhs: a + q)
+        if !x1.isEmpty addRule(lhs: x0, rhs: a + q + x1)
+      }
+      if !x1.isEmpty addRule(lhs: x0, rhs: a + x1)
+      if beta.count <= 1 { break }
+      rhs = beta
+    }
+  }
+
   func eliminatingNulls() -> (DefaultGrammar, DiscreteMap<DefaultGrammar.Position, Position>) {
     var cooked = DefaultGrammar()
     var mapBack = DiscreteMap<DefaultGrammar.Position, Position>()
@@ -133,57 +159,15 @@ extension Grammar {
         .filter { e in !nulling.contains(e.symbol) }
       buffer.replaceRange(..., with: nonNullingRHS)
 
+      guard let firstNullable = buffer.firstIndex(where: { e in e.isNullable }) else {
+        cooked.addRule(lhs: r.lhs, rhs: buffer.map(\.symbol))
+        continue
+      }
+
       // Find the position at which symbols are nullable until the end of the buffer.
       let nullableTailStart = buffer.dropLast { e in e.isNullable }.endIndex
 
-      let firstNullable = buffer.firstIndex { e in e.isNullable }
 
-      if firstNullable == buffer.startIndex {     // l -> r0? 𝛂.
-        if buffer.count == 2 {                    // l -> r0? r1_
-          if firstNullable == nullableTailStart { // l -> r0? r1?
-            // Generate l -> r0 | r1 | r0 r1
-          }
-          else {
-            // Generate l -> r1 | r0 r1
-          }
-        }
-        else { // l -> r0? r1_ 𝛃.
-          // Generate l -> r0 x0 | x0 where x0 -> r1_ 𝛃
-        }
-      }
-      else { // l -> 𝛂 r0 r1? 𝛃_
-        if firstNullable >= nullableTailStart { // l -> 𝛂 r0 r1? 𝛃?
-          // Generate l -> 𝛂 x0; x0 -> r0 | r0 x1; x1
-        }
-        else { // l -> 𝛂 r0 r1? 𝛃
-          // Generate l -> 𝛂 r0 x0; x0 -> r1 𝛃 | 𝛃
-        }
-      }
-
-      var rhs = r.rhs
-      rhs.drop
-      while !rhs.isEmpty {
-        var i = rhs.startIndex
-        let s = rhs.popFirst()
-        if n.nulling.contains(r.rhs[i]) { continue }
-        if n.nullable.contains(r.rhs[i]) { break }
-        buffer.append((s, i))
-      }
-
-      while let head = rhs.popFirst() {
-        if n.nulling.contains(head) continue
-        else
-      }
-
-      if n.nullable r.rhs.first!
-
-
-      var rhs = r.rhs
-        if
-      }
-      for
-      var lhs = r.lhs
-      let i = r.rhs.firstIndex { s in n.nullable.contains(s) }
     }
     return (cooked, mapBack)
   }
