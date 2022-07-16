@@ -1,4 +1,5 @@
 fileprivate extension BinaryInteger {
+  /// Decrements `self`, returning `true` iff the final value is zero.
   mutating func decrementIsZero() -> Bool {
     self -= 1
     return self == 0
