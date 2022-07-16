@@ -25,6 +25,9 @@ public struct Grammar<Config: GrammarConfig> {
   /// rule storage.
   private var ruleStart: [Config.Size] = [0]
 
+  /// The greatest symbol value in any rule, or -1 if there are no rules.
+  private var maxSymbol: Config.Symbol = -1
+
   /// Creates an empty instance.
   public init() {  }
 }
@@ -35,6 +38,9 @@ extension Grammar {
 
   /// The grammar size representation.
   public typealias Size = Config.Size
+
+  /// A location in the grammar; e.g. the position of a dot in a partially-recognized rule.
+  public typealias Position = Config.Size
 
   /// Returns the size of `self` (the sum of the length of each rule's RHS plus the number of rules,
   /// to account for left-hand side symbols).
@@ -86,6 +92,7 @@ extension Grammar {
   {
     precondition(lhs >= 0)
     precondition(rhs.allSatisfy { s in s >= 0 })
+    maxSymbol = max(maxSymbol, max(lhs, rhs.max() ?? -1))
     ruleStore.amortizedLinearReserveCapacity(ruleStore.count + rhs.count + 1)
     ruleStore.append(contentsOf: rhs)
     ruleStore.append(lhs | Symbol.min)

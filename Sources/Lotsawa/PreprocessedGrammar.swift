@@ -72,6 +72,121 @@ extension Grammar {
     return (nullable: nullable, nulling: nulling)
   }
 
+  /*
+   Key:
+   𝛂_ = zero or more symbols
+   𝛂 = zero or more non-nullable symbols
+   𝛂- = one or more symbols of which at least one is non-nullable
+   𝛂? = zero or more nullable symbols
+   (x0 -> 𝛃_) Result of "recursively" processing this rule
+
+   a = one non-nullable symbol
+   q? = one nullable symbol
+
+   l -> 𝛂 a        (no RHS symbols are nullable)
+
+       That case is trivial; rewrite as l -> 𝛂 a
+
+   l -> 𝛂 a q? 𝛃?  (a contiguous tail is nullable)
+            ^^
+       Rewrite as:
+       l -> 𝛂 x0 (if 𝛂 is empty, x0 is l)
+
+       if 𝛃? is empty:      x0 -> a | a q
+
+       else:                x0 -> a | a q | a x1 | a q x1
+                            if 𝛃? is 1 symbol, x1 is 𝛃; else (x1 -> 𝛃?)
+
+
+   l -> q? 𝛃?      (all RHS symbols are nullable, thus l is nullable)
+        ^^
+       Rewrite as:
+
+       (x0 is l for consistency with the prior case where 𝛂 is empty)
+       if 𝛃? is empty:      x0 -> q
+       else:                x0 -> q | q x1 | x1
+                            if 𝛃? is 1 symbol, x1 is 𝛃; else (x1 -> 𝛃?)
+
+   l -> 𝛂 q? 𝛃- (first nullable is not in a contiguous nullable tail)
+          ^^
+       Rewrite as:
+
+       l -> 𝛂 x0 (if 𝛂 is empty, x0 is l)
+       x0 -> q x1 | x1
+                           if 𝛃- is 1 symbol, x1 is 𝛃;   else (x1 -> 𝛃-)
+
+   */
+  func eliminatingNulls() -> (DefaultGrammar, DiscreteMap<DefaultGrammar.Position, Position>) {
+    var cooked = DefaultGrammar()
+    var mapBack = DiscreteMap<DefaultGrammar.Position, Position>()
+    let n = nullSymbolSets()
+
+    typealias BufferElement = (position: Position, symbol: Symbol, isNullable: Bool)
+    var buffer: [BufferElement] = []
+
+    for r in rules where !n.nulling.contains(r.lhs) {
+      // Initialize the buffer to the non-nulling symbols on the RHS (with positions).
+      let nonNullingRHS
+        = r.rhs.indices.lazy.map { i in
+          (position: i, symbol: r.rhs[i], isNullable: n.isNullable.contains(r.rhs[i]))
+        }
+        .filter { e in !nulling.contains(e.symbol) }
+      buffer.replaceRange(..., with: nonNullingRHS)
+
+      // Find the position at which symbols are nullable until the end of the buffer.
+      let nullableTailStart = buffer.dropLast { e in e.isNullable }.endIndex
+
+      let firstNullable = buffer.firstIndex { e in e.isNullable }
+
+      if firstNullable == buffer.startIndex {     // l -> r0? 𝛂.
+        if buffer.count == 2 {                    // l -> r0? r1_
+          if firstNullable == nullableTailStart { // l -> r0? r1?
+            // Generate l -> r0 | r1 | r0 r1
+          }
+          else {
+            // Generate l -> r1 | r0 r1
+          }
+        }
+        else { // l -> r0? r1_ 𝛃.
+          // Generate l -> r0 x0 | x0 where x0 -> r1_ 𝛃
+        }
+      }
+      else { // l -> 𝛂 r0 r1? 𝛃_
+        if firstNullable >= nullableTailStart { // l -> 𝛂 r0 r1? 𝛃?
+          // Generate l -> 𝛂 x0; x0 -> r0 | r0 x1; x1
+        }
+        else { // l -> 𝛂 r0 r1? 𝛃
+          // Generate l -> 𝛂 r0 x0; x0 -> r1 𝛃 | 𝛃
+        }
+      }
+
+      var rhs = r.rhs
+      rhs.drop
+      while !rhs.isEmpty {
+        var i = rhs.startIndex
+        let s = rhs.popFirst()
+        if n.nulling.contains(r.rhs[i]) { continue }
+        if n.nullable.contains(r.rhs[i]) { break }
+        buffer.append((s, i))
+      }
+
+      while let head = rhs.popFirst() {
+        if n.nulling.contains(head) continue
+        else
+      }
+
+      if n.nullable r.rhs.first!
+
+
+      var rhs = r.rhs
+        if
+      }
+      for
+      var lhs = r.lhs
+      let i = r.rhs.firstIndex { s in n.nullable.contains(s) }
+    }
+    return (cooked, mapBack)
+  }
 /*
   func preprocessed() -> Grammar {
 
