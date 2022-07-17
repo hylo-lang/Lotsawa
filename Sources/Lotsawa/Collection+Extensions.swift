@@ -77,5 +77,9 @@ extension BidirectionalCollection {
     let head = try self.reversed().drop(while: predicate)
     return self[head.endIndex.base..<head.startIndex.base]
   }
-}
 
+  /// Returns the longest suffix of `self` s.t. all elements satisfy predicate
+  public func suffix(while predicate: (Element) throws -> Bool) rethrows -> Self.SubSequence {
+    return try self[dropLast(while: predicate).endIndex...]
+  }
+}

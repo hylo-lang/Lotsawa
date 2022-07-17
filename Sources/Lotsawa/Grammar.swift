@@ -109,6 +109,12 @@ internal extension Grammar {
   func rhs(_ r: RuleID) -> Array<Symbol>.SubSequence {
     rules[Int(r.ordinal)].rhs
   }
+
+  mutating func newSymbol() -> Symbol {
+    maxSymbol += 1
+    return maxSymbol
+  }
+
 }
 
 /// A configuration that can be used to represent just about any logical grammar, but may waste
@@ -118,3 +124,125 @@ public struct DefaultGrammarConfig: GrammarConfig {}
 /// A grammar type that represent just about any logical grammar, but may waste
 /// storage space and thus cost some performance due to poor locality-of-reference.
 public typealias DefaultGrammar = Grammar<DefaultGrammarConfig>
+
+/// Preprocessing support
+extension Grammar {
+  typealias RewriteSymbol = (position: Int, symbol: Symbol, isNullable: Bool)
+  typealias RewriteBuffer = [RewriteSymbol]
+
+  func eliminatingNulls() -> (Self, DiscreteMap<Position, Position>) {
+    var cooked = Self()
+    cooked.maxSymbol = maxSymbol
+    var mapBack = DiscreteMap<Position, Position>()
+    let n = nullSymbolSets()
+
+    var buffer: RewriteBuffer = []
+
+    for r in rules {
+      // Initialize the buffer to the LHS plus non-nulling symbols on the RHS (with positions).
+      let nonNullingRHS
+        = r.rhs.indices.lazy.map { i in
+          (position: i, symbol: r.rhs[i], isNullable: n.nullable.contains(r.rhs[i]))
+        }
+        .filter { e in !n.nulling.contains(e.symbol) }
+      if nonNullingRHS.isEmpty { continue }
+
+      buffer.replaceSubrange(
+        buffer.startIndex...,
+        with: CollectionOfOne((position: 0, symbol: r.lhs, isNullable: false)))
+
+      buffer.append(contentsOf: nonNullingRHS)
+      cooked.addDenullified(buffer, updating: &mapBack)
+    }
+    return (cooked, mapBack)
+  }
+
+  /// Given a non-nulling rule from a raw grammar with its LHS in `rawRule.first` and the
+  /// non-nulling symbols of its RHS in `rawRule.dropFirst()`, adds a denullified rewrite to self,
+  /// updating `rawPositions` to reflect the correspondences.
+  mutating func addDenullified(
+    _ rawRule: RewriteBuffer,
+    updating rawPositions: inout DiscreteMap<Position, Position>
+  ) {
+    var lhs = rawRule.prefix(1)
+    var rhs = rawRule.dropFirst()
+
+    // The longest suffix of nullable symbols.
+    let nullableSuffix = rhs.suffix(while: \.isNullable)
+
+    func addRewrite(lhs: RewriteBuffer.SubSequence, rhs: RewriteBuffer.SubSequence) {
+      addRewrittenRule(lhs: lhs.first!.symbol, rhs: rhs, updating: &rawPositions)
+    }
+
+    func synthesizedSymbol(for r: RewriteBuffer.SubSequence) -> RewriteBuffer.SubSequence {
+      [(position: r.first!.position, symbol: newSymbol(), isNullable: false)][...]
+    }
+
+    while !rhs.isEmpty {
+      guard let qStart = rhs.firstIndex(where: \.isNullable ) else {
+        // Trivial case; there are no nullable symbols
+        addRewrite(lhs: lhs, rhs: rhs)
+        return
+      }
+      // Break the RHS into pieces as follows:
+      //
+      // head | anchor | q | tail
+      //
+      // where:
+      // 1. q is the leftmost nullable
+      //
+      // 2. anchor is 1 symbol iff q is not the leftmost symbol and tail contains only nullable
+      //    symbols; otherwise anchor is empty.
+      //
+      // Why anchor? We may factor out a common prefix, creating [lhs -> head lhs1] where lhs1 is a
+      // synthesized continuation symbol.  Including anchor in lhs1 ensures that lhs1 doesn't itself
+      // need to be a nullable symbol.
+      let hasAnchor = qStart > rhs.startIndex && qStart >= nullableSuffix.startIndex
+      let head = hasAnchor ? rhs[..<qStart].dropLast() : rhs[..<qStart]
+      let anchor = rhs[..<qStart].suffix(hasAnchor ? 1 : 0)
+      let q = rhs[qStart...].prefix(1)
+      let tail = rhs[qStart...].dropFirst()
+
+      // If head is non-empty synthesize a symbol in lhs1 for head's continuation, adding
+      // lhs -> head lhs1.  Otherwise, just use lhs as lhs1.
+      let lhs1 = head.isEmpty ? lhs : synthesizedSymbol(for: rhs[anchor.startIndex...])
+      if !head.isEmpty {
+        addRewrite(lhs: lhs, rhs: head + lhs1)
+      }
+
+      // If tail length > 1, synthesize a symbol in tail1 for tail.  Otherwise, tail1 is tail.
+      let tail1 = tail.count > 1 ? synthesizedSymbol(for: tail) : tail
+
+      // Create each distinct rule having a non-empty RHS in:
+      //   lhs1 -> anchor
+      //   lhs1 -> anchor q
+      //   lhs1 -> anchor tail1
+      //   lhs1 -> anchor q tail1
+      if !anchor.isEmpty { addRewrite(lhs: lhs1, rhs: anchor) }
+      if !q.isEmpty {
+        addRewrite(lhs: lhs1, rhs: anchor + q)
+        if !tail1.isEmpty { addRewrite(lhs: lhs1, rhs: anchor + q + tail1) }
+      }
+      if !tail1.isEmpty { addRewrite(lhs: lhs1, rhs: anchor + tail1) }
+      if tail.count <= 1 { break }
+      lhs = tail1.prefix(1)
+      rhs = tail
+    }
+  }
+
+  mutating func addRewrittenRule(
+    lhs: Symbol, rhs: RewriteBuffer.SubSequence,
+    updating rawPositions: inout DiscreteMap<Position, Position>)
+  {
+    ruleStore.amortizedLinearReserveCapacity(ruleStore.count + rhs.count + 1)
+    var remainder = rhs
+    while let s = remainder.popFirst() {
+      rawPositions.appendMapping(from: .init(ruleStore.count), to: .init(s.position))
+      ruleStore.append(s.symbol)
+    }
+    // FIXME: think about whether we want to append positions for before/after the lhs.
+    ruleStore.append(lhs | Symbol.min)
+    ruleStart.append(Size(ruleStore.count))
+  }
+
+}

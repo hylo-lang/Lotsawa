@@ -71,7 +71,7 @@ extension Grammar {
     }
     return (nullable: nullable, nulling: nulling)
   }
-
+/*
   /*
    Key:
    𝛂_ = zero or more symbols
@@ -116,61 +116,82 @@ extension Grammar {
                            if 𝛃- is 1 symbol, x1 is 𝛃;   else (x1 -> 𝛃-)
 
    */
-  func rewrite(
-    lhs: Symbol, rhs allRHS: Symbols, firstNullable: Symbols.Index,
-    nullableTailStart: Symbols.Index
+  typealias RewriteSymbol = (position: Position, symbol: Symbol, isNullable: Bool)
+  typealias RewriteBuffer = [RewriteSymbol]
+
+  /// Given a non-nulling rule from a raw grammar with its LHS in `rawRule.first` and the
+  /// non-nulling symbols of its RHS in `rawRule.dropFirst()`, adds a denullified rewrite to self,
+  /// updating `rawPositions` to reflect the correspondences.
+  mutating func addDenullified(
+    rawRule: RewriteBuffer,
+    rawPositions: inout DiscreteMap<Position, Position>
   ) {
-    var rhs = allRHS[...]
+    var lhs = rawRule.prefix(1)
+    var rhs = rawRule.dropFirst()
+
+    // The longest suffix of nullable symbols.
+    let nullableSuffix = rhs.suffix(while: \.isNullable)
+
+    func addRewrite(lhs: RewriteBuffer.SubSequence, rhs: RewriteBuffer.SubSequence) {
+      addRewrittenRule(lhs: lhs.first!.symbol, rhs: rhs, updating: &rawPositions)
+    }
+
+    func synthesizedSymbol(for r: RewriteBuffer.SubSequence) -> RewriteBuffer.SubSequence {
+      [(position: r.first!.position, symbol: newSymbol(), isNullable: false)][...]
+    }
+
     while !rhs.isEmpty {
-      let nonNullablePrefix = rhs.prefix { x in !x.isNullable }
-      let alpha = firstNullable >= nullableTailStart ? nonNullablePrefix.dropLast() : nonNullablePrefix
-      let a = nonNullablePrefix.suffix(firstNullable >= nullableTailStart ? 1 : 0)
-      let beta = rhs[firstNullable...].dropFirst()
+      guard let qStart = rhs.firstIndex(where: \.isNullable ) else {
+        // Trivial case; there are no nullable symbols
+        addRewrite(lhs: lhs, rhs: rhs)
+        return
+      }
+      // Break the RHS into pieces as follows:
+      //
+      // head | anchor | q | tail
+      //
+      // where:
+      // 1. q is the leftmost nullable
+      //
+      // 2. anchor is 1 symbol iff q is not the leftmost symbol and tail contains only nullable
+      //    symbols; otherwise anchor is empty.
+      //
+      // Why anchor? We may factor out a common prefix, creating [lhs -> head lhs1] where lhs1 is a
+      // synthesized continuation symbol.  Including anchor in lhs1 ensures that lhs1 doesn't itself
+      // need to be a nullable symbol.
+      let hasAnchor = qStart > rhs.startIndex && qStart >= nullableSuffix.startIndex
+      let head = hasAnchor ? rhs[..<qStart].dropLast() : rhs[..<qStart]
+      let anchor = rhs[..<qStart].suffix(hasAnchor ? 1 : 0)
+      let q = rhs[qStart...].prefix(1)
+      let tail = rhs[qStart...].dropFirst()
 
-      var x0: Symbol = alpha.isEmpty ? lhs : newSymbol()
-      if x0 != lhs { addRule(lhs: lhs, rhs: alpha + [x0]) }
-      let x1 = beta.count <= 1 ? beta.prefix(1) : [newSymbol()][...]
+      // If head is non-empty synthesize a symbol in lhs1 for head's continuation, adding
+      // lhs -> head lhs1.  Otherwise, just use lhs as lhs1.
+      let lhs1 = head.isEmpty ? lhs : synthesizedSymbol(for: rhs[anchor.startIndex...])
+      if !head.isEmpty {
+        addRewrite(lhs: lhs, rhs: head + lhs1)
+      }
 
-      if !a.isEmpty { addRule(lhs: x0, rhs: a) }
+      // If tail length > 1, synthesize a symbol in tail1 for tail.  Otherwise, tail1 is tail.
+      let tail1 = tail.count > 1 ? synthesizedSymbol(for: tail) : tail
+
+      // Create each distinct rule having a non-empty RHS in:
+      //   lhs1 -> anchor
+      //   lhs1 -> anchor q
+      //   lhs1 -> anchor tail1
+      //   lhs1 -> anchor q tail1
+      if !anchor.isEmpty { addRewrite(lhs: lhs1, rhs: anchor) }
       if !q.isEmpty {
-        addRule(lhs: x0, rhs: a + q)
-        if !x1.isEmpty addRule(lhs: x0, rhs: a + q + x1)
+        addRewrite(lhs: lhs1, rhs: anchor + q)
+        if !tail1.isEmpty { addRewrite(lhs: lhs1, rhs: anchor + q + tail1) }
       }
-      if !x1.isEmpty addRule(lhs: x0, rhs: a + x1)
-      if beta.count <= 1 { break }
-      rhs = beta
+      if !tail1.isEmpty { addRewrite(lhs: lhs1, rhs: anchor + tail1) }
+      if tail.count <= 1 { break }
+      lhs = tail1.prefix(1)
+      rhs = tail
     }
   }
 
-  func eliminatingNulls() -> (DefaultGrammar, DiscreteMap<DefaultGrammar.Position, Position>) {
-    var cooked = DefaultGrammar()
-    var mapBack = DiscreteMap<DefaultGrammar.Position, Position>()
-    let n = nullSymbolSets()
-
-    typealias BufferElement = (position: Position, symbol: Symbol, isNullable: Bool)
-    var buffer: [BufferElement] = []
-
-    for r in rules where !n.nulling.contains(r.lhs) {
-      // Initialize the buffer to the non-nulling symbols on the RHS (with positions).
-      let nonNullingRHS
-        = r.rhs.indices.lazy.map { i in
-          (position: i, symbol: r.rhs[i], isNullable: n.isNullable.contains(r.rhs[i]))
-        }
-        .filter { e in !nulling.contains(e.symbol) }
-      buffer.replaceRange(..., with: nonNullingRHS)
-
-      guard let firstNullable = buffer.firstIndex(where: { e in e.isNullable }) else {
-        cooked.addRule(lhs: r.lhs, rhs: buffer.map(\.symbol))
-        continue
-      }
-
-      // Find the position at which symbols are nullable until the end of the buffer.
-      let nullableTailStart = buffer.dropLast { e in e.isNullable }.endIndex
-
-
-    }
-    return (cooked, mapBack)
-  }
 /*
   func preprocessed() -> Grammar {
 
@@ -212,6 +233,7 @@ extension Grammar {
 
   func nullSymbol
     */
+ */
 
   /// Returns a dictionary mapping each symbol that appears on the RHS of a rule to
   func rulesByRHS() -> MultiMap<Symbol, RuleID> {
@@ -223,7 +245,8 @@ extension Grammar {
       }
     }
     return result
-  }
+    }
+
 }
 /*
 struct PreprocessedGrammar<Configuration: GrammarConfiguration> {
