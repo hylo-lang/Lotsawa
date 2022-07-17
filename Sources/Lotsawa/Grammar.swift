@@ -148,7 +148,7 @@ extension Grammar {
       if nonNullingRHS.isEmpty { continue }
 
       buffer.replaceSubrange(
-        buffer.startIndex...,
+        /*buffer.startIndex*/...,
         with: CollectionOfOne((position: 0, symbol: r.lhs, isNullable: false)))
 
       buffer.append(contentsOf: nonNullingRHS)
