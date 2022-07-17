@@ -210,22 +210,22 @@ extension Grammar {
         addRewrite(lhs: lhs, rhs: head + lhs1)
       }
 
-      // If tail length > 1, synthesize a symbol in tail1 for tail.  Otherwise, tail1 is tail.
-      let tail1 = tail.count > 1 ? synthesizedSymbol(for: tail) : tail
+      // If tail length > 1, synthesize a symbol in lhs2 for tail.  Otherwise, lhs2 is tail.
+      let lhs2 = tail.count > 1 ? synthesizedSymbol(for: tail) : tail
 
       // Create each distinct rule having a non-empty RHS in:
       //   lhs1 -> anchor
       //   lhs1 -> anchor q
-      //   lhs1 -> anchor tail1
-      //   lhs1 -> anchor q tail1
+      //   lhs1 -> anchor lhs2
+      //   lhs1 -> anchor q lhs2
       if !anchor.isEmpty { addRewrite(lhs: lhs1, rhs: anchor) }
       if !q.isEmpty {
         addRewrite(lhs: lhs1, rhs: anchor + q)
-        if !tail1.isEmpty { addRewrite(lhs: lhs1, rhs: anchor + q + tail1) }
+        if !lhs2.isEmpty { addRewrite(lhs: lhs1, rhs: anchor + q + lhs2) }
       }
-      if !tail1.isEmpty { addRewrite(lhs: lhs1, rhs: anchor + tail1) }
+      if !lhs2.isEmpty { addRewrite(lhs: lhs1, rhs: anchor + lhs2) }
       if tail.count <= 1 { break }
-      lhs = tail1.prefix(1)
+      lhs = lhs2
       rhs = tail
     }
   }
