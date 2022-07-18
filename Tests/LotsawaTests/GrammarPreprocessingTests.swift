@@ -105,23 +105,19 @@ class GrammarPreprocessingTests: XCTestCase {
         XCTAssert(cookedNulls.nulling.isEmpty)
         XCTAssert(cookedNulls.nullable.isEmpty)
 
-        /*
-        var work = [(raw: Position, cooked: Position)] = [
-          (raw.rules.first!.rhs.startIndex, cooked.rules.first!.rhs.startIndex)
-        ]
-
-        while let p0 = work.popLast() {
-          for t in terminals {
-            let p1raw = raw.uniqueStep(from: p.raw, on: t)
-            let p1cooked = cooked.uniqueStep(from: p.cooked, on: t)
-            XCTAssertEqual(p1raw == nil, p1cooked == nil)
-            guard let p1raw = p1raw, let p1cooked = p1cooked else { continue }
-            XCTAssertEqual(mapBack[p1cooked], p1raw)
-            work.append((p1raw, p1cooked))
+        // Validate mapBack, somewhat.
+        for r in cooked.rules {
+          for i in r.rhs.indices {
+            let s = r.rhs[i]
+            if s <= raw.maxSymbol {
+              XCTAssertEqual(s, raw.postdot(at: mapBack[TinyGrammar.Size(i)]))
+            }
           }
         }
 
-        /*
+        // TODO: Actually test for grammar equivalence.  Can't figure that out right now. Until
+        // then, the following code helps you eyeball it.
+        #if false
         print("-----------------------------")
         let n = raw.nullSymbolSets()
         print(
@@ -132,68 +128,11 @@ class GrammarPreprocessingTests: XCTestCase {
               : "\(s)"
               }.joined(separator: " "))
 
-              print("cooked:\(n.nullable.contains(0) ? " 𝛆 |" : "")", cooked)
-              */
-
-         */
+        print("cooked:\(n.nullable.contains(0) ? " 𝛆 |" : "")", cooked)
+        #endif
       }
     }
   }
-}
-
-extension Grammar {
-  typealias Werd = (symbol: Symbol, prev: Int)
-
-  struct Sentence: Hashable {
-    let werds: [Werd]
-    let lastWerd: Int
-
-    var tail: Sentence? {
-      lastWerd < 0 ? nil : Sentence(werds: werds, lastWerd: werds[lastWerd].prev)
-    }
-
-    var head: Symbol? {
-      lastWerd < 0 ? nil : werds[lastWerd].symbol
-    }
-
-    static func == (a: Self, b: Self) -> Bool {
-      a.head == b.head && a.tail == b.tail
-    }
-
-    func hash(into h: inout Hasher) {
-      if let head = self.head { head.hash(into: &h) }
-      if let tail = self.tail { tail.hash(into: &h) }
-    }
-  }
-  func allSentences(
-    start: StartSymbol, maxLength: Int
-  ) -> Set<Array<Symbol>> {
-    rulesByLHS = MultiMap(grouping: rules, by: \.lhs)
-
-    var werds: [Werd] = []
-    generateSymbol(start, prefix: -1)
-
-    func generateSymbol(_ s: Symbol, prefix: Int) -> Int {
-      let alternatives = rulesByLHS[start]
-      if alternatives.isEmpty {
-        werds.append((s, prev: prefix))
-        return werds.count - 1
-      }
-      for r in  {
-        generateRule(r, prefix: prefix)
-      }
-    }
-    func generateRule(_ r: Rule, prefix: Int) {
-      for s in r.rhs
-    }
-    func generate(prefix: [Symbol], next: Symbol) {
-      if prefix.count ==
-      guard let rules = rulesByLHS[next] else {
-
-      }
-    }
-    }
-   */
 }
 
 extension Grammar: CustomStringConvertible {

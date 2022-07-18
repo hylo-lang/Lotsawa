@@ -26,7 +26,7 @@ public struct Grammar<Config: GrammarConfig> {
   private var ruleStart: [Config.Size] = [0]
 
   /// The greatest symbol value in any rule, or -1 if there are no rules.
-  private var maxSymbol: Config.Symbol = -1
+  private(set) var maxSymbol: Config.Symbol = -1
 
   /// Creates an empty instance.
   public init() {  }
@@ -115,6 +115,16 @@ internal extension Grammar {
     return maxSymbol
   }
 
+  /// Returns the postdot symbol corresponding to a dot at `p`, or nil if represents a completion.
+  func postdot(at p: Position) -> Symbol? {
+    ruleStore[Int(p)] < 0 ? nil : ruleStore[Int(p)]
+  }
+
+  /// Returns the LHS recognized when a dot appears at `p`, or nil if `p` doesn't represent a
+  /// completion.
+  func recognized(at p: Position) -> Symbol? {
+    ruleStore[Int(p)] >= 0 ? nil : ruleStore[Int(p)] & ~Symbol.min
+  }
 }
 
 /// A configuration that can be used to represent just about any logical grammar, but may waste
