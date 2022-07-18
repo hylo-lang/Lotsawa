@@ -245,4 +245,9 @@ extension Grammar {
     ruleStart.append(Size(ruleStore.count))
   }
 
+  func symbols() -> (terminals: Set<Symbol>, nonTerminals: Set<Symbol>) {
+    let nonTerminals = Set(rules.lazy.map(\.lhs))
+    let terminals = Set(rules.lazy.map(\.rhs).joined()).subtracting(nonTerminals)
+    return (terminals, nonTerminals)
+  }
 }
