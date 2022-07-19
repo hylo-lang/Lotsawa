@@ -69,6 +69,21 @@ class GrammarPreprocessingTests: XCTestCase {
     XCTAssertEqual(g.text(n.nulling), ["n0", "n1", "n2", "n3", "n4", "n5"])
   }
 
+  #if false
+  // Good for eyeballing generation results
+  func testGenerator() {
+    var g = TinyGrammar()
+    g.addRule(lhs: 0, rhs: [1, 2])
+    g.addRule(lhs: 1, rhs: [])
+    g.addRule(lhs: 1, rhs: [1, 3])
+    g.addRule(lhs: 2, rhs: [4])
+    g.addRule(lhs: 2, rhs: [4, 2])
+    g.generateParses(0, maxLength: 1000, maxDepth: 6) { p in
+      print(p.lazy.map(String.init(describing:)).joined(separator: " "))
+    }
+  }
+  #endif
+
   func testDenullification() {
     // Strategy:
     //
@@ -153,4 +168,100 @@ extension Grammar: CustomStringConvertible {
       "\(lhs) ::= " + alternatives.lazy.map(rhsText).joined(separator: " | ")
     }.joined(separator: "; ")
   }
+}
+
+/// Parse generation.
+///
+/// This functionality is itself only tested by eyeball, which explains why it's not public.
+extension Grammar {
+  /// An element of a linear parse representation, including where in the grammar each recognized
+  /// symbol occurs.
+  enum ParseMove: Hashable, CustomStringConvertible {
+    /// A terminal symbol `s` recognized at the given position.
+    case terminal(_ s: Symbol, at: Position)
+    /// The start of a nonterminal symbol `s` recognized at the given position.
+    case begin(Symbol, at: Position)
+    /// The end of the nonterminal symbol `s` last begun but not yet ended.
+    case end(Symbol)
+  }
+
+  /// A representation of a parse tree.
+  typealias Parse = [ParseMove]
+
+  /// Generates all complete parses of `start` having `maxLength` or fewer terminals and `maxDepth`
+  /// or fewer levels of nesting, passing each one in turn to `receiver`.
+  func generateParses(
+    _ start: Symbol, maxLength: Int, maxDepth: Int, into receiver: (Parse)->()
+  ) {
+    let rulesByLHS = MultiMap(grouping: rules, by: \.lhs)
+    var parse = Parse()
+    var length = 0
+    var depth = 0
+
+    generateNonterminal(start, at: 0) { receiver(parse) }
+
+    func generateTerminal(_ s: Symbol, at p: Position, then onward: ()->()) {
+      if length == maxLength { return }
+      length += 1
+      parse.append(.terminal(s, at: p))
+      onward()
+    }
+
+    func generateNonterminal(_ s: Symbol, at p: Position, then onward: ()->()) {
+      if depth == maxDepth { return }
+      depth += 1
+      parse.append(.begin(s, at: p))
+      let mark = (length: length, depth: depth, parseCount: parse.count)
+      for r in rulesByLHS[s] {
+        generateString(r.rhs) { parse.append(.end(s)); onward() }
+        parse.removeSubrange(mark.parseCount...)
+        (length, depth) = (mark.length, mark.depth)
+      }
+    }
+
+    func generateSymbol(at p: Position, then onward: ()->()) {
+      let s = postdot(at: p)!
+      if rulesByLHS.storage[s] != nil {
+        generateNonterminal(s, at: p, then: onward)
+      }
+      else {
+        generateTerminal(s, at: p, then: onward)
+      }
+    }
+
+    func generateString(_ s: Array<Symbol>.SubSequence, then onward: ()->()) {
+      if s.isEmpty { return onward() }
+      let depthMark = depth
+      generateSymbol(at: .init(s.startIndex)) {
+        depth = depthMark // Return to same depth between symbols of a string.
+        generateString(s.dropFirst(), then: onward)
+      }
+    }
+  }
+}
+
+extension BinaryInteger {
+  /// Returns a string representation where all digits are subscript numerals
+  func subscriptingDigits() -> String {
+    return String(
+      "\(self)".lazy.map { c in
+        if c.unicodeScalars.count != 1 { return c }
+        let u = c.unicodeScalars.first!
+        if u < "0" || u > "9" { return c }
+        return Character(
+          Unicode.Scalar(
+            u.value - ("0" as UnicodeScalar).value + ("₀" as UnicodeScalar).value)!)
+      })
+  }
+}
+
+extension Grammar.ParseMove {
+  var description: String {
+    switch self {
+    case let .terminal(s, at: p): return "\(s)\(p.subscriptingDigits())"
+    case let .begin(s, at: p): return "\(s)\(p.subscriptingDigits())("
+    case .end: return ")"
+    }
+  }
+
 }
