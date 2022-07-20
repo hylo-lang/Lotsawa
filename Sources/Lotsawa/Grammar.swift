@@ -141,8 +141,8 @@ extension Grammar {
   /// and whether it is a nullable symbol.
   typealias RewriteSymbol = (position: Int, symbol: Symbol, isNullable: Bool)
 
-  /// A buffer of symbols with auxilliary information used in rewriting grammar rules.
-  typealias RewriteBuffer = [RewriteSymbol]
+  /// A sequence of symbols with auxilliary information used in rewriting grammar rules.
+  typealias RewriteFragment = Array<RewriteSymbol>.SubSequence
 
   /// Returns a version of `self` with all nullable symbols removed, along with a mapping from
   /// positions in the rewritten grammar to corresponding positions in `self`.
@@ -162,7 +162,7 @@ extension Grammar {
     var mapBack = DiscreteMap<Position, Position>()
     let n = nullSymbolSets()
 
-    var buffer: RewriteBuffer = []
+    var buffer: [RewriteSymbol] = []
 
     for r in rules {
       // Initialize the buffer to the LHS plus non-nulling symbols on the RHS (with positions).
@@ -178,7 +178,7 @@ extension Grammar {
         with: CollectionOfOne((position: 0, symbol: r.lhs, isNullable: false)))
 
       buffer.append(contentsOf: nonNullingRHS)
-      cooked.addDenullified(buffer, updating: &mapBack)
+      cooked.addDenullified(buffer[...], updating: &mapBack)
     }
     return (cooked, mapBack)
   }
@@ -187,16 +187,15 @@ extension Grammar {
   /// non-nulling symbols of its RHS in `rawRule.dropFirst()`, adds a denullified rewrite to self,
   /// updating `rawPositions` to reflect the correspondences.
   mutating func addDenullified(
-    _ rawRule: RewriteBuffer,
+    _ rawRule: RewriteFragment,
     updating rawPositions: inout DiscreteMap<Position, Position>
   ) {
     // FIXME (efficiency): this function currently allocates and concatenates new fragments.  It
     // would be better do all that work directly in the `RewriteBuffer`, even if that meant
     // sometimes growing it.  That would complicate this code a bit, so might not be worth it.
-    typealias Fragment = RewriteBuffer.SubSequence
     // Using fragments even when we know we have a single symbol simplifies some code.
-    var lhs: Fragment = rawRule.prefix(1)
-    var rhs: Fragment = rawRule.dropFirst()
+    var lhs = rawRule.prefix(1)
+    var rhs = rawRule.dropFirst()
 
     // The longest suffix of nullable symbols.
     let nullableSuffix = rhs.suffix(while: \.isNullable)
@@ -205,9 +204,10 @@ extension Grammar {
     while !rhs.isEmpty {
       guard let qStart = rhs.firstIndex(where: \.isNullable ) else {
         // Trivial case; there are no nullable symbols
-        addRewrite(lhs: lhs, rhs: rhs)
+        addRewrittenRule(lhs: lhs, rhs: rhs, updating: &rawPositions)
         return
       }
+
       // Break the RHS into pieces as follows:
       //
       // `head` | `anchor` | `q` | `tail`
@@ -230,48 +230,53 @@ extension Grammar {
       let q = rhs[qStart...].prefix(1)
       let tail = rhs[qStart...].dropFirst()
 
+
       // If head is non-empty synthesize a symbol in lhs1 for head's continuation, adding
       // lhs -> head lhs1.  Otherwise, just use lhs as lhs1.
-      let lhs1: Fragment
+      let lhs1: RewriteFragment
       if head.isEmpty { lhs1 = lhs }
       else {
-        lhs1 = synthesizedSymbol(for: rhs[anchor.startIndex...])
-        addRewrite(lhs: lhs, rhs: head + lhs1)
+        lhs1 = synthesizedLHS(for: rhs[anchor.startIndex...])
+        addRewrittenRule(lhs: lhs, rhs: head + lhs1, updating: &rawPositions)
       }
 
       // If tail length > 1, synthesize a symbol in lhs2 for tail.  Otherwise, lhs2 is tail.
-      let lhs2 = tail.count > 1 ? synthesizedSymbol(for: tail) : tail
+      let lhs2 = tail.count > 1 ? synthesizedLHS(for: tail) : tail
 
-      // Create each distinct rule having a non-empty RHS in:
-      //
-      //   lhs1 -> anchor, lhs1 -> anchor q, hs1 -> anchor lhs2, lhs1 -> anchor q lhs2
+      // Add a rule with `lhs1` -> R where R is each distinct non-empty concatenation of `anchor`, `q`, and `lhs2`,
+
+      //   {lhs1 -> anchor, lhs1 -> anchor q, hs1 -> anchor lhs2, lhs1 -> anchor q lhs2}
 
       // if the anchor is nonempty, we have a nullable tail, so anchor is needed by itself.
-      if anchorWidth > 0 { addRewrite(lhs: lhs1, rhs: anchor) }
-      if tail.startIndex >= nullableSuffix.startIndex {
-        addRewrite(lhs: lhs1, rhs: anchor + q)
+      if anchorWidth > 0 {
+        addRewrittenRule(lhs: lhs1, rhs: anchor, updating: &rawPositions)
       }
-      addRewrite(lhs: lhs1, rhs: anchor + q + lhs2)
-      if !lhs2.isEmpty { addRewrite(lhs: lhs1, rhs: anchor + lhs2) }
+      if tail.startIndex >= nullableSuffix.startIndex {
+        addRewrittenRule(lhs: lhs1, rhs: anchor + q, updating: &rawPositions)
+      }
+      if !lhs2.isEmpty {
+        addRewrittenRule(lhs: lhs1, rhs: anchor + q + lhs2, updating: &rawPositions)
+        addRewrittenRule(lhs: lhs1, rhs: anchor + lhs2, updating: &rawPositions)
+      }
       if tail.count <= 1 { break }
       lhs = lhs2
       rhs = tail
     }
 
-    func addRewrite(lhs: RewriteBuffer.SubSequence, rhs: RewriteBuffer.SubSequence) {
-      addRewrittenRule(lhs: lhs.first!.symbol, rhs: rhs, updating: &rawPositions)
-    }
-
-    func synthesizedSymbol(for r: RewriteBuffer.SubSequence) -> RewriteBuffer.SubSequence {
-      [(position: r.first!.position, symbol: newSymbol(), isNullable: false)][...]
+    /// Returns a single-symbol fragment appropriate for the LHS of a rule having `rhs` as its RHS.
+    func synthesizedLHS(for rhs: RewriteFragment) -> RewriteFragment {
+      [(position: rhs.first!.position, symbol: newSymbol(), isNullable: false)][...]
     }
   }
 
-  /// Adds a rule deriving `rhs` from `lhs`
+  /// Adds a rule deriving `rhs` from `lhs`.
+  ///
+  /// - Precondition: `lhs` contains exactly one symbol.
   mutating func addRewrittenRule(
-    lhs: Symbol, rhs: RewriteBuffer.SubSequence,
+    lhs: RewriteFragment, rhs: RewriteFragment,
     updating rawPositions: inout DiscreteMap<Position, Position>)
   {
+    precondition(lhs.count == 1)
     ruleStore.amortizedLinearReserveCapacity(ruleStore.count + rhs.count + 1)
     var remainder = rhs
     while let s = remainder.popFirst() {
@@ -279,7 +284,7 @@ extension Grammar {
       ruleStore.append(s.symbol)
     }
     // TODO: think about whether we want to append positions for before/after the lhs.
-    ruleStore.append(lhs | Symbol.min)
+    ruleStore.append(lhs.first!.symbol | Symbol.min)
     ruleStart.append(Size(ruleStore.count))
   }
 
