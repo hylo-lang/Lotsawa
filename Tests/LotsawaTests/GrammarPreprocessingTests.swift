@@ -127,14 +127,17 @@ class GrammarPreprocessingTests: XCTestCase {
 
         raw.generateParses(0) { p in
           let p1 = p.eliminatingNulls()
-          if !p1.moves.isEmpty { rawParses.insert(p1) }
+          if !p1.moves.isEmpty {
+            XCTAssert(rawParses.insert(p1).inserted, "\(p1) generated twice")
+          }
         }
 
         var cookedParses = Set<TinyGrammar.Parse>()
         cooked.generateParses(0) { p in
-          cookedParses.insert(
-            p.eliminatingSymbols(greaterThan: raw.maxSymbol, mappingPositionsThrough: mapBack)
-          )
+          XCTAssert(
+            cookedParses.insert(
+              p.eliminatingSymbols(greaterThan: raw.maxSymbol, mappingPositionsThrough: mapBack)
+            ).inserted, "\(p) generated twice; duplicate rule in rewrite?")
         }
 
         XCTAssertEqual(
