@@ -174,8 +174,9 @@ extension Grammar {
     _ rawRule: RewriteBuffer,
     updating rawPositions: inout DiscreteMap<Position, Position>
   ) {
-    var lhs = rawRule.prefix(1)
-    var rhs = rawRule.dropFirst()
+    typealias Fragment = RewriteBuffer.SubSequence
+    var lhs: Fragment = rawRule.prefix(1)
+    var rhs: Fragment = rawRule.dropFirst()
 
     // The longest suffix of nullable symbols.
     let nullableSuffix = rhs.suffix(while: \.isNullable)
@@ -207,16 +208,18 @@ extension Grammar {
       // Why anchor? We may factor out a common prefix, creating [lhs -> head lhs1] where lhs1 is a
       // synthesized continuation symbol.  Including anchor in lhs1 ensures that lhs1 doesn't itself
       // need to be a nullable symbol.
-      let hasAnchor = qStart > rhs.startIndex && qStart >= nullableSuffix.startIndex
-      let head = hasAnchor ? rhs[..<qStart].dropLast() : rhs[..<qStart]
-      let anchor = rhs[..<qStart].suffix(hasAnchor ? 1 : 0)
+      let nonemptyAnchor = qStart > rhs.startIndex && qStart >= nullableSuffix.startIndex
+      let head = nonemptyAnchor ? rhs[..<qStart].dropLast() : rhs[..<qStart]
+      let anchor = rhs[..<qStart].suffix(nonemptyAnchor ? 1 : 0)
       let q = rhs[qStart...].prefix(1)
       let tail = rhs[qStart...].dropFirst()
 
       // If head is non-empty synthesize a symbol in lhs1 for head's continuation, adding
       // lhs -> head lhs1.  Otherwise, just use lhs as lhs1.
-      let lhs1 = head.isEmpty ? lhs : synthesizedSymbol(for: rhs[anchor.startIndex...])
-      if !head.isEmpty {
+      let lhs1: Fragment
+      if head.isEmpty { lhs1 = lhs }
+      else {
+        lhs1 = synthesizedSymbol(for: rhs[anchor.startIndex...])
         addRewrite(lhs: lhs, rhs: head + lhs1)
       }
 
@@ -228,11 +231,13 @@ extension Grammar {
       //   lhs1 -> anchor q
       //   lhs1 -> anchor lhs2
       //   lhs1 -> anchor q lhs2
-      if !anchor.isEmpty { addRewrite(lhs: lhs1, rhs: anchor) }
-      if !q.isEmpty {
+
+      // if the anchor is nonempty, we have a nullable tail, so anchor needed by itself.
+      if nonemptyAnchor { addRewrite(lhs: lhs1, rhs: anchor) }
+      if tail.startIndex >= nullableSuffix.startIndex {
         addRewrite(lhs: lhs1, rhs: anchor + q)
-        if !lhs2.isEmpty { addRewrite(lhs: lhs1, rhs: anchor + q + lhs2) }
       }
+      addRewrite(lhs: lhs1, rhs: anchor + q + lhs2)
       if !lhs2.isEmpty { addRewrite(lhs: lhs1, rhs: anchor + lhs2) }
       if tail.count <= 1 { break }
       lhs = lhs2

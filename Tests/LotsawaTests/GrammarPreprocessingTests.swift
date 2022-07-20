@@ -78,7 +78,7 @@ class GrammarPreprocessingTests: XCTestCase {
     g.addRule(lhs: 1, rhs: [1, 3])
     g.addRule(lhs: 2, rhs: [4])
     g.addRule(lhs: 2, rhs: [4, 2])
-    g.generateParses(0, maxLength: 1000, maxDepth: 6) { p in
+    g.generateParses(0, maxDepth: 6) { p in
       print(p.lazy.map(String.init(describing:)).joined(separator: " "))
     }
   }
@@ -105,6 +105,7 @@ class GrammarPreprocessingTests: XCTestCase {
       for combo in 0..<combinations {
         var raw = base
         var c = combo
+
         for s in rhs {
           defer { c /= 3 }
           if c % 3 == 0 { continue } // non-nullable
@@ -112,7 +113,9 @@ class GrammarPreprocessingTests: XCTestCase {
           raw.addRule(lhs: s, rhs: EmptyCollection())
         }
 
-        let (cooked, mapBack) = raw.eliminatingNulls()
+        var (cooked, mapBack) = raw.eliminatingNulls()
+        mapBack.appendMapping(from: .init(cooked.size), to: .init(raw.size))
+
         let terminals = raw.symbols().terminals
         XCTAssertEqual(cooked.symbols().terminals, terminals)
 
@@ -120,18 +123,25 @@ class GrammarPreprocessingTests: XCTestCase {
         XCTAssert(cookedNulls.nulling.isEmpty)
         XCTAssert(cookedNulls.nullable.isEmpty)
 
-        // Validate mapBack, somewhat.
-        for r in cooked.rules {
-          for i in r.rhs.indices {
-            let s = r.rhs[i]
-            if s <= raw.maxSymbol {
-              XCTAssertEqual(s, raw.postdot(at: mapBack[TinyGrammar.Size(i)]))
-            }
-          }
+        var rawParses = Set<TinyGrammar.Parse>()
+
+        raw.generateParses(0) { p in
+          let p1 = p.eliminatingNulls()
+          if !p1.moves.isEmpty { rawParses.insert(p1) }
         }
 
-        // TODO: Actually test for grammar equivalence.  Can't figure that out right now. Until
-        // then, the following code helps you eyeball it.
+        var cookedParses = Set<TinyGrammar.Parse>()
+        cooked.generateParses(0) { p in
+          cookedParses.insert(
+            p.eliminatingSymbols(greaterThan: raw.maxSymbol, mappingPositionsThrough: mapBack)
+          )
+        }
+
+        XCTAssertEqual(
+          rawParses, cookedParses,
+          "\nraw: \(raw)\ncooked: \(cooked)\n"
+            + "map: \(mapBack.points): \((0..<cooked.size).map {mapBack[.init($0)]})")
+
         #if false
         print("-----------------------------")
         let n = raw.nullSymbolSets()
@@ -156,7 +166,9 @@ extension Grammar: CustomStringConvertible {
 
   /// Returns a human-readable representation of `r`.
   func rhsText(_ r: Rule) -> String {
-    r.rhs.isEmpty ? "𝛆" : r.rhs.lazy.map { s in text(s) }.joined(separator: " ")
+    r.rhs.isEmpty ? "𝛆" : r.rhs.indices.lazy.map {
+      i in text(r.rhs[i]) + i.subscriptingDigits()
+    }.joined(separator: " ")
   }
 
   /// Returns a human-readable representation of `self`.
@@ -186,35 +198,37 @@ extension Grammar {
   }
 
   /// A representation of a parse tree.
-  typealias Parse = [ParseMove]
+  struct Parse: Hashable {
+    var moves: [ParseMove] = []
+  }
 
   /// Generates all complete parses of `start` having `maxLength` or fewer terminals and `maxDepth`
   /// or fewer levels of nesting, passing each one in turn to `receiver`.
   func generateParses(
-    _ start: Symbol, maxLength: Int, maxDepth: Int, into receiver: (Parse)->()
+    _ start: Symbol, maxLength: Int = Int.max, maxDepth: Int = Int.max, into receiver: (Parse)->()
   ) {
     let rulesByLHS = MultiMap(grouping: rules, by: \.lhs)
     var parse = Parse()
     var length = 0
     var depth = 0
 
-    generateNonterminal(start, at: 0) { receiver(parse) }
+    generateNonterminal(start, at: .init(size)) { receiver(parse) }
 
     func generateTerminal(_ s: Symbol, at p: Position, then onward: ()->()) {
       if length == maxLength { return }
       length += 1
-      parse.append(.terminal(s, at: p))
+      parse.moves.append(.terminal(s, at: p))
       onward()
     }
 
     func generateNonterminal(_ s: Symbol, at p: Position, then onward: ()->()) {
       if depth == maxDepth { return }
       depth += 1
-      parse.append(.begin(s, at: p))
-      let mark = (length: length, depth: depth, parseCount: parse.count)
+      parse.moves.append(.begin(s, at: p))
+      let mark = (length: length, depth: depth, parseCount: parse.moves.count)
       for r in rulesByLHS[s] {
-        generateString(r.rhs) { parse.append(.end(s)); onward() }
-        parse.removeSubrange(mark.parseCount...)
+        generateString(r.rhs) { parse.moves.append(.end(s)); onward() }
+        parse.moves.removeSubrange(mark.parseCount...)
         (length, depth) = (mark.length, mark.depth)
       }
     }
@@ -264,4 +278,44 @@ extension Grammar.ParseMove {
     }
   }
 
+  var symbol: Grammar.Symbol {
+    switch self {
+    case let .terminal(s, _): return s
+    case let .begin(s, _): return s
+    case let .end(s): return s
+    }
+  }
+}
+
+extension Grammar.Parse {
+  func eliminatingNulls() -> Self {
+    var r = Grammar.Parse()
+    r.moves.reserveCapacity(moves.count)
+    for m in moves {
+      switch m {
+      case .end:
+        if m.symbol == r.moves.last!.symbol { _ = r.moves.popLast() }
+        else { r.moves.append(m) }
+      default:
+        r.moves.append(m)
+      }
+    }
+    return r
+  }
+
+  func eliminatingSymbols(
+    greaterThan maxSymbol: Grammar.Symbol,
+    mappingPositionsThrough positionMap: DiscreteMap<Grammar.Position, Grammar.Position>
+  ) -> Self {
+    var r = Grammar.Parse()
+    r.moves.reserveCapacity(moves.count)
+    for m in moves where m.symbol <= maxSymbol {
+      switch m {
+      case let .terminal(s, at: p): r.moves.append(.terminal(s, at: positionMap[p]))
+      case let .begin(s, at: p): r.moves.append(.begin(s, at: positionMap[p]))
+      case .end: r.moves.append(m)
+      }
+    }
+    return r
+  }
 }
