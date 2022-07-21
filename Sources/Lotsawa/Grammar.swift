@@ -102,14 +102,19 @@ extension Grammar {
 }
 
 internal extension Grammar {
+  /// Returns the LHS of `r`.
   func lhs(_ r: RuleID) -> Symbol {
     rules[Int(r.ordinal)].lhs
   }
 
+  /// Returns the RHS of `r`.
   func rhs(_ r: RuleID) -> Array<Symbol>.SubSequence {
     rules[Int(r.ordinal)].rhs
   }
 
+  /// Adds a new unique symbol to self and returns it.
+  ///
+  /// - Precondition: `maxSymbol < Symbol.max`
   mutating func newSymbol() -> Symbol {
     maxSymbol += 1
     return maxSymbol
@@ -193,7 +198,8 @@ extension Grammar {
     // FIXME (efficiency): this function currently allocates and concatenates new fragments.  It
     // would be better do all that work directly in the `RewriteBuffer`, even if that meant
     // sometimes growing it.  That would complicate this code a bit, so might not be worth it.
-    // Using fragments even when we know we have a single symbol simplifies some code.
+
+    // Using fragments even when we know we have a single symbol (e.g. lhs) simplifies some code.
     var lhs = rawRule.prefix(1)
     var rhs = rawRule.dropFirst()
 
@@ -208,28 +214,24 @@ extension Grammar {
         return
       }
 
-      // Break the RHS into pieces as follows:
-      //
-      // `head` | `anchor` | `q` | `tail`
+      // Break the RHS into (`head`, `anchor`, `q`, `tail`)
       //
       // where:
-      // 1. `q` is the leftmost nullable
-      //
+      // 1. `q` is the leftmost nullable symbol.
       // 2. `anchor` is 1 symbol iff `q` is not the leftmost symbol and `tail` is nullable;
       //    otherwise `anchor` is empty.
       //
-      //    Explanation: In these cases we'll factor out a common prefix, creating [`lhs` -> `head`
-      //    `lhs1`] where `lhs1` is a synthesized continuation symbol.  If `anchor` was not included
-      //    in `lhs1`, `lhs1` would need to be a nullable symbol, which we are trying to eliminate.
-      //    When `q` *is* the leftmost symbol and `tail` is nullable, no anchor is needed because
-      //    the whole LHS is nullable and the case where it's all null is dealt with by its omission
-      //    on the RHS of other rules.
+      //    Explanation: When anchor is nonempty, we'll factor out a common prefix, creating [`lhs`
+      //    -> `head` `lhs1`] where `lhs1` is a synthesized continuation symbol.  If `anchor` was
+      //    included in `head` instead of `lhs1`, `lhs1` would need to be a nullable symbol, which
+      //    we are trying to eliminate.  When `q` *is* the leftmost symbol and `tail` is nullable,
+      //    no anchor is needed, because `lhs` is itself nullable, and will be omitted as
+      //    appropriate on the RHS of other rules.
       let anchorWidth = qStart > rhs.startIndex && qStart >= nullableSuffix.startIndex ? 1 : 0
       let head = rhs[..<(qStart - anchorWidth)]
       let anchor = rhs[..<qStart].suffix(anchorWidth)
       let q = rhs[qStart...].prefix(1)
       let tail = rhs[qStart...].dropFirst()
-
 
       // If head is non-empty synthesize a symbol in lhs1 for head's continuation, adding
       // lhs -> head lhs1.  Otherwise, just use lhs as lhs1.

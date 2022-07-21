@@ -85,17 +85,9 @@ class GrammarPreprocessingTests: XCTestCase {
   #endif
 
   func testDenullification() {
-    // Strategy:
-    //
-    // Create simple finite grammar S -> 𝛂
-    // Where 𝛂 is any string of
-    // - a new nulling symbol
-    // - a new nullable symbol
-    // - a new non-nullable symbol
 
-    // denullify
-    // explore the grammars in parallel.
-
+    // Exhaustively test all 3^8 combinations of grammars containing S -> RHS
+    // where RHS has 0-8 symbols and each symbol of RHS is a unique symbol that is either nulling, nullable, or non-nullable.
     let maxRHSCount: TinyGrammar.Symbol = 8
     for n in 0...maxRHSCount {
       var base = TinyGrammar()
@@ -113,8 +105,10 @@ class GrammarPreprocessingTests: XCTestCase {
           raw.addRule(lhs: s, rhs: EmptyCollection())
         }
 
-        var (cooked, mapBack) = raw.eliminatingNulls()
-        mapBack.appendMapping(from: .init(cooked.size), to: .init(raw.size))
+        var (cooked, rawPosition) = raw.eliminatingNulls()
+
+        // Make sure we have a position for the start symbol.
+        rawPosition.appendMapping(from: .init(cooked.size), to: .init(raw.size))
 
         let terminals = raw.symbols().terminals
         XCTAssertEqual(cooked.symbols().terminals, terminals)
@@ -123,41 +117,31 @@ class GrammarPreprocessingTests: XCTestCase {
         XCTAssert(cookedNulls.nulling.isEmpty)
         XCTAssert(cookedNulls.nullable.isEmpty)
 
+        // Generate all raw parses into rawParses, removing any empty nonterminals and any entirely
+        // empty parses.
         var rawParses = Set<TinyGrammar.Parse>()
-
         raw.generateParses(0) { p in
           let p1 = p.eliminatingNulls()
           if !p1.moves.isEmpty {
-            XCTAssert(rawParses.insert(p1).inserted, "\(p1) generated twice")
+            let x = rawParses.insert(p1)
+            XCTAssert(x.inserted, "\(p1) generated twice")
           }
         }
 
+        // Generate all cooked parses into cookedParses, eliminating any synthesized nonterminals
+        // and transforming positions back into their raw equivalents.
         var cookedParses = Set<TinyGrammar.Parse>()
         cooked.generateParses(0) { p in
           XCTAssert(
             cookedParses.insert(
-              p.eliminatingSymbols(greaterThan: raw.maxSymbol, mappingPositionsThrough: mapBack)
+              p.eliminatingSymbols(greaterThan: raw.maxSymbol, mappingPositionsThrough: rawPosition)
             ).inserted, "\(p) generated twice; duplicate rule in rewrite?")
         }
 
         XCTAssertEqual(
           rawParses, cookedParses,
           "\nraw: \(raw)\ncooked: \(cooked)\n"
-            + "map: \(mapBack.points): \((0..<cooked.size).map {mapBack[.init($0)]})")
-
-        #if false
-        print("-----------------------------")
-        let n = raw.nullSymbolSets()
-        print(
-          "raw: 0 ::= ",
-          rhs.lazy.map { s in
-            n.nulling.contains(s) ? "(\(s))"
-              : n.nullable.contains(s) ? "\(s)?"
-              : "\(s)"
-              }.joined(separator: " "))
-
-        print("cooked:\(n.nullable.contains(0) ? " 𝛆 |" : "")", cooked)
-        #endif
+            + "map: \(rawPosition.points): \((0..<cooked.size).map {rawPosition[.init($0)]})")
       }
     }
   }
