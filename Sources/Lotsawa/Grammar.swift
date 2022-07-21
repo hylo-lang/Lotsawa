@@ -221,13 +221,15 @@ extension Grammar {
       // 2. `anchor` is 1 symbol iff `q` is not the leftmost symbol and `tail` is nullable;
       //    otherwise `anchor` is empty.
       //
-      //    Explanation: When anchor is nonempty, we'll factor out a common prefix, creating [`lhs`
-      //    -> `head` `lhs1`] where `lhs1` is a synthesized continuation symbol.  If `anchor` was
-      //    included in `head` instead of `lhs1`, `lhs1` would need to be a nullable symbol, which
-      //    we are trying to eliminate.  When `q` *is* the leftmost symbol and `tail` is nullable,
-      //    no anchor is needed, because `lhs` is itself nullable, and will be omitted as
-      //    appropriate on the RHS of other rules.
-      let anchorWidth = qStart > rhs.startIndex && qStart >= nullableSuffix.startIndex ? 1 : 0
+      //    Explanation: When `head` is nonempty, we'll factor out a common prefix, creating [`lhs`
+      //    -> `head` `lhs1`] where `lhs1` is a synthesized continuation symbol, which must not
+      //    itself be nullable (since our goal is to eliminate those). If a non-nullable `anchor`
+      //    can be found, it must therefore be included in `lhs1`.  However, when `q` is the
+      //    leftmost symbol and `tail` is nullable, no anchor is needed, because `lhs` itself
+      //    started out nullable, and the case where `lhs1` would have been null is dealt with by
+      //    omitting `lhs` on the RHS of other rewritten rules.
+      let tailIsNullable = qStart >= nullableSuffix.startIndex
+      let anchorWidth = qStart > rhs.startIndex && tailIsNullable ? 1 : 0
       let head = rhs[..<(qStart - anchorWidth)]
       let anchor = rhs[..<qStart].suffix(anchorWidth)
       let q = rhs[qStart...].prefix(1)
@@ -242,18 +244,13 @@ extension Grammar {
         addRewrittenRule(lhs: lhs, rhs: head + lhs1, updating: &rawPositions)
       }
 
-      // If tail length > 1, synthesize a symbol in lhs2 for tail.  Otherwise, lhs2 is tail.
+      // If tail length > 1, synthesize a symbol in lhs2 for tail.  Otherwise, lhs2 is tail itself.
       let lhs2 = tail.count > 1 ? synthesizedLHS(for: tail) : tail
 
-      // Add a rule with `lhs1` -> R where R is each distinct non-empty concatenation of `anchor`, `q`, and `lhs2`,
-
-      //   {lhs1 -> anchor, lhs1 -> anchor q, hs1 -> anchor lhs2, lhs1 -> anchor q lhs2}
-
-      // if the anchor is nonempty, we have a nullable tail, so anchor is needed by itself.
-      if anchorWidth > 0 {
-        addRewrittenRule(lhs: lhs1, rhs: anchor, updating: &rawPositions)
-      }
-      if tail.startIndex >= nullableSuffix.startIndex {
+      if tailIsNullable {
+        if !anchor.isEmpty {
+          addRewrittenRule(lhs: lhs1, rhs: anchor, updating: &rawPositions)
+        }
         addRewrittenRule(lhs: lhs1, rhs: anchor + q, updating: &rawPositions)
       }
       if !lhs2.isEmpty {
