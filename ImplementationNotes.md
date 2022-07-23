@@ -74,29 +74,37 @@ participate in multiple pairings.
 Let's call these pairs **derivations**.  A derivation of an item X has two parts:
 - **predot item:** a completed item in the same earleme as X describing the
   parse(s) of X's predot symbol.
-- **prefix item:** an incomplete item in an earlier earleme describing the
-  parses of the RHS symbols *before* X's predot symbol. The postdot symbol of
-  any prefix item of X is always X's predot symbol.
+- **prefix item:** an incomplete item in the predot item's start earleme
+  describing the parses of the RHS symbols *before* X's predot symbol. The
+  postdot symbol of any prefix item of X is always X's predot symbol.
 
-The leaves in this graph are *prediction items* (prefix) and terminals (predot).
-In fact, though, no link to either one is needed.  A *prediction item* can
-always be fully reconstructed from the item it derives: it is known to be the
-derived item's start earleme with the dot at the beginning of the item's rule's
-RHS.
+## Derivation set can be represented by the predot earleme
 
-The sorting of Earley sets upon completion poses no problem for *prefix* links,
-as a prefix item always appears in an an already-sorted prior earleme with a
-stable position in the item array: we can simply store that position as a prefix
-link.  The *predot* link is a different matter; it refers to an item in a
-not-yet-sorted Earley set, so needs to survive sorting.  But since completed
-items don't need to be sorted, we can refer to them by the order of their
-discovery in the Earley set.  We can half-stable partition them to the beginning
-of the set in the item array before sorting, and then they can be found by
-offset from the beginning of the set.
-
-We can optimize for unambiguous parses by using one bit of an Earley item's
-storage to indicate whether its *derivations* field stores a single derivation
-internally, or identifies a sequence of derivations in a derivations table.
+- Earley/Leo item information, aside from derivation set, is small: start earleme, dot position in grammar,
+  leo-ness, leo transition/earley postdot symbol.  Probably fits in 2 machine words.
+  
+- When there are more in the derivation set, we can afford to repeat these two words for each
+  derivation pair.  Each Earley item in the pure earley algorithm (each logical Earley item) is
+  *potentially* stored multiple times, one for each derivation of that item. It would take a *very*
+  ambiguous grammar to make that repetition expensive in memory.
+  
+- Upon completion of an earley set, its items can be sorted, making it into, effectively a multimap
+  from sort key to contiguous sets of derivations.  The sort key can be, in lexicographical order,
+  (completeness, symbol, leo-ness, dot position, start position), where symbol is the LHS symbol of
+  completed items and otherwise the leo transition/Earley postdot symbol. Finding items with a given
+  postdot symbol in a given earley set, during reduction, becomes a binary search in the earley set
+  (using start position 0 or ignoring start position).
+  
+- If we are concerned about the cost of skipping over a long string of derivations for a single
+  logical earley item, we can add a slow path where after some constant number of derivations have
+  been seen, we'll binary search again for the next start position.
+  
+- After recognition, the derivations for each logical Earley item X are reconstructed by exploring,
+  for each stored item X' corresponding to X, the cross product of:
+  - complete items in the same Earley set as X describing the parse of the predot symbol, starting
+    in the predot earleme of X'
+  - incomplete items in the Earley set of X's start earleme whose postdot symbol is the predot
+    symbol of X (this is the same as the reduction lookup).
 
 ## Representing Predictions
 
