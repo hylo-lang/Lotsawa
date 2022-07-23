@@ -118,8 +118,10 @@ These lookups occur in the current Earley set
   
 It's possible we can skip lookup 2 altogether, because we are actually intentionall storing an item
 per derivation.  However, it's unclear whether equivalent derivations (with the same predot earleme)
-can show up.  My best idea at the moment for both lookups is to maintain some hash tables for the
-current Earley set, and simply clear them when it's complete.
+can show up.  My best idea at the moment for lookup 2 is to maintain a hash tables for the current
+Earley set, and simply clear it when it's complete.  Lookup 3 can be represented with a set of zero,
+one, more-than-one states (2 bits) for each •Y symbol.  Again, it should be cleared for each Earley
+set.
 
 ## Representing Predictions
 
