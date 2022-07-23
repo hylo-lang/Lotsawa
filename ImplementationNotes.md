@@ -92,8 +92,8 @@ Let's call these pairs **derivations**.  A derivation of an item X has two parts
   from sort key to contiguous sets of derivations.  The sort key can be, in lexicographical order,
   (completeness, symbol, leo-ness, dot position, start position), where symbol is the LHS symbol of
   completed items and otherwise the leo transition/Earley postdot symbol. Finding items with a given
-  postdot symbol in a given earley set, during reduction, becomes a binary search in the earley set
-  (using start position 0 or ignoring start position).
+  postdot symbol in a given earley set, during reduction (lookup 1), becomes a binary search in the
+  earley set (using start position 0 or ignoring start position).
   
 - If we are concerned about the cost of skipping over a long string of derivations for a single
   logical earley item, we can add a slow path where after some constant number of derivations have
@@ -105,6 +105,21 @@ Let's call these pairs **derivations**.  A derivation of an item X has two parts
     in the predot earleme of X'
   - incomplete items in the Earley set of X's start earleme whose postdot symbol is the predot
     symbol of X (this is the same as the reduction lookup).
+
+## Handling lookups 2 and 3
+
+These lookups occur in the current Earley set
+
+- **Lookup 2:** to quickly determine whether a given item is already stored in
+  the current Earley set, so that it isn't added twice.
+
+- **Lookup 3:** to determine Leo uniqueness in the current Earley set, i.e. is
+  this the only item ending in •Y for some symbol Y.
+  
+It's possible we can skip lookup 2 altogether, because we are actually intentionall storing an item
+per derivation.  However, it's unclear whether equivalent derivations (with the same predot earleme)
+can show up.  My best idea at the moment for both lookups is to maintain some hash tables for the
+current Earley set, and simply clear them when it's complete.
 
 ## Representing Predictions
 
