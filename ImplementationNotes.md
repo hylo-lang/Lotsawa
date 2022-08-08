@@ -25,19 +25,22 @@ Rule Storage:
   information to present a client with information in terms of the original
   grammar.
 
+## Earley/Leo Item Representation
+
+Can be very small; easily fits in 2 machine words (or fewer) for practical cases.
+
+The following is stored:
+- origin (start earleme)
+- dot position in the grammar
+- leo-ness
+- transition symbol
+
+
 ## Chart Representation
 
 The chart is composed of two arrays:
-- an **item array** of Earley items, stored in earleme order
+- a **item array** of derivation groups, grouped by Earley Set
 - an **earleme array** of earleme start positions in the first array.
-
-## Earley Item Representation
-
-- Only 3 fields are needed
-  - start earleme
-  - dot position in the grammar
-  - derivation set
-
 
 ## Chart lookups
 
