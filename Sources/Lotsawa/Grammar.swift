@@ -293,3 +293,20 @@ extension Grammar {
     return (terminals, nonTerminals)
   }
 }
+
+extension Grammar {
+  internal init(ruleStore: [Config.Symbol], ruleStart: [Config.Size], maxSymbol: Config.Symbol) {
+    self.ruleStore = ruleStore
+    self.ruleStart = ruleStart
+    self.maxSymbol = maxSymbol
+  }
+
+  func serialized() -> String {
+    """
+    Grammar<\(Config.self)>(
+      ruleStore: \(ruleStore),
+      ruleStart: \(ruleStart),
+      maxSymbol: \(maxSymbol))
+    """
+  }
+}

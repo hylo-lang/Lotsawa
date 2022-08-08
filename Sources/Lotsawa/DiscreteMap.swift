@@ -33,3 +33,10 @@ struct DiscreteMap<Key: Strideable, Value: Strideable>
     base.value.advanced(by: Value.Stride(base.key.distance(to: k)))
   }
 }
+
+extension DiscreteMap {
+  func serialized() -> String {
+    let points1 = points.lazy.map { kv in "\((kv.0, kv.1))" }.joined(separator: ",")
+    return "DiscreteMap<\(Key.self), \(Value.self)>(points: [\(points1)]))"
+  }
+}
