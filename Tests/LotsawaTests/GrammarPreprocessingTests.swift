@@ -69,6 +69,39 @@ class GrammarPreprocessingTests: XCTestCase {
     XCTAssertEqual(g.text(n.nulling), ["n0", "n1", "n2", "n3", "n4", "n5"])
   }
 
+  func testLeoPositions() throws {
+    let g = try """
+      a ::= b   // no recursion
+
+      b ::= b c // simple left recursion
+
+      c ::= d e // indirect left recursion
+      d ::= c
+      d ::= f
+      f ::= c g
+
+      b1 ::= c1 b1 // simple right recursion
+
+      c1 ::= e1 d1 // indirect right recursion
+      d1 ::= c1
+      d1 ::= f1
+      f1 ::= g1 c1
+      """
+      .asTestGrammar()
+
+    let expectedPositions = Set(
+      """
+      b1 ::= c1.b1
+      c1 ::= e1.d1
+      d1 ::= .c1
+      d1 ::= .f1
+      f1 ::= g1.c1
+      """
+        .split(separator: "\n").map(String.init))
+
+    XCTAssertEqual(Set(g.raw.leoPositions().map(g.dottedText)), expectedPositions)
+  }
+
   #if false
   // Good for eyeballing generation results
   func testGenerator() {

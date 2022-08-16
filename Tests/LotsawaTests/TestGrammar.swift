@@ -65,6 +65,17 @@ extension TestGrammar: CustomStringConvertible {
     text(r.lhs) + " ::= " + r.rhs.lazy.map { s in text(s) }.joined(separator: " ")
   }
 
+  /// Returns a human-readable representation of `p` as a dotted rule.
+  func dottedText(_ p: DefaultGrammar.Position) -> String {
+    let r0 = raw.containingRule(p)
+    let r = raw.rules[Int(r0.ordinal)]
+
+    let rhsText = r.rhs.lazy.map { s in text(s) }
+    let predotCount = p - r.rhs.startIndex
+    return text(r.lhs) + " ::= " + rhsText.prefix(predotCount).joined(separator: " ") + "."
+    + rhsText.dropFirst(predotCount).joined(separator: " ")
+  }
+
   /// Returns the set of names of `s`'s elements.
   func text(_ s: Set<DefaultGrammar.Symbol>) -> Set<String> { Set(s.lazy.map(text)) }
 

@@ -16,6 +16,10 @@ struct MultiMap<K: Hashable, V> {
   /// Creates an instance mapping every key to an empty array.
   init() {}
 
+  init(storage: Storage) {
+    self.storage = storage
+  }
+
   /// Accesses the array of values associated with k.
   subscript(k: K) -> [V] {
     set { storage[k] = newValue }

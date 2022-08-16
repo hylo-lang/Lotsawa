@@ -101,7 +101,7 @@ extension Grammar {
   }
 }
 
-internal extension Grammar {
+extension Grammar {
   /// Returns the LHS of `r`.
   func lhs(_ r: RuleID) -> Symbol {
     rules[Int(r.ordinal)].lhs
@@ -110,6 +110,16 @@ internal extension Grammar {
   /// Returns the RHS of `r`.
   func rhs(_ r: RuleID) -> Array<Symbol>.SubSequence {
     rules[Int(r.ordinal)].rhs
+  }
+
+  /// Returns the dot position at the beginning of `r`'s RHS.
+  func rhsStart(_ r: RuleID) -> Position {
+    Position(rules[Int(r.ordinal)].rhs.startIndex)
+  }
+
+  /// Returns the ID of the rule containing `p`.
+  public func containingRule(_ p: Position) -> RuleID {
+    RuleID(ordinal: Size(ruleStart.partitionPoint { y in y > p } - 1))
   }
 
   /// Adds a new unique symbol to self and returns it.
@@ -308,5 +318,26 @@ extension Grammar {
       ruleStart: \(ruleStart),
       maxSymbol: \(maxSymbol))
     """
+  }
+}
+
+extension Grammar {
+  /// Returns the position, for each right-recursive rule, of its last RHS symbol.
+  ///
+  /// - Precondition: `self` contains no nullable symbols.
+  func leoPositions() -> Set<Position> {
+    var result = Set<Position>()
+    var rightmostDerivable = AdjacencyMatrix()
+
+    for r in rules {
+      rightmostDerivable.addEdge(from: Int(r.lhs), to: Int(r.rhs.last!))
+    }
+    rightmostDerivable.formTransitiveClosure()
+    for r in rules {
+      if rightmostDerivable.hasEdge(from: Int(r.rhs.last!), to: Int(r.lhs)) {
+        result.insert(Position(r.rhs.dropLast().endIndex))
+      }
+    }
+    return result
   }
 }
