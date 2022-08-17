@@ -60,13 +60,21 @@ extension Grammar {
     ruleStart.indices.dropLast().lazy.map { i in RuleID(ordinal: Size(i)) }
   }
 
+  /// Returns the LHS symbol represented by the value `stored` found in `ruleStore`.
+  ///
+  /// Symbols on the LHS of a rule have a special representation in `ruleStore`.
+  static func lhsSymbol(_ stored: Symbol) -> Symbol {
+    assert(stored & ~Symbol.min != stored)
+    return stored & ~Symbol.min
+  }
+
   /// A Backus-Naur Form (BNF) rule, or production.
   public struct Rule {
     /// The RHS symbols followed by the LHS symbol, with its high bit set.
     internal let storage: Array<Symbol>.SubSequence
 
     /// The symbol to be recognized.
-    public var lhs: Symbol { storage.last! & ~Symbol.min }
+    public var lhs: Symbol { Grammar.lhsSymbol(storage.last!) }
 
     /// The sequence of symbols that lead to recognition of the `lhs`.
     public var rhs: Array<Symbol>.SubSequence { storage.dropLast() }
@@ -115,6 +123,10 @@ extension Grammar {
   /// Returns the dot position at the beginning of `r`'s RHS.
   func rhsStart(_ r: RuleID) -> Position {
     Position(rules[Int(r.ordinal)].rhs.startIndex)
+  }
+
+  func lhs(ofRuleWithPenultimatePosition p: Position) -> Symbol {
+    return Self.lhsSymbol(ruleStore[Int(p) + 1])
   }
 
   /// Returns the ID of the rule containing `p`.

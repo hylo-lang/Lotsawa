@@ -176,6 +176,15 @@ extension Recognizer {
     }
   }
 
+  func leoPredecessor(_ x: Item) -> Item? {
+    let source = derivationSet(x.origin)
+    let s = g.lhs(ofRuleWithPenultimatePosition: x.dotPosition)
+    if let l = source.at(source.partitionPoint { g in g.item.transitionSymbol ?? -1 >= s  }),
+       l.item.isLeo
+    { return l.item }
+    return nil
+  }
+
   /// Ensures that `x` is represented in the current derivation set, and if it represents a
   /// completion, recognizes that symbol.
   mutating func derive(_ x: DerivationGroup) {
@@ -208,10 +217,11 @@ extension Recognizer {
   /// - Precondition: the current set is otherwise complete.
   mutating func addLeoItems() {
     for case let (t, .some(d)) in leoCandidate {
-      var l = d
-      l.item.isLeo = true
-      l.item.transitionSymbol = t
-      chart.insert(l, at: positionInCurrentSet(l))
+      var x = leoPredecessor(d.item) ?? d.item.advanced(in: g)
+      x.isLeo = true
+      x.transitionSymbol = t
+      let d = DerivationGroup(x, predotOrigin: d.predotOrigin)
+      chart.insert(d, at: positionInCurrentSet(d))
     }
     leoCandidate.removeAll(keepingCapacity: true)
   }
