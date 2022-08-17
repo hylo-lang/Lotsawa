@@ -9,7 +9,7 @@ public struct PreprocessedGrammar<Config: GrammarConfig> {
   /// The position, for each right-recursive rule, of its last RHS symbol.
   let leoPositions: Set<Position>
 
-  init(_ raw: Grammar<Config>) {
+  public init(_ raw: Grammar<Config>) {
     (base, rawPosition) = raw.eliminatingNulls()
     rulesByLHS = MultiMap(grouping: base.ruleIDs, by: base.lhs)
     leoPositions = raw.leoPositions()

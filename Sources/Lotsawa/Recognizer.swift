@@ -1,147 +1,249 @@
-/*
-/// A trampoline typelias that lets us create `Recognizer`'s `Grammar` type.
-typealias Grammar_<RawSymbol: Hashable> = Grammar<RawSymbol>
-
-/// A position in the source text; also an Earleme ID.
-typealias SourcePosition = Int
-
 /// A process that creates the parse forest for a token stream with respect to a `Grammar`.
-public struct Recognizer<RawSymbol: Hashable> {
-  fileprivate typealias Grammar = Grammar_<RawSymbol>
+public struct Recognizer<GConf: GrammarConfig>
+{
+  public typealias Grammar = Lotsawa.Grammar<GConf>
 
-  /// A partially-completed parse
-  fileprivate struct EarleyItem {
-    /// The positions in ruleStore of yet-to-be recognized RHS symbols.
-    let expected: Grammar.DottedRule
-
-    /// The position in the token stream where the partially-parsed input begins.
-    let start: SourcePosition
-  }
+  private typealias Chart = [DerivationGroup]
 
   /// The grammar being recognized.
   private let g: Grammar
 
-  /// Storage for all Earley items, grouped by Earleme.
-  private typealias EarleyItems = [EarleyItem]
+  private let rulesByLHS: MultiMap<Grammar.Symbol, Grammar.RuleID>
 
-  /// Storage for all Leo items, grouped by Earleme.
-  private typealias LeoItems = [(transition: Grammar.Symbol, parse: EarleyItem)]
+  private let leoPositions: Set<Grammar.Position>
 
-  /// All incomplete parses, grouped by earleme corresponding to the position after the dot.
-  private var partialParses: [EarleyItem] = []
+  /// Storage for all DerivationGroups, grouped by Earleme and sorted within each Earleme.
+  private var chart: Chart = []
 
-  struct CompleteParseKey: Hashable {
-    let start: SourcePosition
-    let lhs: RawSymbol
-  }
+  /// The position in `chart` where each earleme begins, plus a sentinel for the end of the last
+  /// complete set.
+  private var derivationSetBounds: [Array<DerivationGroup>.Index] = [0]
 
-  struct CompleteParse: Hashable {
-    let end: SourcePosition
-    let rule: Grammar_<RawSymbol>.Rule.ID
-  }
+  /// A mapping from transition symbol to either a unique Leo candidate item, or to `nil` indicating
+  /// that there were multiple candidates for that symbol.
+  private var leoCandidate: [Symbol: DerivationGroup?] = [:]
 
-  /// All complete recognitions of any symbol.
-  private var completeParses: [CompleteParseKey: Set<CompleteParse>] = [:]
-
-  /// The position in `partialParses` and `leoItems` where each earleme begins.
-  private var earlemeStart: [(earley: EarleyItems.Index, leo: LeoItems.Index)] = []
-
-  /// Leo items, per the MARPA paper.
-  private var leoItems: LeoItems = []
+  private var start: Grammar.Symbol
 }
-
-extension Recognizer.EarleyItem: Hashable {
-  /// Creates an instance recognizing `g.lhs(expected)` with `g.postdotRHS(expected)` remaining to
-  /// be parsed.
-  init(expecting expected: Grammar<RawSymbol>.DottedRule, at start: SourcePosition) {
-    self.expected = expected
-    self.start = start
-  }
-
-  /// `self`, but with the dot moved forward by one position.
-  var advanced: Self { Self(expecting: expected.advanced, at: start) }
-
-  /// `true` iff there are no symbols left to recognize on the RHS of `self.rule`.
-  var isComplete: Bool { return expected.isComplete }
-}
-
 
 extension Recognizer {
-  /// Creates an instance that recognizes the given grammar.
-  public init(_ g: Lotsawa.Grammar<RawSymbol>) { self.g = g }
+  public typealias Symbol = Grammar.Symbol
+  typealias DotPosition = Grammar.Position
+  public typealias SourcePosition = UInt32
 
-  /// The partial parses in the current earleme.
-  private var currentEarleme: Array<EarleyItem>.SubSequence {
-    partialParses[currentEarlemeStart...]
+  /// The item set under construction.
+  var currentDerivationSet: Array<DerivationGroup>.SubSequence {
+    chart[derivationSetBounds.last!...]
   }
 
-  /// Returns the partial parses in the `i`th earleme.
-  private func earleme(i: Int) -> Array<EarleyItem>.SubSequence {
-    return i + 1 == earlemeStart.count
-      ? currentEarleme
-      : partialParses[earlemeStart[i].earley..<earlemeStart[i + 1].earley]
+  /// Returns the item set describing recognitions through earleme `i`.
+  func derivationSet(_ i: SourcePosition) -> Array<DerivationGroup>.SubSequence {
+    chart[derivationSetBounds[Int(i)]..<derivationSetBounds[Int(i) + 1]]
   }
 
-  /// Returns the next symbol to be recognized in `p`, or `nil` if `p.isComplete`.
-  private func postdot(_ p: EarleyItem) -> Grammar.Symbol? { g.postdot(p.expected) }
+  /// An Earley item or a Leo “transitional item.”
+  struct Item: Hashable {
+    /// FIXME: compress the storage here.  It probably fits in 64 bits.
 
-  /// Returns the LHS symbol of the rule `p` is recognizing.
-  private func lhs(_ p: EarleyItem) -> Grammar.Symbol { g.lhs(p.expected) }
+    /// The start Earleme of this partial recognition.
+    let origin: SourcePosition
 
-  /// Adds `p` to the latest earleme if it is not already there.
-  private mutating func insertEarley(_ p: EarleyItem) {
-    if p.isComplete {
-      completeParses[.init(start: p.start, lhs: lhs(p).raw), default: []]
-        .insert(.init(end: currentEarlemeIndex, rule: p.expected.ruleID))
+    /// The position in the Grammar of the dot between recognized and unrecognized symbols on the RHS.
+    let dotPosition: DotPosition
+
+    /// If `isLeo` is true, the transition symbol; otherwise, the postdot symbol, or `nil` if
+    /// `self` is part of a completion.
+    var transitionSymbol: Symbol?
+
+    /// `true` iff `self` is part of a “transitional item” per Joop Leo.
+    var isLeo: Bool
+
+    func advanced(in g: Grammar) -> Item {
+      Item(
+        origin: origin, dotPosition: dotPosition + 1,
+        transitionSymbol: g.postdot(at: dotPosition + 1), isLeo: false)
     }
-    if !currentEarleme.contains(p) { partialParses.append(p) }
   }
 
-  /// Adds the Leo item (`s`, `p`) to the latest earleme if it is not already there.
-  private mutating func insertLeo(_ p: EarleyItem, transition s: Grammar.Symbol) {
-    if let i = leoItems[currentLeoStart...].firstIndex(where: { l in l.transition == s }) {
-      assert(leoItems[i].parse == p)
-      return
+  /// The representative of a Earley or Leo item for its derivations with a given predot origin.
+  ///
+  /// Because a set of predot symbol origins is sufficient to efficiently reconstruct all
+  /// derivations of any Earley or Leo item, and the non-derivation information is small, and
+  /// ambiguity in useful grammars is low, each such item is represented as one or more
+  /// consecutively stored `DerivationGroup`s, each representing one predot symbol origin.
+  struct DerivationGroup: Hashable, Comparable {
+    /// FIXME: compress the storage here.  It probably fits in 96 bits.
+
+    /// The Earley or Leo item to which this derivation group belongs.
+    var item: Item
+
+    /// The start Earleme of the predot symbol, or `nil` if this is a prediction.
+    let predotOrigin: SourcePosition?
+
+    /// Returns `true` iff `lhs` must be sorted before `rhs` in the item store.
+    static func < (lhs: Self, rhs: Self) -> Bool {
+      lhs.sortKey < rhs.sortKey
     }
-    leoItems.append((s, p))
+
+    /// A tuple that can be compared to yield the sort order (see `<` above).
+    private var sortKey: (Symbol, UInt8, DotPosition, SourcePosition, SourcePosition) {
+      (item.transitionSymbol ?? -1, item.isLeo ? 0 : 1, item.dotPosition,
+       item.origin, predotOrigin ?? 0)
+    }
+
+    init(_ item: Item, predotOrigin: SourcePosition?) {
+      self.item = item
+      self.predotOrigin = predotOrigin
+    }
   }
+}
 
-  /// Returns the Leo items for Earleme `l`.
-  private func leoItems(at l: SourcePosition) -> LeoItems.SubSequence {
-    l == currentEarlemeIndex ? leoItems[earlemeStart[l].leo...]
-      : leoItems[earlemeStart[l].leo..<earlemeStart[l+1].leo]
+extension Recognizer {
+  /// Creates an instance that recognizes `start` in `g`.
+  public init(_ start: GConf.Symbol, in g: PreprocessedGrammar<GConf>) {
+    self.start = start
+    self.g = g.base
+    self.rulesByLHS = g.rulesByLHS
+    self.leoPositions = g.leoPositions
+    initialize()
   }
-
-  /// The earleme to which we're currently adding items.
-  private var currentEarlemeIndex: Int { earlemeStart.count - 1 }
-
-  /// The index in `partialParses` at which the Earley items in the current earleme begin.
-  private var currentEarlemeStart: EarleyItems.Index { earlemeStart.last!.earley }
-
-  /// The index in `leoItems` at which the Leo items in the current earleme begin.
-  private var currentLeoStart: LeoItems.Index { earlemeStart.last!.leo }
 
   /// Prepares `self` to recognize an input of length `n`.
-  mutating func initialize(inputLength n: Int) {
-    partialParses.removeAll(keepingCapacity: true)
-    earlemeStart.removeAll(keepingCapacity: true)
-    leoItems.removeAll(keepingCapacity: true)
-    earlemeStart.reserveCapacity(n + 1)
-    partialParses.reserveCapacity(n + 1)
-    earlemeStart.append((earley: 0, leo: 0))
+  public mutating func initialize() {
+    chart.removeAll(keepingCapacity: true)
+    derivationSetBounds.removeAll(keepingCapacity: true)
+    derivationSetBounds.append(0)
+
+    predict(start)
   }
 
-  /// Recognizes the sequence of symbols in `source` as a parse of `start`.
-  public mutating func recognize<Source: Collection>(_ source: Source, as start: RawSymbol) -> Bool
-    where Source.Element == RawSymbol
-  {
-    let start = Grammar.Symbol.some(start)
-    let source = source.lazy.map { s in Grammar.Symbol.some(s) }
-    initialize(inputLength: source.count)
+  var currentEarleme: SourcePosition {
+    SourcePosition(derivationSetBounds.count - 1)
+  }
 
-    for r in g.definitions(start) {
-      insertEarley(EarleyItem(expecting: r.dotted, at: 0))
+  /// Returns the chart entry that predicts the start of `r`.
+  func prediction(_ r: Grammar.RuleID) -> DerivationGroup {
+    .init(
+        Item(
+          origin: currentEarleme, dotPosition: g.rhsStart(r),
+          transitionSymbol: g.rhs(r).first!, isLeo: false),
+        predotOrigin: nil)
+  }
+
+  private func positionInCurrentSet(_ d: DerivationGroup) -> Chart.Index {
+    currentDerivationSet.partitionPoint { y in y >= d }
+  }
+
+  /// Seed the current item set with rules implied by the predicted recognition of `s` starting at
+  /// the current earleme.
+  mutating func predict(_ s: Symbol) {
+    for r in rulesByLHS[s] {
+      let p = prediction(r)
+      let i = positionInCurrentSet(p)
+      if currentDerivationSet.at(i) != p {
+        chart.insert(p, at: i)
+        predict(g.rhs(r).first!)
+      }
     }
+  }
+
+  public mutating func discover(_ s: Symbol, startingAt origin: SourcePosition) {
+    // The set containing potential prefixes of derivations paired with s.
+    let prefixSource = derivationSet(origin)
+
+    // The position where prefixes might be found
+    let i = prefixSource.partitionPoint { g in g.item.transitionSymbol ?? -1 >= s  }
+
+    // Prefixes must be in the source set and have the right transition symbol.
+    guard let head = prefixSource.at(i), head.item.transitionSymbol == s else { return }
+
+    if head.item.isLeo { // Handle the Leo item, of which there can be only one
+      derive(
+        .init(
+          Item(
+            origin: head.item.origin, dotPosition: head.item.dotPosition,
+            transitionSymbol: g.postdot(at: head.item.dotPosition), isLeo: false),
+          predotOrigin: origin)
+      )
+      return;
+    }
+
+    for prefix in prefixSource[i...].lazy.map(\.item)
+          .droppingAdjacentDuplicates()
+          .prefix(while: { x in x.transitionSymbol == s})
+    {
+      derive(.init(prefix.advanced(in: g), predotOrigin: origin))
+    }
+  }
+
+  /// Ensures that `x` is represented in the current derivation set, and if it represents a
+  /// completion, recognizes that symbol.
+  mutating func derive(_ x: DerivationGroup) {
+    let i = positionInCurrentSet(x)
+    let next = currentDerivationSet.at(i)
+    // Bail if the derivation group is already known.
+    if next == x { return }
+
+    chart.insert(x, at: i)  // Add the derivation group
+
+    // Bail if the item is already known.
+    if next?.item == x.item { return }
+    let prior = currentDerivationSet[..<i].last
+    if prior?.item == x.item { return }
+
+    if let t = x.item.transitionSymbol {
+      // Check incomplete items for leo candidate-ness.
+      if leoPositions.contains(x.item.dotPosition) {
+        { v in v = v == nil ? x : .some(nil) }(&leoCandidate[t])
+      }
+      predict(t)
+    }
+    else { // it's complete
+      discover(g.recognized(at: x.item.dotPosition)!, startingAt: x.item.origin)
+    }
+  }
+
+  /// Add the leo items indicated for the current set.
+  ///
+  /// - Precondition: the current set is otherwise complete.
+  mutating func addLeoItems() {
+    for case let (t, .some(d)) in leoCandidate {
+      var l = d
+      l.item.isLeo = true
+      l.item.transitionSymbol = t
+      chart.insert(l, at: positionInCurrentSet(l))
+    }
+    leoCandidate.removeAll(keepingCapacity: true)
+  }
+
+  /// Completes the current earleme and moves on to the next one, returning `true` unless no
+  /// progress was made in the current earleme.
+  public mutating func finishEarleme() -> Bool {
+    let result = !currentDerivationSet.isEmpty
+    addLeoItems()
+    derivationSetBounds.append(chart.count)
+    return result
+  }
+
+  // Leo notes:
+  //
+  // leoEligible(i: Item) ::= leoPositions.contains(i.dotPosition)
+  //      && isPenultUnique(i)
+  //
+  // isRightRecursive(L ::= 𝜶 R)
+  //     => L can be rightmost-derived from R
+  //     => L and R participate in a rightmost-derivation cycle
+  //
+  /*
+  /// Recognizes the sequence of symbols in `source` as a parse of `start`.
+  ///
+  /// - Precondition: source is sorted by the end position of each symbol.
+  public mutating func recognize<Source: Collection>(
+    _ source: Source, as start: Symbol
+  ) -> Bool
+    where Source.Element == Symbol
+  {
+    initialize(inputLength: source.count)
 
     // Recognize each token over its range in the source.
     var tokens = source.makeIterator()
@@ -259,9 +361,11 @@ extension Recognizer {
   /// `x`.
   private func isLeoEligible(_ x: Grammar.DottedRule) -> Bool {
     g.isRightRecursive(x) && isLeoUnique(x)
-  }
+    }
+   */
 }
 
+/*
 extension Recognizer: CustomStringConvertible {
   public var description: String {
     var lines: [String] = []
@@ -283,4 +387,4 @@ extension Recognizer: CustomStringConvertible {
     "\(g.description(p.expected))\t(\(p.start))"
   }
 }
-*/
+   */

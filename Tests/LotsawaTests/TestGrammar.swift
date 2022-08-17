@@ -72,7 +72,7 @@ extension TestGrammar: CustomStringConvertible {
 
     let rhsText = r.rhs.lazy.map { s in text(s) }
     let predotCount = p - r.rhs.startIndex
-    return text(r.lhs) + " ::= " + rhsText.prefix(predotCount).joined(separator: " ") + "."
+    return text(r.lhs) + " ::= " + rhsText.prefix(predotCount).joined(separator: " ") + "•"
     + rhsText.dropFirst(predotCount).joined(separator: " ")
   }
 

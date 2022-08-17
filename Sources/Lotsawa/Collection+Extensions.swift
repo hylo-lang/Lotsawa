@@ -37,6 +37,29 @@ extension Collection {
   ///
   /// - Precondition: `count > n`
   func nth(_ n: Int) -> Element { dropFirst(n).first! }
+
+  /// Returns the element at `i`, or `nil` iff `i == endIndex`
+  func at(_ i: Index) -> Element? {
+    i == endIndex ? nil : self[i]
+  }
+
+  func droppingAdjacentDuplicates(equivalence: @escaping (Element, Element)->Bool)
+    -> LazyMapSequence<LazyFilterSequence<Indices>, Element>
+  {
+    indices.lazy.filter { i in
+      index(after: i) == endIndex || !equivalence(self[i], self[index(after: i)])
+    }.map { i in self[i] }
+  }
+}
+
+extension Collection where Element: Equatable {
+  func droppingAdjacentDuplicates()
+    -> LazyMapSequence<LazyFilterSequence<Indices>, Element>
+  {
+    indices.lazy.filter { i in
+      index(after: i) == endIndex || self[i] != self[index(after: i)]
+    }.map { i in self[i] }
+  }
 }
 
 extension Collection {

@@ -35,7 +35,7 @@ extension Grammar {
         (lhs, uniqueCount(lhsRuleIDs.lazy.map { r in rhs(r) }.joined()))
       })
 
-    // A work queue for unprocessed discoveries,
+    // A work queue for unprocessed discoveries.
     var unprocessed: Array<Symbol>
       // All trivially-nulling symbols (those that only appear on the LHS of rules with empty RHS).
       = maybeNonNullingRHSCount.lazy.filter { (lhs, rhsCount) in rhsCount == 0 }.map(\.key)

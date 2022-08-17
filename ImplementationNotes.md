@@ -35,6 +35,15 @@ The following is stored:
 - leo-ness
 - transition symbol
 
+We'll just call the notional sum type of Leo and Earley items represented this way an **item**.
+
+## Derivation Groups
+
+Logically speaking, a derivation group is a fragment of the representation of a complete *item* with
+its derivations.  Each one stores the complete *item*, plus a predot source position, so you can
+think of each Earley set in the chart as being a sorted multimap from *item* to predot position.
+See the section on [derivation set representation](#derivation-set-representation). for more
+information.
 
 ## Chart Representation
 
@@ -52,11 +61,11 @@ Earley set:
   sort each earley set by postdot symbol when it is completed, *lookup 1* can
   be a binary search.
 
-- **Lookup 2:** to quickly determine whether a given item is already stored in
+- **Lookup 2:** to quickly determine whether a given derivation is already stored in
   the current Earley set, so that it isn't added twice.
 
-- **Lookup 3:** to determine Leo uniqueness in the current Earley set, i.e. is
-  this the only item ending in •Y for some symbol Y.
+- **Lookup 3:** to determine Leo uniqueness in the current Earley set, i.e. is this the only item
+  ending in •Y for some symbol Y.  This is only done on complete earley sets.
 
 Since completed items will never be found by *lookup 1*, they don't need to be
 quickly found once their earleme is complete.  This also suggests they could be
@@ -81,7 +90,7 @@ Let's call these pairs **derivations**.  A derivation of an item X has two parts
   describing the parses of the RHS symbols *before* X's predot symbol. The
   postdot symbol of any prefix item of X is always X's predot symbol.
 
-## Derivation set can be represented by the predot earleme
+## Derivation set representation
 
 - Earley/Leo item information, aside from derivation set, is small: start earleme, dot position in grammar,
   leo-ness, leo transition/earley postdot symbol.  Probably fits in 2 machine words.
