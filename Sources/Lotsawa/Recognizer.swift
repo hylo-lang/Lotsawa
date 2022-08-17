@@ -78,7 +78,7 @@ extension Recognizer {
     var item: Item
 
     /// The start Earleme of the predot symbol, or `nil` if this is a prediction.
-    let predotOrigin: SourcePosition?
+    var predotOrigin: SourcePosition?
 
     /// Returns `true` iff `lhs` must be sorted before `rhs` in the item store.
     static func < (lhs: Self, rhs: Self) -> Bool {
@@ -164,14 +164,12 @@ extension Recognizer {
     guard let head = prefixSource.at(i), head.item.transitionSymbol == s else { return }
 
     if head.item.isLeo { // Handle the Leo item, of which there can be only one
-      derive(
-        .init(
-          Item(
-            origin: head.item.origin, dotPosition: head.item.dotPosition,
-            transitionSymbol: g.postdot(at: head.item.dotPosition), isLeo: false),
-          predotOrigin: origin)
-      )
-      return;
+      var d = head
+      d.item.transitionSymbol = g.postdot(at: head.item.dotPosition)
+      d.item.isLeo = false
+      d.predotOrigin = origin
+      derive(d)
+      return
     }
 
     for prefix in prefixSource[i...].lazy.map(\.item)
@@ -238,5 +236,19 @@ extension Recognizer {
     addLeoItems()
     derivationSetBounds.append(chart.count)
     return result
+  }
+
+  /// Returns `true` iff there is at least one complete parse through the last known earleme.
+  public func hasCompleteParse() -> Bool {
+    let lastDerivationSet = currentDerivationSet.isEmpty
+      ? derivationSet(currentEarleme - 1) : currentDerivationSet
+
+    let endOfCompletions = lastDerivationSet.partitionPoint { g in
+      g.item.transitionSymbol != nil
+    }
+
+    return lastDerivationSet[..<endOfCompletions].contains { d in
+      d.item.origin == 0 && g.recognized(at: d.item.dotPosition) == start
+    }
   }
 }

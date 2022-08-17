@@ -23,7 +23,8 @@ struct TestRecognizer: CustomStringConvertible {
         return input.dropFirst(i + 1)
       }
     }
-    return nil
+
+    return base.hasCompleteParse() ? nil : input.suffix(0)
   }
 
   var description: String {

@@ -125,8 +125,10 @@ extension Grammar {
     Position(rules[Int(r.ordinal)].rhs.startIndex)
   }
 
+  /// Returns the LHS symbol of the rule whose last RHS symbol is at `p`
   func lhs(ofRuleWithPenultimatePosition p: Position) -> Symbol {
-    return Self.lhsSymbol(ruleStore[Int(p) + 1])
+    assert(recognized(at: p) == nil, "not a penultimate RHS position")
+    return recognized(at: p + 1)!
   }
 
   /// Returns the ID of the rule containing `p`.
@@ -150,7 +152,8 @@ extension Grammar {
   /// Returns the LHS recognized when a dot appears at `p`, or nil if `p` doesn't represent a
   /// completion.
   func recognized(at p: Position) -> Symbol? {
-    ruleStore[Int(p)] >= 0 ? nil : ruleStore[Int(p)] & ~Symbol.min
+    let stored = ruleStore[Int(p)]
+    return stored >= 0 ? nil : Self.lhsSymbol(stored)
   }
 }
 
