@@ -134,14 +134,20 @@ extension Recognizer {
     currentDerivationSet.partitionPoint { y in y >= d }
   }
 
+  /// Inserts `d` into the current derivation set, returning `true` iff it was not already present.
+  @discardableResult
+  private mutating func addToCurrentSet(_ d: DerivationGroup) -> Bool {
+    let i = positionInCurrentSet(d)
+    if chart.at(i) == d { return false }
+    chart.insert(d, at: i)
+    return true
+  }
+
   /// Seed the current item set with rules implied by the predicted recognition of `s` starting at
   /// the current earleme.
   mutating func predict(_ s: Symbol) {
     for r in rulesByLHS[s] {
-      let p = prediction(r)
-      let i = positionInCurrentSet(p)
-      if currentDerivationSet.at(i) != p {
-        chart.insert(p, at: i)
+      if addToCurrentSet(prediction(r)) {
         predict(g.rhs(r).first!)
       }
     }
@@ -185,8 +191,8 @@ extension Recognizer {
     return nil
   }
 
-  /// Ensures that `x` is represented in the current derivation set, and if it represents a
-  /// completion, recognizes that symbol.
+  /// Ensures that `x` is represented in the current derivation set, and draws any consequent
+  /// conclusions.
   mutating func derive(_ x: DerivationGroup) {
     let i = positionInCurrentSet(x)
     let next = currentDerivationSet.at(i)
@@ -220,8 +226,7 @@ extension Recognizer {
       var x = leoPredecessor(d.item) ?? d.item.advanced(in: g)
       x.isLeo = true
       x.transitionSymbol = t
-      let d = DerivationGroup(x, predotOrigin: d.predotOrigin)
-      chart.insert(d, at: positionInCurrentSet(d))
+      addToCurrentSet(DerivationGroup(x, predotOrigin: d.predotOrigin))
     }
     leoCandidate.removeAll(keepingCapacity: true)
   }
