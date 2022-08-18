@@ -85,10 +85,13 @@ extension Recognizer {
       lhs.sortKey < rhs.sortKey
     }
 
+    fileprivate var transitionKey: Symbol {
+      item.transitionSymbol ?? -1
+    }
+
     /// A tuple that can be compared to yield the sort order (see `<` above).
     private var sortKey: (Symbol, UInt8, DotPosition, SourcePosition, SourcePosition) {
-      (item.transitionSymbol ?? -1, item.isLeo ? 0 : 1, item.dotPosition,
-       item.origin, predotOrigin ?? 0)
+      (transitionKey, item.isLeo ? 0 : 1, item.dotPosition, item.origin, predotOrigin ?? 0)
     }
 
     init(_ item: Item, predotOrigin: SourcePosition?) {
@@ -155,15 +158,13 @@ extension Recognizer {
   }
 
   public mutating func discover(_ s: Symbol, startingAt origin: SourcePosition) {
-    // The set containing potential prefixes of derivations paired with s.
-    let prefixSource = derivationSet(origin)
+    // The set containing potential predecessor derivations to be paired with the one for s.
+    let predecessors = derivationSet(origin)
 
-    // The position where prefixes might be found
-    let i = prefixSource.partitionPoint { g in g.item.transitionSymbol ?? -1 >= s  }
+    // The position where predecessors might be found
+    guard let i = predecessors.startOfTransition(on: s) else { return }
 
-    // Prefixes must be in the source set and have the right transition symbol.
-    guard let head = prefixSource.at(i), head.item.transitionSymbol == s else { return }
-
+    let head = predecessors[i]
     if head.item.isLeo { // Handle the Leo item, of which there can be only one
       var d = head
       d.item.transitionSymbol = g.postdot(at: head.item.dotPosition)
@@ -173,11 +174,11 @@ extension Recognizer {
       return
     }
 
-    for prefix in prefixSource[i...].lazy.map(\.item)
+    for p in predecessors[i...].lazy.map(\.item)
           .droppingAdjacentDuplicates()
           .prefix(while: { x in x.transitionSymbol == s })
     {
-      derive(.init(prefix.advanced(in: g), predotOrigin: origin))
+      derive(.init(p.advanced(in: g), predotOrigin: origin))
     }
   }
 
@@ -185,9 +186,7 @@ extension Recognizer {
     let source = derivationSet(x.origin)
     assert(g.recognized(at: x.dotPosition) == nil, "unexpectedly complete item")
     let s = g.recognized(at: x.dotPosition + 1)!
-    if let l = source.at(source.partitionPoint { g in g.item.transitionSymbol ?? -1 >= s  }),
-       l.item.isLeo
-    { return l.item }
+    if let i = source.startOfTransition(on: s), source[i].item.isLeo { return source[i].item }
     return nil
   }
 
@@ -253,5 +252,18 @@ extension Recognizer {
     return lastDerivationSet[..<endOfCompletions].contains { d in
       d.item.origin == 0 && g.recognized(at: d.item.dotPosition) == start
     }
+  }
+}
+
+fileprivate extension Collection {
+  /// Returns the position of the first element with transitionSymbol `s`, or `nil` if no such
+  /// element exists.
+  ///
+  /// - Precondition: `self` is sorted.
+  func startOfTransition<GConf: GrammarConfig>(on s: GConf.Symbol) -> Index?
+    where Element == Recognizer<GConf>.DerivationGroup
+  {
+    let r = self.partitionPoint { d in d.transitionKey >= s }
+    return r == endIndex || self[r].item.transitionSymbol != s ? nil : r
   }
 }
