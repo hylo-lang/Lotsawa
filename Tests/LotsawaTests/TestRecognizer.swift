@@ -1,5 +1,6 @@
 @testable import Lotsawa
 
+/// A Recognizer wrapper engineered for convenient testing
 struct TestRecognizer: CustomStringConvertible {
   typealias Base = Recognizer<DefaultGrammarConfig>
   typealias Symbol = Base.Symbol

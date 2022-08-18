@@ -1,6 +1,9 @@
 import Lotsawa
 
-/// A `DefaultGrammar` that can be read from a string and that traffics in readable symbol names.
+/// A `DefaultGrammar` wrapper engineered for convenient testing.
+///
+/// `TestGrammar` can be constructed from a BNF string and it has a human-readable string
+/// representation.
 struct TestGrammar {
   /// Representation produced by Citron parser from the string.
   enum AST {
