@@ -28,8 +28,10 @@ public struct Grammar<Config: GrammarConfig> {
   /// The greatest symbol value in any rule, or -1 if there are no rules.
   private(set) var maxSymbol: Config.Symbol = -1
 
-  /// Creates an empty instance.
-  public init() {  }
+  let startSymbol: Config.Symbol
+
+  /// Creates an empty instance intended (when rules have been added) to recognize `startSymbol`.
+  public init(recognizing startSymbol: Config.Symbol) { self.startSymbol = startSymbol }
 }
 
 extension Grammar {
@@ -169,7 +171,8 @@ extension Grammar {
   typealias RewriteFragment = Array<RewriteSymbol>.SubSequence
 
   /// Returns a version of `self` with all nullable symbols removed, along with a mapping from
-  /// positions in the rewritten grammar to corresponding positions in `self`.
+  /// positions in the rewritten grammar to corresponding positions in `self`, and an indication of
+  /// whether `self.startSymbol` is nullable.
   ///
   /// - Nulling symbols in `self` do not appear in the result:
   /// - All other symbols in `self` appear in the result, and derive the same non-empty terminal
@@ -180,8 +183,8 @@ extension Grammar {
   /// - Each position in the result that is not at the end of a RHS corresponds to a position in
   ///   `self` where the same prefix of a given `self`-rule's non-nulling RHS elements have been
   ///   recognized.
-  func eliminatingNulls() -> (Self, DiscreteMap<Position, Position>) {
-    var cooked = Self()
+  func eliminatingNulls() -> (Self, DiscreteMap<Position, Position>, isNullable: Bool) {
+    var cooked = Self(recognizing: startSymbol)
     cooked.maxSymbol = maxSymbol
     var rawPositions = DiscreteMap<Position, Position>()
     let n = nullSymbolSets()
@@ -204,7 +207,7 @@ extension Grammar {
       buffer.append(contentsOf: nonNullingRHS)
       cooked.addDenullified(buffer[...], updating: &rawPositions)
     }
-    return (cooked, rawPositions)
+    return (cooked, rawPositions, n.nullable.contains(startSymbol))
   }
 
   /// Given a non-nulling rule from a raw grammar with its LHS in `rawRule.first` and the
@@ -315,10 +318,13 @@ extension Grammar {
 }
 
 extension Grammar {
-  internal init(ruleStore: [Config.Symbol], ruleStart: [Config.Size], maxSymbol: Config.Symbol) {
+  internal init(
+    ruleStore: [Symbol], ruleStart: [Config.Size], maxSymbol: Symbol, startSymbol: Symbol
+  ) {
     self.ruleStore = ruleStore
     self.ruleStart = ruleStart
     self.maxSymbol = maxSymbol
+    self.startSymbol = startSymbol
   }
 
   func serialized() -> String {
@@ -326,7 +332,8 @@ extension Grammar {
     Grammar<\(Config.self)>(
       ruleStore: \(ruleStore),
       ruleStart: \(ruleStart),
-      maxSymbol: \(maxSymbol))
+      maxSymbol: \(maxSymbol)
+      startSymbol: \(startSymbol))
     """
   }
 }

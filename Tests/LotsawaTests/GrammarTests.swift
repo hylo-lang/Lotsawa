@@ -4,7 +4,7 @@ import XCTest
 
 class GrammarTests: XCTestCase {
   func testEmpty() {
-    let g = DefaultGrammar()
+    let g = DefaultGrammar(recognizing: 0)
     XCTAssertEqual(g.size, 0)
     XCTAssert(g.ruleIDs.isEmpty)
     XCTAssert(g.rules.isEmpty)
@@ -12,7 +12,7 @@ class GrammarTests: XCTestCase {
 
   func test1ByteSymbols() {
     struct OneByteSymbols: GrammarConfig { typealias Symbol = Int8 }
-    var g = Grammar<OneByteSymbols>()
+    var g = Grammar<OneByteSymbols>(recognizing: 0)
     let r0 = g.addRule(lhs: 0, rhs: EmptyCollection())
     XCTAssertEqual(r0.ordinal, 0)
     XCTAssertEqual(g.size, 1)
@@ -45,7 +45,7 @@ class GrammarTests: XCTestCase {
       typealias Symbol = Int16
       typealias Size = UInt8
     }
-    var g = Grammar<TwoByteSymbolsOneByteSize>()
+    var g = Grammar<TwoByteSymbolsOneByteSize>(recognizing: 0)
     let r0 = g.addRule(lhs: 0, rhs: EmptyCollection())
     XCTAssertEqual(r0.ordinal, 0)
     XCTAssertEqual(g.size, 1)

@@ -15,7 +15,7 @@ class GrammarPreprocessingTests: XCTestCase {
       b ::= d 'foo'
       c ::= b
       """
-      .asTestGrammar()
+      .asTestGrammar(recognizing: "a")
     let n = g.raw.nullSymbolSets()
     XCTAssert(n.nulling.isEmpty)
     XCTAssertEqual(g.text(n.nullable), ["a"])
@@ -26,7 +26,7 @@ class GrammarPreprocessingTests: XCTestCase {
       a ::= _
       c ::= b
       """
-      .asTestGrammar()
+      .asTestGrammar(recognizing: "a")
     let n = g.raw.nullSymbolSets()
     XCTAssertEqual(g.text(n.nulling), ["a"])
     XCTAssertEqual(g.text(n.nullable), ["a"])
@@ -44,7 +44,7 @@ class GrammarPreprocessingTests: XCTestCase {
       b ::= d 'foo'
       c ::= b
       """
-      .asTestGrammar()
+      .asTestGrammar(recognizing: "a")
     let n = g.raw.nullSymbolSets()
     XCTAssert(n.nulling.isEmpty)
     XCTAssertEqual(g.text(n.nullable), ["n0", "n1", "n2", "n3", "n4", "n5"])
@@ -63,7 +63,7 @@ class GrammarPreprocessingTests: XCTestCase {
       n5 ::= _
       y ::= z | _ | a
       """
-      .asTestGrammar()
+      .asTestGrammar(recognizing: "a")
     let n = g.raw.nullSymbolSets()
     XCTAssertEqual(g.text(n.nullable), ["n0", "n1", "n2", "n3", "n4", "n5", "x0", "x1", "y"])
     XCTAssertEqual(g.text(n.nulling), ["n0", "n1", "n2", "n3", "n4", "n5"])
@@ -87,7 +87,7 @@ class GrammarPreprocessingTests: XCTestCase {
       d1 ::= f1
       f1 ::= g1 c1
       """
-      .asTestGrammar()
+      .asTestGrammar(recognizing: "a")
 
     let expectedPositions = Set(
       """
@@ -123,7 +123,7 @@ class GrammarPreprocessingTests: XCTestCase {
     // where RHS has 0-8 symbols and each symbol of RHS is a unique symbol that is either nulling, nullable, or non-nullable.
     let maxRHSCount: TinyGrammar.Symbol = 8
     for n in 0...maxRHSCount {
-      var base = TinyGrammar()
+      var base = TinyGrammar(recognizing: 0)
       let rhs = 1..<n+1
       base.addRule(lhs: 0, rhs: rhs)
       let combinations = repeatElement(3, count: Int(n)).reduce(1, *)
@@ -138,7 +138,7 @@ class GrammarPreprocessingTests: XCTestCase {
           raw.addRule(lhs: s, rhs: EmptyCollection())
         }
 
-        var (cooked, rawPosition) = raw.eliminatingNulls()
+        var (cooked, rawPosition, isNullable) = raw.eliminatingNulls()
 
         // Make sure we have a position for the start symbol.
         rawPosition.appendMapping(from: .init(cooked.size), to: .init(raw.size))

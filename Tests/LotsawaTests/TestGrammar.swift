@@ -10,10 +10,10 @@ struct TestGrammar {
   }
 
   /// The underlying raw grammar.
-  var raw = DefaultGrammar()
+  var raw = DefaultGrammar(recognizing: 0)
 
   /// A mapping from raw grammar symbol to its name in the parsed source.
-  var symbolName: [String] = []
+  var symbolName: [String]
 
   /// A mapping from symbol name in the parsed source to raw grammar symbol.
   var symbols: [String: Int] = [:]
@@ -21,7 +21,12 @@ struct TestGrammar {
 
 extension TestGrammar {
   /// Creates an instance by parsing `bnf`, or throws an error if `bnf` can't be parsed.
-  init(_ bnf: String, file: String = #filePath, line: Int = #line) throws {
+  init(
+    recognizing startSymbol: String, per bnf: String,
+    file: String = #filePath, line: Int = #line
+  ) throws {
+    symbols[startSymbol] = 0
+    symbolName = [startSymbol]
     let tokens = testGrammarScanner.tokens(
       in: bnf, fromFile: file, unrecognizedToken: .ILLEGAL_CHARACTER)
     let parser = TestGrammarParser()
@@ -51,8 +56,10 @@ extension TestGrammar {
 
 extension String {
   /// Returns the result of parsing `self` as a `TestGrammar`, or throws if `self` can't be parsed.
-  func asTestGrammar(file: String = #filePath, line: Int = #line) throws -> TestGrammar {
-    try TestGrammar(self, file: file, line: line)
+  func asTestGrammar(
+    recognizing startSymbol: String, file: String = #filePath, line: Int = #line
+  ) throws -> TestGrammar {
+    try TestGrammar(recognizing: startSymbol, per: self, file: file, line: line)
   }
 }
 
