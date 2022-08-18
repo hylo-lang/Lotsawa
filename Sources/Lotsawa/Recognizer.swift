@@ -8,6 +8,9 @@ public struct Recognizer<GConf: GrammarConfig>
   /// The grammar being recognized.
   private let g: Grammar
 
+  /// True iff the raw grammar from which g was derived was nullable.
+  private let acceptsNull: Bool
+
   private let rulesByLHS: MultiMap<Grammar.Symbol, Grammar.RuleID>
 
   private let leoPositions: Set<Grammar.Position>
@@ -22,8 +25,6 @@ public struct Recognizer<GConf: GrammarConfig>
   /// A mapping from transition symbol to either a unique Leo candidate item, or to `nil` indicating
   /// that there were multiple candidates for that symbol.
   private var leoCandidate: [Symbol: DerivationGroup?] = [:]
-
-  private var start: Grammar.Symbol
 }
 
 extension Recognizer {
@@ -103,11 +104,11 @@ extension Recognizer {
 
 extension Recognizer {
   /// Creates an instance that recognizes `start` in `g`.
-  public init(_ start: GConf.Symbol, in g: PreprocessedGrammar<GConf>) {
-    self.start = start
+  public init(_ g: PreprocessedGrammar<GConf>) {
     self.g = g.base
     self.rulesByLHS = g.rulesByLHS
     self.leoPositions = g.leoPositions
+    self.acceptsNull = g.isNullable
     initialize()
   }
 
@@ -118,7 +119,7 @@ extension Recognizer {
     derivationSetBounds.append(0)
     leoCandidate.removeAll(keepingCapacity: true)
 
-    predict(start)
+    predict(g.startSymbol)
   }
 
   var currentEarleme: SourcePosition {
@@ -250,7 +251,7 @@ extension Recognizer {
     }
 
     return lastDerivationSet[..<endOfCompletions].contains { d in
-      d.item.origin == 0 && g.recognized(at: d.item.dotPosition) == start
+      d.item.origin == 0 && g.recognized(at: d.item.dotPosition) == g.startSymbol
     }
   }
 }
