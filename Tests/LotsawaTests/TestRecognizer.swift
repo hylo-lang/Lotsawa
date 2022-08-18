@@ -7,10 +7,10 @@ struct TestRecognizer: CustomStringConvertible {
   var base: Base
   var language: TestGrammar
 
-  init(_ language: TestGrammar, startSymbol: String) {
+  init(_ language: TestGrammar) {
     self.language = language
     let p = PreprocessedGrammar(language.raw)
-    base = Recognizer(language.symbols[startSymbol]!, in: p)
+    base = Recognizer(0, in: p)
   }
 
   mutating func recognize(_ input: String) -> Substring? {

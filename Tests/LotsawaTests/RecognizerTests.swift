@@ -14,7 +14,7 @@ class RecognizerTests: XCTestCase {
       multiplicative ::= '*' | '/'
       """
       .asTestGrammar(recognizing: "sum")
-    var r = TestRecognizer(g, startSymbol: "sum")
+    var r = TestRecognizer(g)
     let unrecognized = r.recognize("42+(9/3-20)")
 
     XCTAssertNil(unrecognized, "\n\(r)")
@@ -31,7 +31,7 @@ class RecognizerTests: XCTestCase {
       multiplicative ::= '*' | '/'
       """
       .asTestGrammar(recognizing: "sum")
-    var r = TestRecognizer(g, startSymbol: "sum")
+    var r = TestRecognizer(g)
     let unrecognized = r.recognize("42+(9/3-20)")
 
     XCTAssertNil(unrecognized, "\n\(r)")
@@ -80,7 +80,7 @@ class RecognizerTests: XCTestCase {
       B ::= A
       """
       .asTestGrammar(recognizing: "A")
-    var r = TestRecognizer(g, startSymbol: "A")
+    var r = TestRecognizer(g)
     XCTAssertNil(r.recognize(""), "\n\(r)")
   }
 
@@ -89,7 +89,7 @@ class RecognizerTests: XCTestCase {
       A ::= 'a' A | _
       """
       .asTestGrammar(recognizing: "A")
-    var r = TestRecognizer(g, startSymbol: "A")
+    var r = TestRecognizer(g)
 
     XCTAssertNil(r.recognize("aaaaaaa"))
     XCTAssertNil(r.recognize(""), "\n\(r)")
@@ -100,7 +100,7 @@ class RecognizerTests: XCTestCase {
       A ::= 'a' A | 'a'
       """
       .asTestGrammar(recognizing: "A")
-    var r = TestRecognizer(g, startSymbol: "A")
+    var r = TestRecognizer(g)
 
     XCTAssertNil(r.recognize("aaaaaa"))
     XCTAssertNil(r.recognize("a"))
