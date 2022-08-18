@@ -122,6 +122,7 @@ extension Recognizer {
     predict(g.startSymbol)
   }
 
+  /// The index of the Earley set currently being worked on.
   var currentEarleme: SourcePosition {
     SourcePosition(derivationSetBounds.count - 1)
   }
@@ -158,6 +159,7 @@ extension Recognizer {
     }
   }
 
+  /// Respond to the discovery of `s` starting at `origin` and ending in the current earleme.
   public mutating func discover(_ s: Symbol, startingAt origin: SourcePosition) {
     // The set containing potential predecessor derivations to be paired with the one for s.
     let predecessors = derivationSet(origin)
@@ -241,10 +243,12 @@ extension Recognizer {
     return result
   }
 
-  /// Returns `true` iff there is at least one complete parse through the last known earleme.
+  /// Returns `true` iff there is at least one complete parse of the input through the last finished
+  /// earleme.
   public func hasCompleteParse() -> Bool {
-    let lastDerivationSet = currentDerivationSet.isEmpty
-      ? derivationSet(currentEarleme - 1) : currentDerivationSet
+    if currentEarleme == 0 { return false }
+    if currentEarleme == 1 && acceptsNull { return true }
+    let lastDerivationSet = derivationSet(currentEarleme - 1)
 
     let endOfCompletions = lastDerivationSet.partitionPoint { g in
       g.item.transitionSymbol != nil
