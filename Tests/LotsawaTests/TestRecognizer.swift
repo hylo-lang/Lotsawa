@@ -9,6 +9,7 @@ struct TestRecognizer: CustomStringConvertible {
   let language: TestGrammar
   let rawPosition: DiscreteMap<DefaultGrammar.Position, DefaultGrammar.Position>
 
+  /// Creates an instance that recognizes `language`.
   init(_ language: TestGrammar) {
     self.language = language
     let p = PreprocessedGrammar(language.raw)
@@ -16,6 +17,8 @@ struct TestRecognizer: CustomStringConvertible {
     rawPosition = p.rawPosition
   }
 
+  /// Recognize the given input string and return `nil`, or if recognition fails, return the suffix
+  /// of input that starts *after* the character on which recognition failed.
   mutating func recognize(_ input: String) -> Substring? {
     base.initialize()
     if !base.finishEarleme() { return input[...] }
