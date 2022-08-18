@@ -6,12 +6,14 @@ struct TestRecognizer: CustomStringConvertible {
   typealias Symbol = Base.Symbol
 
   var base: Base
-  var language: TestGrammar
+  let language: TestGrammar
+  let rawPosition: DiscreteMap<DefaultGrammar.Position, DefaultGrammar.Position>
 
   init(_ language: TestGrammar) {
     self.language = language
     let p = PreprocessedGrammar(language.raw)
     base = Recognizer(p)
+    rawPosition = p.rawPosition
   }
 
   mutating func recognize(_ input: String) -> Substring? {
@@ -44,7 +46,7 @@ struct TestRecognizer: CustomStringConvertible {
         if currentItem.isLeo {
           result.append("Leo(\(language.text(currentItem.transitionSymbol!))) ")
         }
-        result.append(language.dottedText(currentItem.dotPosition))
+        result.append(language.dottedText(rawPosition[currentItem.dotPosition]))
 
         if itemDerivations.first!.predotOrigin != nil {
           result.append(" (\(currentItem.origin))")
