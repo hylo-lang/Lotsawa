@@ -113,6 +113,7 @@ extension Recognizer {
     chart.removeAll(keepingCapacity: true)
     derivationSetBounds.removeAll(keepingCapacity: true)
     derivationSetBounds.append(0)
+    leoCandidate.removeAll(keepingCapacity: true)
 
     predict(start)
   }
