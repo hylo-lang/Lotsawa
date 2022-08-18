@@ -73,4 +73,37 @@ class RecognizerTests: XCTestCase {
     //     ")"
     //     ))))
   }
+
+  func testEmptyRules() throws {
+    let g = try """
+      A ::= _ | B
+      B ::= A
+      """
+      .asTestGrammar()
+    var r = TestRecognizer(g, startSymbol: "A")
+    XCTAssertNil(r.recognize(""), "\n\(r)")
+  }
+
+  func testRightRecursion() throws {
+    let g = try """
+      A ::= 'a' A | _
+      """
+      .asTestGrammar()
+    var r = TestRecognizer(g, startSymbol: "A")
+
+    XCTAssertNil(r.recognize("aaaaaaa"))
+    XCTAssertNil(r.recognize(""), "\n\(r)")
+  }
+
+  func testRightRecursion2() throws {
+    let g = try """
+      A ::= 'a' A | 'a'
+      """
+      .asTestGrammar()
+    var r = TestRecognizer(g, startSymbol: "A")
+
+    XCTAssertNil(r.recognize("aaaaaa"))
+    XCTAssertNil(r.recognize("a"))
+    XCTAssertNotNil(r.recognize(""), "\n\(r)")
+  }
 }

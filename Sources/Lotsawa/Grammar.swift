@@ -125,12 +125,6 @@ extension Grammar {
     Position(rules[Int(r.ordinal)].rhs.startIndex)
   }
 
-  /// Returns the LHS symbol of the rule whose last RHS symbol is at `p`
-  func lhs(ofRuleWithPenultimatePosition p: Position) -> Symbol {
-    assert(recognized(at: p) == nil, "not a penultimate RHS position")
-    return recognized(at: p + 1)!
-  }
-
   /// Returns the ID of the rule containing `p`.
   public func containingRule(_ p: Position) -> RuleID {
     RuleID(ordinal: Size(ruleStart.partitionPoint { y in y > p } - 1))
@@ -179,7 +173,7 @@ extension Grammar {
   ///
   /// - Nulling symbols in `self` do not appear in the result:
   /// - All other symbols in `self` appear in the result, and derive the same non-empty terminal
-  ///   strings.
+  ///   strings as in `self`.
   /// - Naturally, no symbols in the result derive the empty string.
   /// - The result contains some newly-synthesized symbols whose values are greater than
   ///   `self.maxSymbol`.
@@ -189,7 +183,7 @@ extension Grammar {
   func eliminatingNulls() -> (Self, DiscreteMap<Position, Position>) {
     var cooked = Self()
     cooked.maxSymbol = maxSymbol
-    var mapBack = DiscreteMap<Position, Position>()
+    var rawPositions = DiscreteMap<Position, Position>()
     let n = nullSymbolSets()
 
     var buffer: [RewriteSymbol] = []
@@ -208,9 +202,9 @@ extension Grammar {
         with: CollectionOfOne((position: 0, symbol: r.lhs, isNullable: false)))
 
       buffer.append(contentsOf: nonNullingRHS)
-      cooked.addDenullified(buffer[...], updating: &mapBack)
+      cooked.addDenullified(buffer[...], updating: &rawPositions)
     }
-    return (cooked, mapBack)
+    return (cooked, rawPositions)
   }
 
   /// Given a non-nulling rule from a raw grammar with its LHS in `rawRule.first` and the
@@ -293,7 +287,8 @@ extension Grammar {
     }
   }
 
-  /// Adds a rule deriving `rhs` from `lhs`.
+  /// Adds a rule deriving `rhs` from `lhs`, registering correspondences between positions in `self`
+  /// and those in the un-denullified grammar in `rawPositions`.
   ///
   /// - Precondition: `lhs` contains exactly one symbol.
   mutating func addRewrittenRule(

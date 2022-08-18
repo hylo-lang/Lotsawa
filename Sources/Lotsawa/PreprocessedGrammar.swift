@@ -12,7 +12,7 @@ public struct PreprocessedGrammar<Config: GrammarConfig> {
   public init(_ raw: Grammar<Config>) {
     (base, rawPosition) = raw.eliminatingNulls()
     rulesByLHS = MultiMap(grouping: base.ruleIDs, by: base.lhs)
-    leoPositions = raw.leoPositions()
+    leoPositions = base.leoPositions()
   }
 }
 

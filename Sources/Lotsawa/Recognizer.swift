@@ -175,7 +175,7 @@ extension Recognizer {
 
     for prefix in prefixSource[i...].lazy.map(\.item)
           .droppingAdjacentDuplicates()
-          .prefix(while: { x in x.transitionSymbol == s})
+          .prefix(while: { x in x.transitionSymbol == s })
     {
       derive(.init(prefix.advanced(in: g), predotOrigin: origin))
     }
@@ -183,7 +183,8 @@ extension Recognizer {
 
   func leoPredecessor(_ x: Item) -> Item? {
     let source = derivationSet(x.origin)
-    let s = g.lhs(ofRuleWithPenultimatePosition: x.dotPosition)
+    assert(g.recognized(at: x.dotPosition) == nil, "unexpectedly complete item")
+    let s = g.recognized(at: x.dotPosition + 1)!
     if let l = source.at(source.partitionPoint { g in g.item.transitionSymbol ?? -1 >= s  }),
        l.item.isLeo
     { return l.item }
@@ -193,6 +194,7 @@ extension Recognizer {
   /// Ensures that `x` is represented in the current derivation set, and draws any consequent
   /// conclusions.
   mutating func derive(_ x: DerivationGroup) {
+    assert(!x.item.isLeo)
     let i = positionInCurrentSet(x)
     let next = currentDerivationSet.at(i)
     // Bail if the derivation group is already known.
