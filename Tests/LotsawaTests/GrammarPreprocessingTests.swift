@@ -91,11 +91,11 @@ class GrammarPreprocessingTests: XCTestCase {
 
     let expectedPositions = Set(
       """
-      b1 ::= c1.b1
-      c1 ::= e1.d1
-      d1 ::= .c1
-      d1 ::= .f1
-      f1 ::= g1.c1
+      b1 ::= c1•b1
+      c1 ::= e1•d1
+      d1 ::= •c1
+      d1 ::= •f1
+      f1 ::= g1•c1
       """
         .split(separator: "\n").map(String.init))
 
@@ -153,13 +153,18 @@ class GrammarPreprocessingTests: XCTestCase {
         // Generate all raw parses into rawParses, removing any empty nonterminals and any entirely
         // empty parses.
         var rawParses = Set<TinyGrammar.Parse>()
+        var foundEmpty = false
         raw.generateParses(0) { p in
           let p1 = p.eliminatingNulls()
-          if !p1.moves.isEmpty {
+          if p1.moves.isEmpty {
+            foundEmpty = true
+          }
+          else {
             let x = rawParses.insert(p1)
             XCTAssert(x.inserted, "\(p1) generated twice")
           }
         }
+        XCTAssertEqual(foundEmpty, isNullable)
 
         // Generate all cooked parses into cookedParses, eliminating any synthesized nonterminals
         // and transforming positions back into their raw equivalents.
