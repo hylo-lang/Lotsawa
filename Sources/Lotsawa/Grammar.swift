@@ -19,7 +19,7 @@ public struct Grammar<Config: GrammarConfig> {
   /// its high bit set.
   ///
   /// For example A -> B C is stored as the subsequence [B, C, A | *highbit*].
-  private var ruleStore: [Config.Symbol] = []
+  private(set) var ruleStore: [Config.Symbol] = []
 
   /// Where each rule begins in `ruleStore`, in sorted order, plus a sentinel that marks the end of
   /// rule storage.
@@ -66,8 +66,8 @@ extension Grammar {
   ///
   /// Symbols on the LHS of a rule have a special representation in `ruleStore`.
   static func lhsSymbol(_ stored: Symbol) -> Symbol {
-    assert(stored & ~Symbol.min != stored)
-    return stored & ~Symbol.min
+    assert(stored < 0)
+    return ~stored
   }
 
   /// A Backus-Naur Form (BNF) rule, or production.
@@ -105,7 +105,7 @@ extension Grammar {
     maxSymbol = max(maxSymbol, max(lhs, rhs.max() ?? -1))
     ruleStore.amortizedLinearReserveCapacity(ruleStore.count + rhs.count + 1)
     ruleStore.append(contentsOf: rhs)
-    ruleStore.append(lhs | Symbol.min)
+    ruleStore.append(~lhs)
     ruleStart.append(Size(ruleStore.count))
     return RuleID(ordinal: Size(ruleStart.count - 2))
   }
@@ -306,7 +306,7 @@ extension Grammar {
       ruleStore.append(s.symbol)
     }
     // TODO: think about whether we want to append positions for before/after the lhs.
-    ruleStore.append(lhs.first!.symbol | Symbol.min)
+    ruleStore.append(~lhs.first!.symbol)
     ruleStart.append(Size(ruleStore.count))
   }
 
