@@ -4,7 +4,7 @@ public struct Chart<GConf: GrammarConfig>
   public typealias Grammar = Lotsawa.Grammar<GConf>
 
   /// Storage for all DerivationGroups, grouped by Earleme and sorted within each Earleme.
-  private var entries: [Entry]
+  private var entries: [Entry] = []
 
   /// The position in `chart` where each Earley/derivation set begins, plus a sentinel for the end
   /// of the last complete set.
@@ -60,9 +60,25 @@ extension Chart {
       assert(postdot >> 14 == 0, "Symbol out of range")
       storage = (
         dotPosition_originLow:
-          UInt32(ruleStart) << 16 | UInt32(UInt16(truncatingIfNeeded: origin)),
+          UInt32(UInt16(truncatingIfNeeded: origin)) << 16 | UInt32(ruleStart),
         originHi_isEarley_symbol_isCompletion: (origin >> 16 | (1 << 16) | UInt32(postdot) << 17))
+      assert(isEarley)
+      assert(self.origin == origin)
+      assert(self.dotPosition == ruleStart)
+      assert(self.transitionSymbol == postdot)
+      assert(!isCompletion)
     }
+
+    init(memoizing e: Self, transitionSymbol: Symbol) {
+      self = e
+      self.isLeo = true
+      self.symbol = transitionSymbol
+      assert(!isEarley)
+      assert(self.origin == e.origin)
+      assert(self.dotPosition == e.dotPosition)
+      assert(self.transitionSymbol == transitionSymbol)
+      assert(!isCompletion)
+   }
 
     /// Lookup key.
     var key: UInt64 {
@@ -73,11 +89,24 @@ extension Chart {
     /// Lookup key for the start of the Leo-Earley sequence expecting a given symbol.
     ///
     /// Any Leo item always precedes Earley derivations in this sequence.
-    var transitionKey: UInt32 { originHi_isEarley_symbol_isCompletion }
+    var transitionKey: UInt32 { storage.originHi_isEarley_symbol_isCompletion }
 
+    /// Lookup key for the start of the Leo-Earley sequence expecting symbol `s`.
     static func transitionKey(_ s: Symbol) -> UInt32 {
       return UInt32(s) << 17
     }
+
+
+    /// Lookup key for the start of the sequence of completions for a given symbol
+    ///
+    /// Any Leo item always precedes Earley derivations in this sequence.
+    var completionKey: UInt32 { storage.originHi_isEarley_symbol_isCompletion }
+
+    /// Lookup key for the start of the sequence of completions of symbol `s`.
+    static func completionKey(_ s: Symbol) -> UInt32 {
+      return UInt32(~s) << 17
+    }
+
 
     /// Returns `true` iff `lhs` should precede `rhs` in a Earley set.
     static func < (lhs: Self, rhs: Self) -> Bool {
@@ -94,14 +123,44 @@ extension Chart {
       Int32(bitPattern: storage.originHi_isEarley_symbol_isCompletion) < 0
     }
 
-    /// The LHS symbol if `isCompletion` is true; otherwise the transition symbol.
-    var symbol: Int16 {
-      Int16((storage.originHi_isEarley_symbol_isCompletion << 1) >> 18)
+    /// The transition symbol if `self` is not a completion; otherwise the bitwise inverse of the
+    /// LHS symbol.
+    fileprivate var symbol: Symbol {
+      get {
+        Symbol(truncatingIfNeeded: Int32(bitPattern: storage.originHi_isEarley_symbol_isCompletion) >> 17)
+      }
+      set {
+        // Mask off the hi 15 bits
+        storage.originHi_isEarley_symbol_isCompletion &= ~0 >> 15
+
+        // Mix in the low 15 bits of s, which sets isCompletion if needed.
+        storage.originHi_isEarley_symbol_isCompletion |= UInt32(newValue) << (32 - 15)
+      }
+    }
+
+    var transitionSymbol: Symbol? {
+      isCompletion ? nil : symbol
+    }
+
+    var lhs: Symbol? {
+      isCompletion ? ~symbol : nil
     }
 
     /// True iff `self` is a Leo transitional item.
-    var isLeo: Bool {
-      storage.originHi_isEarley_symbol_isCompletion >> 16 & 1 == 0
+    private(set) var isLeo: Bool {
+      get { !isEarley }
+      set { isEarley = !newValue }
+    }
+
+    /// True iff `self` is an Earley item.
+    private(set) var isEarley: Bool {
+      get {
+        storage.originHi_isEarley_symbol_isCompletion >> 16 & 1 != 0
+      }
+      set {
+        if newValue { storage.originHi_isEarley_symbol_isCompletion |= 1 << 16 }
+        else { storage.originHi_isEarley_symbol_isCompletion &= ~(1 << 16) }
+      }
     }
 
     /// The input position where this partial recognition started.
@@ -114,21 +173,33 @@ extension Chart {
     }
 
     func advanced(in g: Grammar) -> Item {
-      assert(!isLeo)
+      assert(isEarley)
       assert(!isCompletion)
 
-      // Sign-extends small LHS symbol representations to 16 bits; leaves RHS symbol values alone.
-      let s = Int16(g.ruleStore[Int(dotPosition)])
       var r = self
       // Advance the dot
       r.storage.dotPosition_originLow += 1
+      
+      // Sign-extends small LHS symbol representations to 16 bits; leaves RHS symbol values alone.
+      let s = UInt16(bitPattern: Int16(g.ruleStore[Int(r.dotPosition)]))
+      r.symbol = s
 
-      // Mask off the hi 15 bits
-      r.storage.originHi_isEarley_symbol_isCompletion &= ~(~0 >> 15)
+      assert(r.isEarley)
+      assert(r.origin == self.origin)
+      assert(r.dotPosition == self.dotPosition + 1)
+      assert(r.symbol == s)
+      assert(r.isCompletion == (Int16(bitPattern: s) < 0))
+      return r
+    }
 
-      // Mix in the low 15 bits of s, which sets isCompletion if needed.
-      r.storage.originHi_isEarley_symbol_isCompletion |= UInt32(s) << (32 - 15)
-
+    /// If `self` is a Leo item, returns the Earley item it memoizes, assuming `g` is the grammar
+    /// being parsed.
+    func leoMemo(in g: Grammar) -> Item? {
+      if isEarley { return nil }
+      // A possible optimization: store the postdot symbol in the predotOrigin field of Leo items.
+      var r = self
+      r.symbol = Symbol(truncatingIfNeeded: g.ruleStore[.init(dotPosition)])
+      r.isEarley = true
       return r
     }
   }
@@ -151,13 +222,45 @@ extension Chart {
     }
   }
 
-  /// Inserts `e` into the current Earley set, returning `true` iff it was not already present.
+  /// Inserts `e` into the current Earley set, returning `true` iff `e.item` was not already present.
   @discardableResult
   mutating func insert(_ e: Entry) -> Bool {
     let i = currentEarleySet.partitionPoint { y in y >= e }
-    if entries.at(i) == e { return false }
+    let next = entries.at(i)
+    if next == e { return false }
     entries.insert(e, at: i)
-    return true
+    return next?.item != e.item && currentEarleySet[..<i].last?.item != e.item
+  }
+
+  func transitionItems(on s: Symbol, inEarleySet i: UInt32)
+    -> LazyPrefixWhileSequence<
+         LazyMapSequence<LazyFilterSequence<EarleySet.SubSequence.Indices>, Item>>
+  {
+    let ithSet = earleySet(i)
+    let k = Item.transitionKey(s)
+
+    let j = ithSet.partitionPoint { d in d.item.transitionKey >= k }
+    let items = ithSet[j...].lazy.map(\.item).droppingAdjacentDuplicates()
+    return items.prefix(while: { x in x.symbol == s })
+  }
+
+  func completions(of s: Symbol, inEarleySet i: UInt32)
+    -> LazyPrefixWhileSequence<EarleySet.SubSequence>
+  {
+    let ithSet = earleySet(i)
+    let k = Item.completionKey(s)
+
+    let j = ithSet.partitionPoint { d in d.item.completionKey >= k }
+    let r0 = ithSet[j...]
+    let r = r0.lazy.prefix(while: { x in x.item.lhs == s })
+    return r
+  }
+
+  /// Completes the current earleme and moves on to the next one, returning `true` unless no
+  /// progress was made in the current earleme.
+  mutating func finishEarleme() -> Bool {
+    setStart.append(entries.count)
+    return setStart.last != setStart.dropLast().last
   }
 }
 

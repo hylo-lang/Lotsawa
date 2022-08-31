@@ -39,21 +39,20 @@ struct TestRecognizer: CustomStringConvertible {
 
       result.append("---------- \(earleme) ----------\n")
 
-      var allDerivations = earleme < base.currentEarleme
-        ? base.derivationSet(earleme) : base.currentDerivationSet
+      var allDerivations = base.earleySet(earleme)
 
       while !allDerivations.isEmpty {
         let currentItem = allDerivations.first!.item
         let itemDerivations = allDerivations.prefix { x in x.item == currentItem }
 
         if currentItem.isLeo {
-          result.append("Leo(\(language.text(currentItem.transitionSymbol!))) ")
+          result.append("Leo(\(language.text(.init(currentItem.transitionSymbol!)))) ")
         }
-        result.append(language.dottedText(rawPosition[currentItem.dotPosition]))
+        result.append(language.dottedText(rawPosition[.init(currentItem.dotPosition)]))
 
-        if itemDerivations.first!.predotOrigin != nil {
+        if itemDerivations.first!.item.isEarley == true {
           result.append(" (\(currentItem.origin))")
-          result.append(" \(itemDerivations.map { d in d.predotOrigin! })")
+          result.append(" \(itemDerivations.map { d in d.predotOrigin })")
         }
         result.append("\n")
         allDerivations = allDerivations[itemDerivations.endIndex...]
