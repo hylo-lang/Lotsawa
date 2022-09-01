@@ -2,70 +2,74 @@ import Lotsawa
 
 import XCTest
 
+extension Symbol {
+  init<I: BinaryInteger>(_ id: I) { self = Symbol(id: ID(id)) }
+}
+
 class GrammarTests: XCTestCase {
   func testEmpty() {
-    let g = DefaultGrammar(recognizing: 0)
+    let g = DefaultGrammar(recognizing: Symbol(0))
     XCTAssertEqual(g.size, 0)
     XCTAssert(g.ruleIDs.isEmpty)
     XCTAssert(g.rules.isEmpty)
   }
 
   func test1ByteSymbols() {
-    struct OneByteSymbols: GrammarConfig { typealias Symbol = Int8 }
-    var g = Grammar<OneByteSymbols>(recognizing: 0)
-    let r0 = g.addRule(lhs: 0, rhs: EmptyCollection())
+    var g = Grammar<Int8>(recognizing: Symbol(0))
+    let r0 = g.addRule(lhs: Symbol(0), rhs: EmptyCollection())
     XCTAssertEqual(r0.ordinal, 0)
     XCTAssertEqual(g.size, 1)
 
     XCTAssertEqual(Array(g.ruleIDs), [r0])
-    XCTAssertEqual([[0]], g.rules.map { r in [r.lhs] + r.rhs })
+    XCTAssertEqual([[Symbol(0)]], g.rules.map { r in [r.lhs] + r.rhs })
 
-    let r1 = g.addRule(lhs: Int8.max, rhs: (1...4).map { i in Int8.max - Int8(i) })
+    let r1 = g.addRule(
+      lhs: Symbol(Int8.max),
+      rhs: (1...4).map { i in Symbol(Int8.max - Int8(i)) })
     XCTAssertEqual(g.size, 6)
 
     XCTAssertEqual(Array(g.ruleIDs), [r0, r1])
-    XCTAssertEqual(
-      [[0], (0...4).map { i in Int8.max - Int8(i) }],
-      g.rules.map { r in [r.lhs] + r.rhs })
 
-    let r2 = g.addRule(lhs: Int8.max, rhs: CollectionOfOne(0))
+    XCTAssertEqual(
+      [[0], (0...4).map { i in Symbol.ID(Int8.max - Int8(i)) }],
+      g.rules.map { r in [r.lhs.id] + r.rhs.map(\.id) })
+
+    let r2 = g.addRule(lhs: Symbol(Int8.max), rhs: CollectionOfOne(Symbol(0)))
     XCTAssertEqual(g.size, 8)
     XCTAssertEqual(Array(g.ruleIDs), [r0, r1, r2])
     XCTAssertEqual(
-      [[0], (0...4).map { i in Int8.max - Int8(i) }, [Int8.max, 0]],
-      g.rules.map { r in [r.lhs] + r.rhs })
+      [[0], (0...4).map { i in Symbol.ID(Int8.max - Int8(i)) }, [Symbol.ID(Int8.max), 0]],
+      g.rules.map { r in [r.lhs.id] + r.rhs.map(\.id) })
 
     while g.size < Int8.max {
-      g.addRule(lhs: Int8(g.size), rhs: EmptyCollection())
+      g.addRule(lhs: Symbol(g.size), rhs: EmptyCollection())
     }
   }
 
   func test2ByteSymbols1ByteSize() {
-    struct TwoByteSymbolsOneByteSize: GrammarConfig {
-      typealias Symbol = Int16
-      typealias Size = UInt8
-    }
-    var g = Grammar<TwoByteSymbolsOneByteSize>(recognizing: 0)
-    let r0 = g.addRule(lhs: 0, rhs: EmptyCollection())
+    var g = Grammar<Int16>(recognizing: Symbol(0))
+    let r0 = g.addRule(lhs: Symbol(0), rhs: EmptyCollection())
     XCTAssertEqual(r0.ordinal, 0)
     XCTAssertEqual(g.size, 1)
 
     XCTAssertEqual(Array(g.ruleIDs), [r0])
-    XCTAssertEqual([[0]], g.rules.map { r in [r.lhs] + r.rhs })
+    XCTAssertEqual([[0]], g.rules.map { r in [r.lhs.id] + r.rhs.map(\.id) })
 
-    let r1 = g.addRule(lhs: Int16.max, rhs: (1...4).map { i in Int16.max - Int16(i) })
+    let r1 = g.addRule(
+      lhs: Symbol(Symbol.maxID),
+      rhs: (1...4).map { i in Symbol(Symbol.maxID - Int16(i)) })
     XCTAssertEqual(g.size, 6)
 
     XCTAssertEqual(Array(g.ruleIDs), [r0, r1])
     XCTAssertEqual(
-      [[0], (0...4).map { i in Int16.max - Int16(i) }],
-      g.rules.map { r in [r.lhs] + r.rhs })
+      [[0], (0...4).map { i in Symbol.maxID - Int16(i) }],
+      g.rules.map { r in [r.lhs.id] + r.rhs.map(\.id) })
 
-    let r2 = g.addRule(lhs: Int16.max, rhs: CollectionOfOne(0))
+    let r2 = g.addRule(lhs: Symbol(Symbol.maxID), rhs: CollectionOfOne(Symbol(0)))
     XCTAssertEqual(g.size, 8)
     XCTAssertEqual(Array(g.ruleIDs), [r0, r1, r2])
     XCTAssertEqual(
-      [[0], (0...4).map { i in Int16.max - Int16(i) }, [Int16.max, 0]],
-      g.rules.map { r in [r.lhs] + r.rhs })
+      [[0], (0...4).map { i in Symbol.maxID - Int16(i) }, [Symbol.maxID, 0]],
+      g.rules.map { r in [r.lhs.id] + r.rhs.map(\.id) })
   }
 }

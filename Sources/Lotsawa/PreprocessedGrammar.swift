@@ -1,16 +1,14 @@
-public struct PreprocessedGrammar<Config: GrammarConfig> {
-  typealias Position = Grammar<Config>.Position
-  typealias RuleID = Grammar<Config>.RuleID
-  typealias Symbol = Grammar<Config>.Symbol
+public struct PreprocessedGrammar<StoredSymbol: SignedInteger & FixedWidthInteger> {
+  typealias Position = Grammar<StoredSymbol>.Position
 
-  let base: Grammar<Config>
+  let base: Grammar<StoredSymbol>
   let rawPosition: DiscreteMap<Position, Position>
   let rulesByLHS: MultiMap<Symbol, RuleID>
   /// The position, for each right-recursive rule, of its last RHS symbol.
   let leoPositions: Set<Position>
   let isNullable: Bool
 
-  public init(_ raw: Grammar<Config>) {
+  public init(_ raw: Grammar<StoredSymbol>) {
     (base, rawPosition, isNullable) = raw.eliminatingNulls()
     rulesByLHS = MultiMap(grouping: base.ruleIDs, by: base.lhs)
     leoPositions = base.leoPositions()
@@ -19,7 +17,7 @@ public struct PreprocessedGrammar<Config: GrammarConfig> {
 
 extension PreprocessedGrammar {
   internal init(
-    base: Grammar<Config>,
+    base: Grammar<StoredSymbol>,
     rulesByLHS: MultiMap<Symbol, RuleID>,
     leoPositions: Set<Position>,
     rawPosition: DiscreteMap<Position, Position>,
@@ -34,7 +32,7 @@ extension PreprocessedGrammar {
 
   func serialized() -> String {
     """
-    PreprocessedGrammar<\(Config.self)>(
+    PreprocessedGrammar<\(StoredSymbol.self)>(
       base: \(base.serialized()),
       rulesByLHS: \(rulesByLHS.storage),
       rawPosition: \(rawPosition.serialized()),

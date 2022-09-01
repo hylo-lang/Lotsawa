@@ -1,8 +1,6 @@
 /// Storage for incremental recognition results and the core representation of a parse forest.
-public struct Chart<GConf: GrammarConfig>
+public struct Chart
 {
-  public typealias Grammar = Lotsawa.Grammar<GConf>
-
   /// Storage for all DerivationGroups, grouped by Earleme and sorted within each Earleme.
   private var entries: [Entry] = []
 
@@ -11,11 +9,10 @@ public struct Chart<GConf: GrammarConfig>
   private var setStart: [Array<Entry>.Index] = [0]
 }
 
-extension Chart {
-  typealias Symbol = UInt16
-  typealias SourcePosition = UInt32
-  typealias DotPosition = UInt16
+public typealias SourcePosition = UInt32
+public typealias DotPosition = UInt16
 
+extension Chart {
   mutating func removeAll() {
     entries.removeAll(keepingCapacity: true)
     setStart.removeAll(keepingCapacity: true)
@@ -57,11 +54,10 @@ extension Chart {
       originHi_isEarley_symbol_isCompletion: UInt32)
 
     init(predicting ruleStart: DotPosition, at origin: SourcePosition, postdot: Symbol) {
-      assert(postdot >> 14 == 0, "Symbol out of range")
       storage = (
         dotPosition_originLow:
           UInt32(UInt16(truncatingIfNeeded: origin)) << 16 | UInt32(ruleStart),
-        originHi_isEarley_symbol_isCompletion: (origin >> 16 | (1 << 16) | UInt32(postdot) << 17))
+        originHi_isEarley_symbol_isCompletion: (origin >> 16 | (1 << 16) | UInt32(postdot.id) << 17))
       assert(isEarley)
       assert(self.origin == origin)
       assert(self.dotPosition == ruleStart)
@@ -72,7 +68,7 @@ extension Chart {
     init(memoizing e: Self, transitionSymbol: Symbol) {
       self = e
       self.isLeo = true
-      self.symbol = transitionSymbol
+      self.symbolID = transitionSymbol.id
       assert(!isEarley)
       assert(self.origin == e.origin)
       assert(self.dotPosition == e.dotPosition)
@@ -93,7 +89,7 @@ extension Chart {
 
     /// Lookup key for the start of the Leo-Earley sequence expecting symbol `s`.
     static func transitionKey(_ s: Symbol) -> UInt32 {
-      return UInt32(s) << 17
+      return UInt32(s.id) << 17
     }
 
 
@@ -104,7 +100,7 @@ extension Chart {
 
     /// Lookup key for the start of the sequence of completions of symbol `s`.
     static func completionKey(_ s: Symbol) -> UInt32 {
-      return UInt32(~s) << 17
+      return UInt32(truncatingIfNeeded: ~s.id) << 17
     }
 
 
@@ -125,25 +121,25 @@ extension Chart {
 
     /// The transition symbol if `self` is not a completion; otherwise the bitwise inverse of the
     /// LHS symbol.
-    fileprivate var symbol: Symbol {
+    fileprivate var symbolID: Symbol.ID {
       get {
-        Symbol(truncatingIfNeeded: Int32(bitPattern: storage.originHi_isEarley_symbol_isCompletion) >> 17)
+        .init(truncatingIfNeeded: Int32(bitPattern: storage.originHi_isEarley_symbol_isCompletion) >> 17)
       }
       set {
         // Mask off the hi 15 bits
         storage.originHi_isEarley_symbol_isCompletion &= ~0 >> 15
 
-        // Mix in the low 15 bits of s, which sets isCompletion if needed.
-        storage.originHi_isEarley_symbol_isCompletion |= UInt32(newValue) << (32 - 15)
+        // Mix in the low 15 bits of newValue, which sets isCompletion if needed.
+        storage.originHi_isEarley_symbol_isCompletion |= UInt32(truncatingIfNeeded: newValue) << (32 - 15)
       }
     }
 
     var transitionSymbol: Symbol? {
-      isCompletion ? nil : symbol
+      isCompletion ? nil : Symbol(id: symbolID)
     }
 
     var lhs: Symbol? {
-      isCompletion ? ~symbol : nil
+      isCompletion ? Symbol(id: ~symbolID) : nil
     }
 
     /// True iff `self` is a Leo transitional item.
@@ -172,7 +168,7 @@ extension Chart {
       UInt16(truncatingIfNeeded: storage.dotPosition_originLow)
     }
 
-    func advanced(in g: Grammar) -> Item {
+    func advanced<S>(in g: Grammar<S>) -> Item {
       assert(isEarley)
       assert(!isCompletion)
 
@@ -181,24 +177,24 @@ extension Chart {
       r.storage.dotPosition_originLow += 1
       
       // Sign-extends small LHS symbol representations to 16 bits; leaves RHS symbol values alone.
-      let s = UInt16(bitPattern: Int16(g.ruleStore[Int(r.dotPosition)]))
-      r.symbol = s
+      let s = Int16(g.ruleStore[Int(r.dotPosition)])
+      r.symbolID = s
 
       assert(r.isEarley)
       assert(r.origin == self.origin)
       assert(r.dotPosition == self.dotPosition + 1)
-      assert(r.symbol == s)
-      assert(r.isCompletion == (Int16(bitPattern: s) < 0))
+      assert(r.symbolID == s)
+      assert(r.isCompletion == (s < 0))
       return r
     }
 
     /// If `self` is a Leo item, returns the Earley item it memoizes, assuming `g` is the grammar
     /// being parsed.
-    func leoMemo(in g: Grammar) -> Item? {
+    func leoMemo<S>(in g: Grammar<S>) -> Item? {
       if isEarley { return nil }
       // A possible optimization: store the postdot symbol in the predotOrigin field of Leo items.
       var r = self
-      r.symbol = Symbol(truncatingIfNeeded: g.ruleStore[.init(dotPosition)])
+      r.symbolID = Symbol.ID(truncatingIfNeeded: g.ruleStore[.init(dotPosition)])
       r.isEarley = true
       return r
     }
@@ -241,7 +237,7 @@ extension Chart {
 
     let j = ithSet.partitionPoint { d in d.item.transitionKey >= k }
     let items = ithSet[j...].lazy.map(\.item).droppingAdjacentDuplicates()
-    return items.prefix(while: { x in x.symbol == s })
+    return items.prefix(while: { x in x.symbolID == s.id })
   }
 
   func completions(of s: Symbol, inEarleySet i: UInt32)

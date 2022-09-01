@@ -2,11 +2,7 @@
 
 import XCTest
 
-struct TinyConfig: GrammarConfig {
-  typealias Symbol = Int8
-  typealias Size = UInt8
-}
-typealias TinyGrammar = Grammar<TinyConfig>
+typealias TinyGrammar = Grammar<Int8>
 
 class GrammarPreprocessingTests: XCTestCase {
   func testTrivialNullable() throws {
@@ -111,7 +107,7 @@ class GrammarPreprocessingTests: XCTestCase {
     g.addRule(lhs: 1, rhs: [1, 3])
     g.addRule(lhs: 2, rhs: [4])
     g.addRule(lhs: 2, rhs: [4, 2])
-    g.generateParses(0, maxDepth: 6) { p in
+    g.generateParses(Symbol(0), maxDepth: 6) { p in
       print(p.lazy.map(String.init(describing:)).joined(separator: " "))
     }
   }
@@ -121,11 +117,12 @@ class GrammarPreprocessingTests: XCTestCase {
 
     // Exhaustively test all 3^8 combinations of grammars containing S -> RHS
     // where RHS has 0-8 symbols and each symbol of RHS is a unique symbol that is either nulling, nullable, or non-nullable.
-    let maxRHSCount: TinyGrammar.Symbol = 8
+    let maxRHSCount: Symbol.ID = 8
     for n in 0...maxRHSCount {
-      var base = TinyGrammar(recognizing: 0)
-      let rhs = 1..<n+1
-      base.addRule(lhs: 0, rhs: rhs)
+      var base = TinyGrammar(recognizing: Symbol(0))
+      let rhs = (1..<n+1).lazy.map(Symbol.init(id:))
+
+      base.addRule(lhs: Symbol(0), rhs: rhs)
       let combinations = repeatElement(3, count: Int(n)).reduce(1, *)
       for combo in 0..<combinations {
         var raw = base
@@ -134,7 +131,7 @@ class GrammarPreprocessingTests: XCTestCase {
         for s in rhs {
           defer { c /= 3 }
           if c % 3 == 0 { continue } // non-nullable
-          else if c % 3 == 1 { raw.addRule(lhs: s, rhs: CollectionOfOne(s + n)) }
+          else if c % 3 == 1 { raw.addRule(lhs: s, rhs: CollectionOfOne(Symbol(s.id + n))) }
           raw.addRule(lhs: s, rhs: EmptyCollection())
         }
 
@@ -154,7 +151,7 @@ class GrammarPreprocessingTests: XCTestCase {
         // empty parses.
         var rawParses = Set<TinyGrammar.Parse>()
         var foundEmpty = false
-        raw.generateParses(0) { p in
+        raw.generateParses(Symbol(0)) { p in
           let p1 = p.eliminatingNulls()
           if p1.moves.isEmpty {
             foundEmpty = true
@@ -169,10 +166,11 @@ class GrammarPreprocessingTests: XCTestCase {
         // Generate all cooked parses into cookedParses, eliminating any synthesized nonterminals
         // and transforming positions back into their raw equivalents.
         var cookedParses = Set<TinyGrammar.Parse>()
-        cooked.generateParses(0) { p in
+        cooked.generateParses(Symbol(0)) { p in
           XCTAssert(
             cookedParses.insert(
-              p.eliminatingSymbols(greaterThan: raw.maxSymbol, mappingPositionsThrough: rawPosition)
+              p.eliminatingSymbols(
+                greaterThan: Symbol(raw.maxSymbolID), mappingPositionsThrough: rawPosition)
             ).inserted, "\(p) generated twice; duplicate rule in rewrite?")
         }
 
@@ -187,7 +185,7 @@ class GrammarPreprocessingTests: XCTestCase {
 
 extension Grammar: CustomStringConvertible {
   /// Returns the human-readable name for `s`.
-  func text(_ s: Symbol) -> String { String(s) }
+  func text(_ s: Symbol) -> String { String(s.id) }
 
   /// Returns a human-readable representation of `r`.
   func rhsText(_ r: Rule) -> String {
@@ -268,7 +266,7 @@ extension Grammar {
       }
     }
 
-    func generateString(_ s: Array<Symbol>.SubSequence, then onward: ()->()) {
+    func generateString(_ s: Grammar.Rule.RHS, then onward: ()->()) {
       if s.isEmpty { return onward() }
       let depthMark = depth
       generateSymbol(at: .init(s.startIndex)) {
@@ -303,7 +301,7 @@ extension Grammar.ParseMove {
     }
   }
 
-  var symbol: Grammar.Symbol {
+  var symbol: Symbol {
     switch self {
     case let .terminal(s, _): return s
     case let .begin(s, _): return s
@@ -329,7 +327,7 @@ extension Grammar.Parse {
   }
 
   func eliminatingSymbols(
-    greaterThan maxSymbol: Grammar.Symbol,
+    greaterThan maxSymbol: Symbol,
     mappingPositionsThrough positionMap: DiscreteMap<Grammar.Position, Grammar.Position>
   ) -> Self {
     var r = Grammar.Parse()

@@ -2,8 +2,7 @@
 
 /// A Recognizer wrapper engineered for convenient testing
 struct TestRecognizer: CustomStringConvertible {
-  typealias Base = Recognizer<DefaultGrammarConfig>
-  typealias Symbol = Base.Symbol
+  typealias Base = Recognizer<Symbol.ID>
 
   var base: Base
   let language: TestGrammar
@@ -46,9 +45,9 @@ struct TestRecognizer: CustomStringConvertible {
         let itemDerivations = allDerivations.prefix { x in x.item == currentItem }
 
         if currentItem.isLeo {
-          result.append("Leo(\(language.text(.init(currentItem.transitionSymbol!)))) ")
+          result.append("Leo(\(language.text(currentItem.transitionSymbol!))) ")
         }
-        result.append(language.dottedText(rawPosition[.init(currentItem.dotPosition)]))
+        result.append(language.dottedText(rawPosition[currentItem.dotPosition]))
 
         if itemDerivations.first!.item.isEarley == true {
           result.append(" (\(currentItem.origin))")

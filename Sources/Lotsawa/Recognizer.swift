@@ -1,7 +1,7 @@
 /// A process that creates the parse forest for a token stream with respect to a `Grammar`.
-public struct Recognizer<GConf: GrammarConfig>
+public struct Recognizer<StoredSymbol: SignedInteger & FixedWidthInteger>
 {
-  public typealias Grammar = Lotsawa.Grammar<GConf>
+  public typealias Grammar = Lotsawa.Grammar<StoredSymbol>
 
   /// The grammar being recognized.
   private let g: Grammar
@@ -9,27 +9,21 @@ public struct Recognizer<GConf: GrammarConfig>
   /// True iff the raw grammar from which g was derived was nullable.
   private let acceptsNull: Bool
 
-  private let rulesByLHS: MultiMap<Grammar.Symbol, Grammar.RuleID>
+  private let rulesByLHS: MultiMap<Symbol, RuleID>
 
   private let leoPositions: Set<Grammar.Position>
 
   /// Storage for all DerivationGroups, grouped by Earleme and sorted within each Earleme.
-  private var chart = Chart<GConf>()
+  private var chart = Chart()
 
   /// A mapping from transition symbol to either a unique Leo candidate item, or to `nil` indicating
   /// that there were multiple candidates for that symbol.
-  private var leoCandidate: [Symbol: Chart<GConf>.Item?] = [:]
-}
-
-extension Recognizer {
-  public typealias Symbol = Grammar.Symbol
-  typealias DotPosition = Chart<GConf>.DotPosition
-  public typealias SourcePosition = UInt32
+  private var leoCandidate: [Symbol: Chart.Item?] = [:]
 }
 
 extension Recognizer {
   /// Creates an instance that recognizes `start` in `g`.
-  public init(_ g: PreprocessedGrammar<GConf>) {
+  public init(_ g: PreprocessedGrammar<StoredSymbol>) {
     self.g = g.base
     self.rulesByLHS = g.rulesByLHS
     self.leoPositions = g.leoPositions
@@ -48,10 +42,9 @@ extension Recognizer {
   public var currentEarleme: UInt32 { chart.currentEarleme }
 
   /// Returns the chart entry that predicts the start of `r`.
-  func prediction(_ r: Grammar.RuleID) -> Chart<GConf>.Entry {
+  func prediction(_ r: RuleID) -> Chart.Entry {
     .init(
-      item: .init(
-        predicting: .init(g.rhsStart(r)), at: currentEarleme, postdot: UInt16(g.rhs(r).first!)),
+      item: .init(predicting: .init(g.rhsStart(r)), at: currentEarleme, postdot: g.rhs(r).first!),
       predotOrigin: 0)
   }
 
@@ -68,7 +61,7 @@ extension Recognizer {
   /// Respond to the discovery of `s` starting at `origin` and ending in the current earleme.
   public mutating func discover(_ s: Symbol, startingAt origin: SourcePosition) {
     // The set containing potential predecessor derivations to be paired with the one for s.
-    let predecessors = chart.transitionItems(on: .init(s), inEarleySet: origin)
+    let predecessors = chart.transitionItems(on: s, inEarleySet: origin)
 
     if let head = predecessors.first,
        let d = head.leoMemo(in: g)
@@ -82,23 +75,22 @@ extension Recognizer {
     }
   }
 
-  func leoPredecessor(_ x: Chart<GConf>.Item) -> Chart<GConf>.Item? {
+  func leoPredecessor(_ x: Chart.Item) -> Chart.Item? {
     assert(g.recognized(at: .init(x.dotPosition)) == nil, "unexpectedly complete item")
     let s = g.recognized(at: .init(x.dotPosition + 1))!
 
-    let predecessors = chart.transitionItems(on: .init(s), inEarleySet: x.origin)
+    let predecessors = chart.transitionItems(on: s, inEarleySet: x.origin)
     if let head = predecessors.first, head.isLeo { return head }
     return nil
   }
 
   /// Ensures that `x` is represented in the current derivation set, and draws any consequent
   /// conclusions.
-  mutating func derive(_ x: Chart<GConf>.Entry) {
+  mutating func derive(_ x: Chart.Entry) {
     assert(!x.item.isLeo)
     if !chart.insert(x) { return }
 
-    if let t0 = x.item.transitionSymbol {
-      let t = Symbol(t0)
+    if let t = x.item.transitionSymbol {
       // Check incomplete items for leo candidate-ness.
       if leoPositions.contains(.init(x.item.dotPosition)) {
         { v in v = v == nil ? .some(x.item) : .some(nil) }(&leoCandidate[t])
@@ -118,7 +110,7 @@ extension Recognizer {
       let memo = leoPredecessor(d) ?? d.advanced(in: g)
       chart.insert(
         .init(
-          item: Chart.Item(memoizing: memo, transitionSymbol: .init(t)),
+          item: Chart.Item(memoizing: memo, transitionSymbol: t),
           predotOrigin: 0))
     }
     leoCandidate.removeAll(keepingCapacity: true)
@@ -137,24 +129,23 @@ extension Recognizer {
     if currentEarleme == 0 { return false }
     if currentEarleme == 1 && acceptsNull { return true }
 
-    let completions = chart.completions(
-      of: .init(g.startSymbol), inEarleySet: currentEarleme - 1)
+    let completions = chart.completions(of: g.startSymbol, inEarleySet: currentEarleme - 1)
 
     return completions.contains { d in d.item.origin == 0 }
   }
 
-  func earleySet(_ i: UInt32) -> Chart<GConf>.EarleySet {
+  func earleySet(_ i: UInt32) -> Chart.EarleySet {
     return i < currentEarleme ? chart.earleySet(i) : chart.currentEarleySet
   }
 }
 
 fileprivate extension Collection {
-  func transitionItems<GConf: GrammarConfig>(on s: GConf.Symbol)
+  func transitionItems(on s: Symbol)
     -> LazyPrefixWhileSequence<
-         LazyMapSequence<LazyFilterSequence<Self.SubSequence.Indices>, Chart<GConf>.Item>>
-    where Element == Chart<GConf>.Entry
+         LazyMapSequence<LazyFilterSequence<Self.SubSequence.Indices>, Chart.Item>>
+    where Element == Chart.Entry
   {
-    let k = Chart<GConf>.Item.transitionKey(.init(s))
+    let k = Chart.Item.transitionKey(s)
     let i = self.partitionPoint { d in d.item.transitionKey >= k }
 
     let r0 = self[i...].lazy.map(\.item)

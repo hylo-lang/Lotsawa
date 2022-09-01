@@ -13,13 +13,13 @@ struct TestGrammar {
   }
 
   /// The underlying raw grammar.
-  var raw = DefaultGrammar(recognizing: 0)
+  var raw = DefaultGrammar(recognizing: Symbol(0))
 
   /// A mapping from raw grammar symbol to its name in the parsed source.
   var symbolName: [String]
 
   /// A mapping from symbol name in the parsed source to raw grammar symbol.
-  var symbols: [String: Int] = [:]
+  var symbols: [String: Symbol] = [:]
 }
 
 extension TestGrammar {
@@ -28,7 +28,7 @@ extension TestGrammar {
     recognizing startSymbol: String, per bnf: String,
     file: String = #filePath, line: Int = #line
   ) throws {
-    symbols[startSymbol] = 0
+    symbols[startSymbol] = Symbol(0)
     symbolName = [startSymbol]
     let tokens = testGrammarScanner.tokens(
       in: bnf, fromFile: file, unrecognizedToken: .ILLEGAL_CHARACTER)
@@ -39,13 +39,13 @@ extension TestGrammar {
     let rules: AST.RuleList = try parser.endParsing()
 
     /// Translates t into a raw grammar symbol, memoizing name/symbol relationships.
-    func demandSymbol(_ t: AST.Token) -> Int {
+    func demandSymbol(_ t: AST.Token) -> Symbol {
       let name = String(t.text)
       if let r = symbols[name] { return r }
-      let id = symbolName.count
-      symbols[name] = id
+      let s = Symbol(symbolName.count)
+      symbols[name] = s
       symbolName.append(name)
-      return id
+      return s
     }
 
     for (lhsToken, alternatives) in rules {
@@ -68,7 +68,7 @@ extension String {
 
 extension TestGrammar: CustomStringConvertible {
   /// Returns the human-readable name for `s`.
-  func text(_ s: DefaultGrammar.Symbol) -> String { symbolName[s] }
+  func text(_ s: Symbol) -> String { symbolName[Int(s.id)] }
 
   /// Returns a human-readable representation of `r`.
   func text(_ r: DefaultGrammar.Rule) -> String {
@@ -81,13 +81,13 @@ extension TestGrammar: CustomStringConvertible {
     let r = raw.rules[Int(r0.ordinal)]
 
     let rhsText = r.rhs.lazy.map { s in text(s) }
-    let predotCount = p - r.rhs.startIndex
+    let predotCount = Int(p) - r.rhs.startIndex
     return text(r.lhs) + " ::= " + rhsText.prefix(predotCount).joined(separator: " ") + "•"
     + rhsText.dropFirst(predotCount).joined(separator: " ")
   }
 
   /// Returns the set of names of `s`'s elements.
-  func text(_ s: Set<DefaultGrammar.Symbol>) -> Set<String> { Set(s.lazy.map(text)) }
+  func text(_ s: Set<Symbol>) -> Set<String> { Set(s.lazy.map(text)) }
 
   /// Returns a human-readable representation of `self`.
   var description: String {

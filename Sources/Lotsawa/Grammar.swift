@@ -1,60 +1,76 @@
-/// A collection of parameter types for configuring a grammar.
-public protocol GrammarConfig {
-  /// A type that can represent the size of the grammar (the total length of all right-hand sides
-  /// of the rules plus the number of rules. Requires `Size.max <= Int.max`.
-  associatedtype Size: FixedWidthInteger = Int
+/// A symbol in the grammar with a 14-bit ID.
+public struct Symbol: Hashable, Comparable {
+  /// The identity of an instance.
+  public typealias ID = Int16
 
-  /// A type that can represent the number of symbols used in the grammar. Requires `Size.max <=
-  /// Int.max`.
-  associatedtype Symbol: SignedInteger & FixedWidthInteger = Int
+  /// Creates an instance with the given `id`.
+  ///
+  /// - Precondition: 0 ≤ id < (1 << 14).
+  public init(id: ID) {
+    precondition(id >= 0 && id <= Self.maxID)
+    self.id = id
+  }
+
+  /// The ID of `self`.
+  public private(set) var id: ID
+
+  /// Returns `true` iff `l` must precede `r` in a sort based on `id`.
+  public static func <(l: Self, r: Self) -> Bool { l.id < r.id }
+
+  public static var maxID: ID { (1 << 14) - 1 }
 }
+
+// A type that can represent the size of any grammar.
+public typealias GrammarSize = UInt16
+
+/// A rule identifier for public consumption.
+public struct RuleID: Hashable, Comparable {
+  public let ordinal: GrammarSize // This could sometimes be a smaller type, but is it worthwhile?
+
+  /// Returns `true` iff `l` must precede `r` in a sort based on `ordinal`.
+  public static func <(l: Self, r: Self) -> Bool { l.ordinal < r.ordinal }
+}
+
 
 /// A collection of Backus-Naur Form (BNF) rules, each defining a symbol
 /// on its left-hand side in terms of a string of symbols on its right-hand
 /// side.
-public struct Grammar<Config: GrammarConfig> {
+///
+/// - Parameter StoredSymbol: storage representation of `Symbol.id` values in this grammar.
+public struct Grammar<StoredSymbol: SignedInteger & FixedWidthInteger> {
+
   /// Storage for all the rules.
   ///
   /// Rules are packed end-to-end, with the RHS symbols in order, followed by the LHS symbol with
   /// its high bit set.
   ///
   /// For example A -> B C is stored as the subsequence [B, C, A | *highbit*].
-  private(set) var ruleStore: [Config.Symbol] = []
+  private(set) var ruleStore: [StoredSymbol] = []
 
   /// Where each rule begins in `ruleStore`, in sorted order, plus a sentinel that marks the end of
   /// rule storage.
-  private var ruleStart: [Config.Size] = [0]
+  private var ruleStart: [Size] = [0]
 
-  /// The greatest symbol value in any rule, or -1 if there are no rules.
-  private(set) var maxSymbol: Config.Symbol = -1
+  /// The greatest symbol ID value in any rule, or -1 if there are no rules.
+  private(set) var maxSymbolID: Symbol.ID = -1
 
-  let startSymbol: Config.Symbol
+  let startSymbol: Symbol
 
   /// Creates an empty instance intended (when rules have been added) to recognize `startSymbol`.
-  public init(recognizing startSymbol: Config.Symbol) { self.startSymbol = startSymbol }
+  public init(recognizing startSymbol: Symbol) { self.startSymbol = startSymbol }
 }
 
 extension Grammar {
-  /// The symbol identifier type (positive values only).
-  public typealias Symbol = Config.Symbol
-
-  /// The grammar size representation.
-  public typealias Size = Config.Size
+  /// A representation of the size of the grammar (the total length of all right-hand sides
+  /// of the rules plus the number of rules.
+  public typealias Size = GrammarSize
 
   /// A location in the grammar; e.g. the position of a dot in a partially-recognized rule.
-  public typealias Position = Config.Size
+  public typealias Position = GrammarSize
 
-  /// Returns the size of `self` (the sum of the length of each rule's RHS plus the number of rules,
-  /// to account for left-hand side symbols).
-  public var size: Int {
-    ruleStore.count
-  }
-
-  /// A rule identifier for public consumption.
-  public struct RuleID: Hashable, Comparable {
-    public let ordinal: Size // This could sometimes be a smaller type, but is it worthwhile?
-
-    public static func <(l: Self, r: Self) -> Bool { l.ordinal < r.ordinal }
+  /// Returns the size of `self` (the sum of the lengths of each rule's RHS and LHS).
+  public var size: Size {
+    Size(ruleStore.count)
   }
 
   /// The identifiers of all rules.
@@ -65,21 +81,25 @@ extension Grammar {
   /// Returns the LHS symbol represented by the value `stored` found in `ruleStore`.
   ///
   /// Symbols on the LHS of a rule have a special representation in `ruleStore`.
-  static func lhsSymbol(_ stored: Symbol) -> Symbol {
+  static func lhsSymbol(_ stored: StoredSymbol) -> Symbol {
     assert(stored < 0)
-    return ~stored
+    return Symbol(id: ~Symbol.ID(stored))
   }
 
   /// A Backus-Naur Form (BNF) rule, or production.
   public struct Rule {
     /// The RHS symbols followed by the LHS symbol, with its high bit set.
-    internal let storage: Array<Symbol>.SubSequence
+    internal let storage: Array<StoredSymbol>.SubSequence
 
     /// The symbol to be recognized.
     public var lhs: Symbol { Grammar.lhsSymbol(storage.last!) }
 
+    public typealias RHS = LazyMapSequence<Array<StoredSymbol>.SubSequence, Symbol>
+
     /// The sequence of symbols that lead to recognition of the `lhs`.
-    public var rhs: Array<Symbol>.SubSequence { storage.dropLast() }
+    public var rhs: RHS {
+      storage.dropLast().lazy.map { x in Symbol(id: Symbol.ID(x)) }
+    }
   }
 
   /// A random-access collection of Rules.
@@ -100,12 +120,10 @@ extension Grammar {
   public mutating func addRule<RHS: Collection>(lhs: Symbol, rhs: RHS) -> RuleID
     where RHS.Element == Symbol
   {
-    precondition(lhs >= 0)
-    precondition(rhs.allSatisfy { s in s >= 0 })
-    maxSymbol = max(maxSymbol, max(lhs, rhs.max() ?? -1))
+    maxSymbolID = max(maxSymbolID, max(lhs.id, rhs.lazy.map(\.id).max() ?? -1))
     ruleStore.amortizedLinearReserveCapacity(ruleStore.count + rhs.count + 1)
-    ruleStore.append(contentsOf: rhs)
-    ruleStore.append(~lhs)
+    ruleStore.append(contentsOf: rhs.lazy.map { s in StoredSymbol(s.id) })
+    ruleStore.append(StoredSymbol(~lhs.id))
     ruleStart.append(Size(ruleStore.count))
     return RuleID(ordinal: Size(ruleStart.count - 2))
   }
@@ -118,7 +136,7 @@ extension Grammar {
   }
 
   /// Returns the RHS of `r`.
-  func rhs(_ r: RuleID) -> Array<Symbol>.SubSequence {
+  func rhs(_ r: RuleID) -> Rule.RHS {
     rules[Int(r.ordinal)].rhs
   }
 
@@ -136,30 +154,27 @@ extension Grammar {
   ///
   /// - Precondition: `maxSymbol < Symbol.max`
   mutating func newSymbol() -> Symbol {
-    maxSymbol += 1
-    return maxSymbol
+    maxSymbolID += 1
+    return Symbol(id: maxSymbolID)
   }
 
   /// Returns the postdot symbol corresponding to a dot at `p`, or nil if represents a completion.
   func postdot(at p: Position) -> Symbol? {
-    ruleStore[Int(p)] < 0 ? nil : ruleStore[Int(p)]
+    let s = ruleStore[Int(p)]
+    return s < 0 ? nil : Symbol(id: Symbol.ID(s))
   }
 
   /// Returns the LHS recognized when a dot appears at `p`, or nil if `p` doesn't represent a
   /// completion.
   func recognized(at p: Position) -> Symbol? {
-    let stored = ruleStore[Int(p)]
-    return stored >= 0 ? nil : Self.lhsSymbol(stored)
+    let s = ruleStore[Int(p)]
+    return s >= 0 ? nil : Self.lhsSymbol(s)
   }
 }
 
-/// A configuration that can be used to represent just about any logical grammar, but may waste
-/// storage space and thus cost some performance due to poor locality-of-reference.
-public struct DefaultGrammarConfig: GrammarConfig {}
-
 /// A grammar type that represent just about any logical grammar, but may waste
 /// storage space and thus cost some performance due to poor locality-of-reference.
-public typealias DefaultGrammar = Grammar<DefaultGrammarConfig>
+public typealias DefaultGrammar = Grammar<Symbol.ID>
 
 /// Preprocessing support
 extension Grammar {
@@ -185,7 +200,7 @@ extension Grammar {
   ///   recognized.
   func eliminatingNulls() -> (Self, DiscreteMap<Position, Position>, isNullable: Bool) {
     var cooked = Self(recognizing: startSymbol)
-    cooked.maxSymbol = maxSymbol
+    cooked.maxSymbolID = maxSymbolID
     var rawPositions = DiscreteMap<Position, Position>()
     let n = nullSymbolSets()
 
@@ -303,10 +318,10 @@ extension Grammar {
     var remainder = rhs
     while let s = remainder.popFirst() {
       rawPositions.appendMapping(from: .init(ruleStore.count), to: .init(s.position))
-      ruleStore.append(s.symbol)
+      ruleStore.append(StoredSymbol(s.symbol.id))
     }
     // TODO: think about whether we want to append positions for before/after the lhs.
-    ruleStore.append(~lhs.first!.symbol)
+    ruleStore.append(StoredSymbol(~lhs.first!.symbol.id))
     ruleStart.append(Size(ruleStore.count))
   }
 
@@ -319,20 +334,20 @@ extension Grammar {
 
 extension Grammar {
   internal init(
-    ruleStore: [Symbol], ruleStart: [Config.Size], maxSymbol: Symbol, startSymbol: Symbol
+    ruleStore: [StoredSymbol], ruleStart: [GrammarSize], maxSymbolID: Symbol.ID, startSymbol: Symbol
   ) {
     self.ruleStore = ruleStore
     self.ruleStart = ruleStart
-    self.maxSymbol = maxSymbol
+    self.maxSymbolID = maxSymbolID
     self.startSymbol = startSymbol
   }
 
   func serialized() -> String {
     """
-    Grammar<\(Config.self)>(
+    Grammar<\(StoredSymbol.self)>(
       ruleStore: \(ruleStore),
       ruleStart: \(ruleStart),
-      maxSymbol: \(maxSymbol)
+      maxSymbolID: \(maxSymbolID)
       startSymbol: \(startSymbol))
     """
   }
@@ -347,11 +362,11 @@ extension Grammar {
     var rightmostDerivable = AdjacencyMatrix()
 
     for r in rules {
-      rightmostDerivable.addEdge(from: Int(r.lhs), to: Int(r.rhs.last!))
+      rightmostDerivable.addEdge(from: Int(r.lhs.id), to: Int(r.rhs.last!.id))
     }
     rightmostDerivable.formTransitiveClosure()
     for r in rules {
-      if rightmostDerivable.hasEdge(from: Int(r.rhs.last!), to: Int(r.lhs)) {
+      if rightmostDerivable.hasEdge(from: Int(r.rhs.last!.id), to: Int(r.lhs.id)) {
         result.insert(Position(r.rhs.dropLast().endIndex))
       }
     }
