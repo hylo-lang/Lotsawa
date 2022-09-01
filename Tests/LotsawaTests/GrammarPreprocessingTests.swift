@@ -138,7 +138,7 @@ class GrammarPreprocessingTests: XCTestCase {
         var (cooked, rawPosition, isNullable) = raw.eliminatingNulls()
 
         // Make sure we have a position for the start symbol.
-        rawPosition.appendMapping(from: .init(cooked.size), to: .init(raw.size))
+        rawPosition.appendMapping(from: cooked.size, to: raw.size)
 
         let terminals = raw.symbols().terminals
         XCTAssertEqual(cooked.symbols().terminals, terminals)
@@ -177,7 +177,7 @@ class GrammarPreprocessingTests: XCTestCase {
         XCTAssertEqual(
           rawParses, cookedParses,
           "\nraw: \(raw)\ncooked: \(cooked)\n"
-            + "map: \(rawPosition.points): \((0..<cooked.size).map {rawPosition[.init($0)]})")
+            + "map: \(rawPosition.points): \((0..<cooked.size).map {rawPosition[$0]})")
       }
     }
   }
@@ -235,7 +235,7 @@ extension Grammar {
     var length = 0
     var depth = 0
 
-    generateNonterminal(start, at: .init(size)) { receiver(parse) }
+    generateNonterminal(start, at: size) { receiver(parse) }
 
     func generateTerminal(_ s: Symbol, at p: Position, then onward: ()->()) {
       if length == maxLength { return }
@@ -269,7 +269,7 @@ extension Grammar {
     func generateString(_ s: Grammar.Rule.RHS, then onward: ()->()) {
       if s.isEmpty { return onward() }
       let depthMark = depth
-      generateSymbol(at: .init(s.startIndex)) {
+      generateSymbol(at: GrammarSize(s.startIndex)) {
         depth = depthMark // Return to same depth between symbols of a string.
         generateString(s.dropFirst(), then: onward)
       }

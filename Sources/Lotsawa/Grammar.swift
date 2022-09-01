@@ -317,7 +317,7 @@ extension Grammar {
     ruleStore.amortizedLinearReserveCapacity(ruleStore.count + rhs.count + 1)
     var remainder = rhs
     while let s = remainder.popFirst() {
-      rawPositions.appendMapping(from: .init(ruleStore.count), to: .init(s.position))
+      rawPositions.appendMapping(from: GrammarSize(ruleStore.count), to: GrammarSize(s.position))
       ruleStore.append(StoredSymbol(s.symbol.id))
     }
     // TODO: think about whether we want to append positions for before/after the lhs.

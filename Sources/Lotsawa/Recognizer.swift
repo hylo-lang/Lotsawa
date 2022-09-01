@@ -44,7 +44,7 @@ extension Recognizer {
   /// Returns the chart entry that predicts the start of `r`.
   func prediction(_ r: RuleID) -> Chart.Entry {
     .init(
-      item: .init(predicting: .init(g.rhsStart(r)), at: currentEarleme, postdot: g.rhs(r).first!),
+      item: .init(predicting: g.rhsStart(r), at: currentEarleme, postdot: g.rhs(r).first!),
       predotOrigin: 0)
   }
 
@@ -76,8 +76,8 @@ extension Recognizer {
   }
 
   func leoPredecessor(_ x: Chart.Item) -> Chart.Item? {
-    assert(g.recognized(at: .init(x.dotPosition)) == nil, "unexpectedly complete item")
-    let s = g.recognized(at: .init(x.dotPosition + 1))!
+    assert(g.recognized(at: x.dotPosition) == nil, "unexpectedly complete item")
+    let s = g.recognized(at: x.dotPosition + 1)!
 
     let predecessors = chart.transitionItems(on: s, inEarleySet: x.origin)
     if let head = predecessors.first, head.isLeo { return head }
@@ -92,13 +92,13 @@ extension Recognizer {
 
     if let t = x.item.transitionSymbol {
       // Check incomplete items for leo candidate-ness.
-      if leoPositions.contains(.init(x.item.dotPosition)) {
+      if leoPositions.contains(x.item.dotPosition) {
         { v in v = v == nil ? .some(x.item) : .some(nil) }(&leoCandidate[t])
       }
       predict(t)
     }
     else { // it's complete
-      discover(g.recognized(at: .init(x.item.dotPosition))!, startingAt: x.item.origin)
+      discover(g.recognized(at: x.item.dotPosition)!, startingAt: x.item.origin)
     }
   }
 

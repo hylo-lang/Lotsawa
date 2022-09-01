@@ -29,7 +29,7 @@ extension TestGrammar.AST {
     init(_ id: ID, _ content: Substring, at position: SourceRegion) {
       self.id = id
       self.text = content
-      self.position = .init(position)
+      self.position = Incidental(position)
     }
 
     let id: ID

@@ -194,7 +194,7 @@ extension Chart {
       if isEarley { return nil }
       // A possible optimization: store the postdot symbol in the predotOrigin field of Leo items.
       var r = self
-      r.symbolID = Symbol.ID(truncatingIfNeeded: g.ruleStore[.init(dotPosition)])
+      r.symbolID = Symbol.ID(truncatingIfNeeded: g.ruleStore[Int(dotPosition)])
       r.isEarley = true
       return r
     }
