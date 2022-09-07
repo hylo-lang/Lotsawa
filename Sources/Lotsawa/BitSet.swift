@@ -1,20 +1,6 @@
 private typealias Word = UInt
-/*
-/// Returns the offset at which the `i`th bit can be found in an array of
-/// `Word`s.
-private func wordOffset(ofBit i: Int) -> Int {
-  precondition(i >= 0)
-  return i / Word.bitWidth
-}
 
-/// Returns a mask that isolates the `i`th bit within its `Word` in an array of
-/// `Word`s.
-private func wordMask(ofBit i: Int) -> Word {
-  precondition(i >= 0)
-  return (1 as Word) << (i % Word.bitWidth)
-}
-*/
-
+/// A bitwise view of an integer sequence.
 struct Bits<Base: Sequence>: Sequence
   where Base.Element: FixedWidthInteger
 {
@@ -28,7 +14,7 @@ struct Bits<Base: Sequence>: Sequence
 
     var base: Base.Iterator
     var buffer: Base.Element.Magnitude = 0
-
+ 
     mutating func next() -> Bool? {
       let r = buffer & 0x1 != 0
       buffer >>= 1
@@ -53,25 +39,32 @@ extension Bits: RandomAccessCollection, BidirectionalCollection, Collection
   var startIndex: Index { return 0 }
   var endIndex: Index { return base.count * Base.Element.bitWidth }
 
-  /// Returns the offset at which the `i`th bit can be found in Base.
+  /// Returns the offset at which the `i`th bit can be found in `Base`.
   func baseOffset(ofBit i: Int) -> Int {
     precondition(i >= 0)
     return i / Base.Element.bitWidth
   }
 
-  /// Returns a mask that isolates the `i`th bit within its element in Base.
+  /// Returns a mask that isolates the `i`th bit within its element in `Base`.
   func baseMask(ofBit i: Int) -> Base.Element {
     precondition(i >= 0)
     return (1 as Base.Element) &<< i
   }
 
-
+  /// Returns the index at which the `ith` bit can be found in `Base`.
   fileprivate func baseIndex(_ i: Index) -> Base.Index {
     base.index(base.startIndex, offsetBy: baseOffset(ofBit: i))
   }
 
+  /// Returns the number of bits in the `Collection`.
+  func count() -> Int { endIndex - startIndex }
+
+  /// Returns the value of the `ith` bit.
+  ///
+  /// - Precondition: `i < self.count()`
   subscript(i: Index) -> Bool {
-    base[baseIndex(i)] & ((1 as Base.Element) << (i % Base.Element.bitWidth)) != 0
+    precondition(i < self.count())
+    return base[baseIndex(i)] & ((1 as Base.Element) << (i % Base.Element.bitWidth)) != 0
   }
 }
 
@@ -93,6 +86,7 @@ extension Bits: MutableCollection
   }
 }
 
+/// A set of integers represented by a collection of boolean values.
 struct BitSet: SetAlgebra, Hashable {
   typealias Element = Int
   typealias ArrayLiteralElement = Int
