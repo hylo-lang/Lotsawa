@@ -168,6 +168,7 @@ extension Chart {
       storage.isCompletion_symbol_isEarley_originHi << 16 | storage.originLow_dotPosition >> 16
     }
 
+    /// The dot position representing this Item's parse progress.
     var dotPosition: UInt16 {
       UInt16(truncatingIfNeeded: storage.originLow_dotPosition)
     }

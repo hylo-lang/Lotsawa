@@ -1,5 +1,8 @@
 extension Collection {
   /// Returns true iff `self` has exactly one element.
+  /// npd: naming is unexpected. I'd prefer `hasExactlyOneElement`.
+  /// argument: feels ambiguous with checking for many equivalent elements;
+  /// as in {'a', 'a', 'a'}.
   var hasUniqueElement: Bool {
     var p = makeIterator()
     return p.next() != nil && p.next() == nil
@@ -8,6 +11,7 @@ extension Collection {
   /// Returns `true` iff exactly one element of `self` satisfies `condition`.
   ///
   /// - Complexity: O(`count`)
+  /// npd: as above; I'd prefer hasExactlyOneElement(where condition:...)
   func hasUniqueElement(where condition: (Element)->Bool) -> Bool {
     guard let j = firstIndex(where: condition)
     else { return false }
