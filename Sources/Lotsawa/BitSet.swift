@@ -86,7 +86,9 @@ extension Bits: MutableCollection
   }
 }
 
-/// A set of integers represented by a collection of boolean values.
+/// A  set of integers optimized for small elements.
+///
+/// Allocates memory proportional to the largest integer in the set (see `storageCapacity`)
 struct BitSet: SetAlgebra, Hashable {
   typealias Element = Int
   typealias ArrayLiteralElement = Int
@@ -138,19 +140,10 @@ struct BitSet: SetAlgebra, Hashable {
 
   /// Inserts the elements of `other` that are not already in `self`.
   mutating func formUnion(_ other: Self) {
-    if self.isSuperset(of: other) { return }
-    self.storage.reserveCapacity(other.storage.count)
-    let overlap = min(storage.count, other.storage.count)
-    other.storage.withUnsafeBufferPointer { b1 in
-      storage.withUnsafeMutableBufferPointer{ b0 in
-        for i in 0..<overlap {
-          b0[i] |= b1[i]
-        }
-      }
-      self.storage.append(contentsOf: b1.dropFirst(overlap))
-    }
+    _ = formUnionReportingChange(other);
   }
 
+  /// Returns `true` if `self` is changed by forming a union with `other`, otherwise `false`.
   mutating func formUnionReportingChange(_ other: Self) -> Bool {
     if self.isSuperset(of: other) { return false }
     self.storage.reserveCapacity(other.storage.count)
@@ -165,7 +158,6 @@ struct BitSet: SetAlgebra, Hashable {
     }
     return true
   }
-
 
   /// Returns the set of elements of `self` that are also in `other`.
   func intersection(_ other: Self) -> Self {

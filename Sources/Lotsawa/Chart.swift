@@ -13,6 +13,7 @@ public typealias SourcePosition = UInt32
 public typealias DotPosition = UInt16
 
 extension Chart {
+  /// Clear `entries` and `setStart` without deallocating their storage.
   mutating func removeAll() {
     entries.removeAll(keepingCapacity: true)
     setStart.removeAll(keepingCapacity: true)
@@ -48,12 +49,14 @@ extension Chart {
     /// You'd want to swap the elements for optimal performance on big-endian architectures.
     var storage: (
       /// The low 16 bits of the origin and a 16-bit dot position.
-      // bits        | xxxxxxxxxxxxxxxx | xxxxxxxxxxxxxxxx |
-      // meaning     | originLow        | dotPosition      |
+      ///   bit               |  31 ... 16  |   15  ...   0   |
+      ///   meaning     | originLow | dotPosition |
       originLow_dotPosition: UInt32,
-      /// 1 bit for `isCompletion`, 14 bit transition or LHS `symbol`, 1 bit for `isEarley`, and the high 16 bits of the origin.
-      // bits        | x            | xxxxxxxxxxxxxxxx | x        | xxxxxxxxxxxxxxxx |
-      // meaning     | isCompletion | symbol           | isEarley | originHi         |
+
+      /// 1 bit for `isCompletion`, 14 bit transition or LHS `symbol`,
+      /// 1 bit for `isEarley`, and the high 16 bits of the origin.
+      ///   bit            | 31                  | 30 ... 17 | 16           | 15 ... 0  |
+      ///   meaning  | isCompletion | symbol    | isEarley | originHi |
       isCompletion_symbol_isEarley_originHi: UInt32
     )
 
@@ -106,7 +109,6 @@ extension Chart {
     static func completionKey(_ s: Symbol) -> UInt32 {
       return UInt32(truncatingIfNeeded: ~s.id) << 17
     }
-
 
     /// Returns `true` iff `lhs` should precede `rhs` in a Earley set.
     static func < (lhs: Self, rhs: Self) -> Bool {

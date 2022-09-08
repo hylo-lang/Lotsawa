@@ -42,8 +42,8 @@ class AdjacencyMatrixTests: XCTestCase {
 
   /// Ensures an `AdjacencyMatrix` modeling integer divisibility
   func testTransitiveClosure() {
-    var divisibilityMatrix = makeAdjacencyMatrix(fromPredicate: nontriviallyDivides);
-    divisibilityMatrix.formTransitiveClosure()
+    var divisibility = makeAdjacencyMatrix(fromPredicate: nontriviallyDivides);
+    divisibility.formTransitiveClosure()
 
     /// Models the divisibility matrix as a mapping of verticies to out-edges.
     var mock = Dictionary<Int, Set<Int>>()
@@ -68,7 +68,7 @@ class AdjacencyMatrixTests: XCTestCase {
       /// Ensure that all `end` vertices reachable from `start` have an edge between them in `adjacencyMatrix`.
       /// Note this does not ensure that `divisibilityMatrix` has the minimum required edges to express the transitive closure.
       for end in universe {
-        XCTAssertEqual(visited.contains(end), divisibilityMatrix.hasEdge(from: start, to: end), "\(start) -> \(end)")
+        XCTAssertEqual(visited.contains(end), divisibility.hasEdge(from: start, to: end), "\(start) -> \(end)")
       }
     }
   }
