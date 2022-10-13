@@ -1,20 +1,6 @@
 private typealias Word = UInt
-/*
-/// Returns the offset at which the `i`th bit can be found in an array of
-/// `Word`s.
-private func wordOffset(ofBit i: Int) -> Int {
-  precondition(i >= 0)
-  return i / Word.bitWidth
-}
 
-/// Returns a mask that isolates the `i`th bit within its `Word` in an array of
-/// `Word`s.
-private func wordMask(ofBit i: Int) -> Word {
-  precondition(i >= 0)
-  return (1 as Word) << (i % Word.bitWidth)
-}
-*/
-
+/// A bitwise view of an integer sequence.
 struct Bits<Base: Sequence>: Sequence
   where Base.Element: FixedWidthInteger
 {
@@ -28,7 +14,7 @@ struct Bits<Base: Sequence>: Sequence
 
     var base: Base.Iterator
     var buffer: Base.Element.Magnitude = 0
-
+ 
     mutating func next() -> Bool? {
       let r = buffer & 0x1 != 0
       buffer >>= 1
@@ -53,25 +39,32 @@ extension Bits: RandomAccessCollection, BidirectionalCollection, Collection
   var startIndex: Index { return 0 }
   var endIndex: Index { return base.count * Base.Element.bitWidth }
 
-  /// Returns the offset at which the `i`th bit can be found in Base.
+  /// Returns the offset at which the `i`th bit can be found in `Base`.
   func baseOffset(ofBit i: Int) -> Int {
     precondition(i >= 0)
     return i / Base.Element.bitWidth
   }
 
-  /// Returns a mask that isolates the `i`th bit within its element in Base.
+  /// Returns a mask that isolates the `i`th bit within its element in `Base`.
   func baseMask(ofBit i: Int) -> Base.Element {
     precondition(i >= 0)
     return (1 as Base.Element) &<< i
   }
 
-
+  /// Returns the index at which the `ith` bit can be found in `Base`.
   fileprivate func baseIndex(_ i: Index) -> Base.Index {
     base.index(base.startIndex, offsetBy: baseOffset(ofBit: i))
   }
 
+  /// Returns the number of bits in the `Collection`.
+  func count() -> Int { endIndex - startIndex }
+
+  /// Returns the value of the `ith` bit.
+  ///
+  /// - Precondition: `i < self.count()`
   subscript(i: Index) -> Bool {
-    base[baseIndex(i)] & ((1 as Base.Element) << (i % Base.Element.bitWidth)) != 0
+    precondition(i < self.count())
+    return base[baseIndex(i)] & ((1 as Base.Element) << (i % Base.Element.bitWidth)) != 0
   }
 }
 
@@ -93,6 +86,9 @@ extension Bits: MutableCollection
   }
 }
 
+/// A  set of integers optimized for small elements.
+///
+/// Allocates memory proportional to the largest integer in the set (see `storageCapacity`)
 struct BitSet: SetAlgebra, Hashable {
   typealias Element = Int
   typealias ArrayLiteralElement = Int
@@ -144,19 +140,10 @@ struct BitSet: SetAlgebra, Hashable {
 
   /// Inserts the elements of `other` that are not already in `self`.
   mutating func formUnion(_ other: Self) {
-    if self.isSuperset(of: other) { return }
-    self.storage.reserveCapacity(other.storage.count)
-    let overlap = min(storage.count, other.storage.count)
-    other.storage.withUnsafeBufferPointer { b1 in
-      storage.withUnsafeMutableBufferPointer{ b0 in
-        for i in 0..<overlap {
-          b0[i] |= b1[i]
-        }
-      }
-      self.storage.append(contentsOf: b1.dropFirst(overlap))
-    }
+    _ = formUnionReportingChange(other);
   }
 
+  /// Returns `true` if `self` is changed by forming a union with `other`, otherwise `false`.
   mutating func formUnionReportingChange(_ other: Self) -> Bool {
     if self.isSuperset(of: other) { return false }
     self.storage.reserveCapacity(other.storage.count)
@@ -171,7 +158,6 @@ struct BitSet: SetAlgebra, Hashable {
     }
     return true
   }
-
 
   /// Returns the set of elements of `self` that are also in `other`.
   func intersection(_ other: Self) -> Self {

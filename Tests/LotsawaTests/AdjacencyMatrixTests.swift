@@ -2,66 +2,75 @@
 import XCTest
 
 class AdjacencyMatrixTests: XCTestCase {
+
+  /// The range of values used to construct matrices in these tests.
+  let universe = 1..<(Int.bitWidth * 2)
+  
+  /// Constructs an AdjacencyMatrix with an edge from `i` to `j` iff `fromPredicate(i, j)`.
+  func makeAdjacencyMatrix(fromPredicate predicate: (Int, Int) -> Bool) -> AdjacencyMatrix {
+    var result = AdjacencyMatrix();
+    for i in universe {
+      for j in universe where predicate(i, j) {
+          result.addEdge(from: i, to: j);
+      }
+    }
+    return result;
+  }
+  
+  /// Tests that an empty AdjacencyMatrix has no edges.
   func testEmpty() {
     let x = AdjacencyMatrix()
-    for i in 0..<64 {
-      for j in 0..<64 {
+    for i in universe {
+      for j in universe {
         XCTAssert(!x.hasEdge(from: i, to: j))
       }
     }
   }
-
-  let universe = 1..<(Int.bitWidth * 2)
-  func edgeShouldExist(from x: Int, to y: Int) -> Bool { x != y && x % y == 0 }
-
-  func divisibility() -> AdjacencyMatrix {
-    var a = AdjacencyMatrix()
-
-    for x in universe {
-      for y in universe {
-        if edgeShouldExist(from: x, to: y) {
-          a.addEdge(from: x, to: y)
-        }
-      }
-    }
-    return a
-  }
-
-  func testAddEdge() {
-    let a = divisibility()
-
-    for x in universe {
-      for y in universe {
-        XCTAssertEqual(a.hasEdge(from: x, to: y), edgeShouldExist(from: x, to: y), "\(x) -> \(y)")
+  
+  /// Returns true iff `y` divides `x` and `x` and `y` are inequal.
+  let nontriviallyDivides = { (_ x: Int, _ y: Int) in x != y && x % y == 0 };
+  
+  /// Ensures an `AdjacencyMatrix` modeling integer divisibility has the expected edges.
+  func testDivisibility() {
+    let divisibilityMatrix = makeAdjacencyMatrix(fromPredicate: nontriviallyDivides);
+    for i in universe {
+      for j in universe {
+        XCTAssertEqual(divisibilityMatrix.hasEdge(from: i, to: j), nontriviallyDivides(i, j), "\(i) -> \(j)")
       }
     }
   }
 
+  /// Ensures an `AdjacencyMatrix` modeling integer divisibility
   func testTransitiveClosure() {
-    var a = divisibility()
-    a.formTransitiveClosure()
+    var divisibility = makeAdjacencyMatrix(fromPredicate: nontriviallyDivides);
+    divisibility.formTransitiveClosure()
 
-    var a1 = Dictionary<Int, Set<Int>>()
+    /// Models the divisibility matrix as a mapping of verticies to out-edges.
+    var mock = Dictionary<Int, Set<Int>>()
     for x in universe {
       for y in universe {
-        if edgeShouldExist(from: x, to: y) { a1[x, default: []].insert(y) }
+        if nontriviallyDivides(x, y) { mock[x, default: []].insert(y) }
       }
     }
 
     for start in universe {
       var visited = Set<Int>()
 
-      func reachNeighbors(_ source: Int) {
-        for n in a1[source, default:[]] where !visited.contains(n) {
+      /// Recursively visit each vertex following the edges in `mock`.
+      func visitNeighbors(_ source: Int) {
+        for n in mock[source, default:[]] where !visited.contains(n) {
           visited.insert(n)
-          reachNeighbors(n)
+          visitNeighbors(n)
         }
       }
-      reachNeighbors(start)
+      visitNeighbors(start)
 
+      /// Ensure that all `end` vertices reachable from `start` have an edge between them in `adjacencyMatrix`.
+      /// Note this does not ensure that `divisibilityMatrix` has the minimum required edges to express the transitive closure.
       for end in universe {
-        XCTAssertEqual(a.hasEdge(from: start, to: end), visited.contains(end), "\(start) -> \(end)")
+        XCTAssertEqual(visited.contains(end), divisibility.hasEdge(from: start, to: end), "\(start) -> \(end)")
       }
     }
   }
 }
+

@@ -62,7 +62,7 @@ public struct Grammar<StoredSymbol: SignedInteger & FixedWidthInteger> {
 
 extension Grammar {
   /// A representation of the size of the grammar (the total length of all right-hand sides
-  /// of the rules plus the number of rules.
+  /// of the rules plus the number of rules).
   public typealias Size = GrammarSize
 
   /// A location in the grammar; e.g. the position of a dot in a partially-recognized rule.

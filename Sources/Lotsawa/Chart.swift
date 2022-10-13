@@ -13,6 +13,7 @@ public typealias SourcePosition = UInt32
 public typealias DotPosition = UInt16
 
 extension Chart {
+  /// Clear `entries` and `setStart` without deallocating their storage.
   mutating func removeAll() {
     entries.removeAll(keepingCapacity: true)
     setStart.removeAll(keepingCapacity: true)
@@ -47,17 +48,23 @@ extension Chart {
     /// It is arranged to avoid 64-bit alignment, since this will be combined into an `Entry`.
     /// You'd want to swap the elements for optimal performance on big-endian architectures.
     var storage: (
-      /// 16-bit dot position and the low 16 bits of the origin
-      dotPosition_originLow: UInt32,
-      /// The high 16 bits of the origin, 1 bit for isEarley, 14 bit transition or LHS symbol,
-      /// 1 bit for isCompletion.
-      originHi_isEarley_symbol_isCompletion: UInt32)
+      /// The low 16 bits of the origin and a 16-bit dot position.
+      ///   bit               |  31 ... 16  |   15  ...   0   |
+      ///   meaning     | originLow | dotPosition |
+      originLow_dotPosition: UInt32,
+
+      /// 1 bit for `isCompletion`, 14 bit transition or LHS `symbol`,
+      /// 1 bit for `isEarley`, and the high 16 bits of the origin.
+      ///   bit            | 31                  | 30 ... 17 | 16           | 15 ... 0  |
+      ///   meaning  | isCompletion | symbol    | isEarley | originHi |
+      isCompletion_symbol_isEarley_originHi: UInt32
+    )
 
     init(predicting ruleStart: DotPosition, at origin: SourcePosition, postdot: Symbol) {
       storage = (
-        dotPosition_originLow:
+        originLow_dotPosition:
           UInt32(UInt16(truncatingIfNeeded: origin)) << 16 | UInt32(ruleStart),
-        originHi_isEarley_symbol_isCompletion: (origin >> 16 | (1 << 16) | UInt32(postdot.id) << 17))
+        isCompletion_symbol_isEarley_originHi: (origin >> 16 | (1 << 16) | UInt32(postdot.id) << 17))
       assert(isEarley)
       assert(self.origin == origin)
       assert(self.dotPosition == ruleStart)
@@ -78,14 +85,14 @@ extension Chart {
 
     /// Lookup key.
     var key: UInt64 {
-      UInt64(storage.originHi_isEarley_symbol_isCompletion) << 32
-        | UInt64(storage.dotPosition_originLow)
+      UInt64(storage.isCompletion_symbol_isEarley_originHi) << 32
+        | UInt64(storage.originLow_dotPosition)
     }
 
     /// Lookup key for the start of the Leo-Earley sequence expecting a given symbol.
     ///
     /// Any Leo item always precedes Earley derivations in this sequence.
-    var transitionKey: UInt32 { storage.originHi_isEarley_symbol_isCompletion }
+    var transitionKey: UInt32 { storage.isCompletion_symbol_isEarley_originHi }
 
     /// Lookup key for the start of the Leo-Earley sequence expecting symbol `s`.
     static func transitionKey(_ s: Symbol) -> UInt32 {
@@ -96,13 +103,12 @@ extension Chart {
     /// Lookup key for the start of the sequence of completions for a given symbol
     ///
     /// Any Leo item always precedes Earley derivations in this sequence.
-    var completionKey: UInt32 { storage.originHi_isEarley_symbol_isCompletion }
+    var completionKey: UInt32 { storage.isCompletion_symbol_isEarley_originHi }
 
     /// Lookup key for the start of the sequence of completions of symbol `s`.
     static func completionKey(_ s: Symbol) -> UInt32 {
       return UInt32(truncatingIfNeeded: ~s.id) << 17
     }
-
 
     /// Returns `true` iff `lhs` should precede `rhs` in a Earley set.
     static func < (lhs: Self, rhs: Self) -> Bool {
@@ -116,21 +122,21 @@ extension Chart {
 
     /// True iff `self` represents a completion
     var isCompletion: Bool {
-      Int32(bitPattern: storage.originHi_isEarley_symbol_isCompletion) < 0
+      Int32(bitPattern: storage.isCompletion_symbol_isEarley_originHi) < 0
     }
 
     /// The transition symbol if `self` is not a completion; otherwise the bitwise inverse of the
     /// LHS symbol.
     fileprivate var symbolID: Symbol.ID {
       get {
-        .init(truncatingIfNeeded: Int32(bitPattern: storage.originHi_isEarley_symbol_isCompletion) >> 17)
+        .init(truncatingIfNeeded: Int32(bitPattern: storage.isCompletion_symbol_isEarley_originHi) >> 17)
       }
       set {
         // Mask off the hi 15 bits
-        storage.originHi_isEarley_symbol_isCompletion &= ~0 >> 15
+        storage.isCompletion_symbol_isEarley_originHi &= ~0 >> 15
 
         // Mix in the low 15 bits of newValue, which sets isCompletion if needed.
-        storage.originHi_isEarley_symbol_isCompletion |= UInt32(truncatingIfNeeded: newValue) << (32 - 15)
+        storage.isCompletion_symbol_isEarley_originHi |= UInt32(truncatingIfNeeded: newValue) << (32 - 15)
       }
     }
 
@@ -151,21 +157,22 @@ extension Chart {
     /// True iff `self` is an Earley item.
     private(set) var isEarley: Bool {
       get {
-        storage.originHi_isEarley_symbol_isCompletion >> 16 & 1 != 0
+        storage.isCompletion_symbol_isEarley_originHi >> 16 & 1 != 0
       }
       set {
-        if newValue { storage.originHi_isEarley_symbol_isCompletion |= 1 << 16 }
-        else { storage.originHi_isEarley_symbol_isCompletion &= ~(1 << 16) }
+        if newValue { storage.isCompletion_symbol_isEarley_originHi |= 1 << 16 }
+        else { storage.isCompletion_symbol_isEarley_originHi &= ~(1 << 16) }
       }
     }
 
     /// The input position where this partial recognition started.
     var origin: UInt32 {
-      storage.originHi_isEarley_symbol_isCompletion << 16 | storage.dotPosition_originLow >> 16
+      storage.isCompletion_symbol_isEarley_originHi << 16 | storage.originLow_dotPosition >> 16
     }
 
+    /// The dot position representing this Item's parse progress.
     var dotPosition: UInt16 {
-      UInt16(truncatingIfNeeded: storage.dotPosition_originLow)
+      UInt16(truncatingIfNeeded: storage.originLow_dotPosition)
     }
 
     func advanced<S>(in g: Grammar<S>) -> Item {
@@ -174,7 +181,7 @@ extension Chart {
 
       var r = self
       // Advance the dot
-      r.storage.dotPosition_originLow += 1
+      r.storage.originLow_dotPosition += 1
       
       // Sign-extends small LHS symbol representations to 16 bits; leaves RHS symbol values alone.
       let s = Int16(g.ruleStore[Int(r.dotPosition)])
