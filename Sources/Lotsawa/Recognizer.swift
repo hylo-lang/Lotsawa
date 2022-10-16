@@ -43,9 +43,7 @@ extension Recognizer {
 
   /// Returns the chart entry that predicts the start of `r`.
   func prediction(_ r: RuleID) -> Chart.Entry {
-    .init(
-      item: .init(predicting: g.rhsStart(r), at: currentEarleme, postdot: g.rhs(r).first!),
-      predotOrigin: 0)
+    .init(item: .init(predicting: r, in: g, at: currentEarleme), predotOrigin: 0)
   }
 
   /// Seed the current item set with rules implied by the predicted recognition of `s` starting at

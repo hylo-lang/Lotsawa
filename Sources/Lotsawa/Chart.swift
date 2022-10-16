@@ -62,7 +62,10 @@ extension Chart {
       isCompletion_symbol_isEarley_originHi: UInt32
     )
 
-    init(predicting ruleStart: DotPosition, at origin: SourcePosition, postdot: Symbol) {
+    /// Creates an Earley item starting at `origin and predicting the rule identified by `r` in `g`.
+    init<S>(predicting r: RuleID, in g: Grammar<S>, at origin: SourcePosition) {
+      let ruleStart = g.rhsStart(r)
+      let postdot = g.rhs(r).first!
       storage = (
         originLow_dotPosition:
           UInt32(UInt16(truncatingIfNeeded: origin)) << 16 | UInt32(ruleStart),
@@ -74,13 +77,15 @@ extension Chart {
       assert(!isCompletion)
     }
 
-    init(memoizing e: Self, transitionSymbol: Symbol) {
-      self = e
+    /// Creates a Leo item that memoizes `m`, which can be an Earley or a Leo item, to be used when
+    /// `transitionSymbol` is recognized.
+    init(memoizing m: Self, transitionSymbol: Symbol) {
+      self = m
       self.isLeo = true
       self.symbolID = transitionSymbol.id
       assert(!isEarley)
-      assert(self.origin == e.origin)
-      assert(self.dotPosition == e.dotPosition)
+      assert(self.origin == m.origin)
+      assert(self.dotPosition == m.dotPosition)
       assert(self.transitionSymbol == transitionSymbol)
       assert(!isCompletion)
    }
