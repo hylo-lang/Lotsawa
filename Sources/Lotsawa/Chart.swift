@@ -49,14 +49,16 @@ extension Chart {
     /// You'd want to swap the elements for optimal performance on big-endian architectures.
     var storage: (
       /// The low 16 bits of the origin and a 16-bit dot position.
-      ///   bit               |  31 ... 16  |   15  ...   0   |
-      ///   meaning     | originLow | dotPosition |
+      ///
+      ///     bit         | 31 ... 16 | 15  ...   0 |
+      ///     meaning     | originLow | dotPosition |
       originLow_dotPosition: UInt32,
 
       /// 1 bit for `isCompletion`, 14 bit transition or LHS `symbol`,
       /// 1 bit for `isEarley`, and the high 16 bits of the origin.
-      ///   bit            | 31                  | 30 ... 17 | 16           | 15 ... 0  |
-      ///   meaning  | isCompletion | symbol    | isEarley | originHi |
+      ///
+      ///     bit     |      31      | 30...17 |    16    | 15 ... 0 |
+      ///     meaning | isCompletion |  symbol | isEarley | originHi |
       isCompletion_symbol_isEarley_originHi: UInt32
     )
 
@@ -129,14 +131,16 @@ extension Chart {
     /// LHS symbol.
     fileprivate var symbolID: Symbol.ID {
       get {
-        .init(truncatingIfNeeded: Int32(bitPattern: storage.isCompletion_symbol_isEarley_originHi) >> 17)
+        .init(
+          truncatingIfNeeded: Int32(bitPattern: storage.isCompletion_symbol_isEarley_originHi) >> 17)
       }
       set {
         // Mask off the hi 15 bits
         storage.isCompletion_symbol_isEarley_originHi &= ~0 >> 15
 
         // Mix in the low 15 bits of newValue, which sets isCompletion if needed.
-        storage.isCompletion_symbol_isEarley_originHi |= UInt32(truncatingIfNeeded: newValue) << (32 - 15)
+        storage.isCompletion_symbol_isEarley_originHi
+          |= UInt32(truncatingIfNeeded: newValue) << (32 - 15)
       }
     }
 
