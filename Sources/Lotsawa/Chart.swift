@@ -249,6 +249,7 @@ extension Chart {
     return next?.item != e.item && currentEarleySet[..<i].last?.item != e.item
   }
 
+  /// Returns the items in Earley set `i` whose use is triggered by the recognition of `s`.
   func transitionItems(on s: Symbol, inEarleySet i: UInt32)
     -> LazyPrefixWhileSequence<
          LazyMapSequence<LazyFilterSequence<EarleySet.SubSequence.Indices>, Item>>
@@ -261,15 +262,16 @@ extension Chart {
     return items.prefix(while: { x in x.symbolID == s.id })
   }
 
-  func completions(of s: Symbol, inEarleySet i: UInt32)
+  /// Returns the items in Earley set `i` that complete a recognition of `lhs`.
+  func completions(of lhs: Symbol, inEarleySet i: UInt32)
     -> LazyPrefixWhileSequence<EarleySet.SubSequence>
   {
     let ithSet = earleySet(i)
-    let k = Item.completionKey(s)
+    let k = Item.completionKey(lhs)
 
     let j = ithSet.partitionPoint { d in d.item.completionKey >= k }
     let r0 = ithSet[j...]
-    let r = r0.lazy.prefix(while: { x in x.item.lhs == s })
+    let r = r0.lazy.prefix(while: { x in x.item.lhs == lhs })
     return r
   }
 
@@ -280,43 +282,3 @@ extension Chart {
     return setStart.last != setStart.dropLast().last
   }
 }
-
-// Lookups:
-//
-// * Leo item with a particular transition symbol (or the set of derivations awaiting that symbol),
-//   meaning that derivations follow Leo items.
-//
-// * Completions of a particular LHS symbol with a particular origin
-//
-// * a particular element in the current derivation set
-//
-// Sort key must
-// <---------------- 18 --------------------------------><--origin14->| <--origin18--><----dotPosition 14----> |
-// <isCompletion 1><transition symbol or lhs 16><isEarley 1><origin 32> <dotPosition 16> <predotOrigin 32>
-// +------------+------------+-------------+----------+----------+------------+
-// |            |origin      |dotPosition  |transition|lhs       |predotOrigin|
-// +------------+------------+-------------+----------+----------+------------+
-// |Prediction  |            |             |          |   NO     |    NO      |
-// +------------+------------+-------------+----------+----------+------------+
-// |Intermediate|            |             |          |   NO     |            |
-// +------------+------------+-------------+----------+----------+------------+
-// |Completion  |            |             |    NO    |   YES    |            |
-// +------------+------------+-------------+----------+----------+------------+
-// |Leo         |            |             |          |   NO     |    NO      |
-// +------------+------------+-------------+----------+----------+------------+
-// |Bits        | 32         | 16          | 8        | 8        | 32         |
-// +------------+------------+-------------+----------+----------+------------+
-//
-
-// Order non-completions by transition key. For Leo items that's transition symbol; otherwise it's
-// postdot.
-//
-// Order leo items before incompletions having the same transition key.  We can steal the low bit of
-// the transition key for this purpose, since symbols are  positive signed integers.
-//
-// Order completions last by using the high bit of the first key
-//
-// This leaves us with one transition key value that can be used later (vary the low bit on
-// the transition key with the max symbol value).
-
-// (transitionKey, item.isLeo ? 0 : 1, item.dotPosition, item.origin, predotOrigin ?? 0)
