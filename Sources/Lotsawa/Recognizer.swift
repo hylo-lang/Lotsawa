@@ -136,19 +136,3 @@ extension Recognizer {
     return i < currentEarleme ? chart.earleySet(i) : chart.currentEarleySet
   }
 }
-
-fileprivate extension Collection {
-  func transitionItems(on s: Symbol)
-    -> LazyPrefixWhileSequence<
-         LazyMapSequence<LazyFilterSequence<Self.SubSequence.Indices>, Chart.Item>>
-    where Element == Chart.Entry
-  {
-    let k = Chart.Item.transitionKey(s)
-    let i = self.partitionPoint { d in d.item.transitionKey >= k }
-
-    let r0 = self[i...].lazy.map(\.item)
-    let r1 = r0.droppingAdjacentDuplicates()
-    let r2 = r1.prefix(while: { x in x.transitionSymbol != nil && x.transitionSymbol! == s })
-    return r2
-  }
-}
