@@ -251,8 +251,7 @@ extension Chart {
 
   /// Returns the items in Earley set `i` whose use is triggered by the recognition of `s`.
   func transitionItems(on s: Symbol, inEarleySet i: UInt32)
-    -> LazyPrefixWhileSequence<
-         LazyMapSequence<LazyFilterSequence<EarleySet.SubSequence.Indices>, Item>>
+    -> LazyPrefixWhileSequence<LazyMapSequence<LazyFilterSequence<EarleySet.Indices>, Item>>
   {
     let ithSet = earleySet(i)
     let k = Item.transitionKey(s)
@@ -263,8 +262,7 @@ extension Chart {
   }
 
   /// Returns the items in Earley set `i` that complete a recognition of `lhs`.
-  func completions(of lhs: Symbol, inEarleySet i: UInt32)
-    -> LazyPrefixWhileSequence<EarleySet.SubSequence>
+  func completions(of lhs: Symbol, inEarleySet i: UInt32) -> LazyPrefixWhileSequence<EarleySet>
   {
     let ithSet = earleySet(i)
     let k = Item.completionKey(lhs)
