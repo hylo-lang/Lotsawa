@@ -149,10 +149,13 @@ extension Chart {
       }
     }
 
+    /// The symbol that triggers the use of `self`, or `nil` if no such symbol exists (i.e. self is
+    /// a completion).
     var transitionSymbol: Symbol? {
       isCompletion ? nil : Symbol(id: symbolID)
     }
 
+    /// The LHS symbol of `self`'s rule, or nil if `self` is not a completion.
     var lhs: Symbol? {
       isCompletion ? Symbol(id: ~symbolID) : nil
     }
@@ -184,6 +187,8 @@ extension Chart {
       UInt16(truncatingIfNeeded: storage.originLow_dotPosition)
     }
 
+    /// Returns `self`, which must be an incomplete Earley item, with the dot advanced over one
+    /// symbol.
     func advanced<S>(in g: Grammar<S>) -> Item {
       assert(isEarley)
       assert(!isCompletion)
