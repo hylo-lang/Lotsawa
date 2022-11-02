@@ -146,7 +146,7 @@ extension Grammar {
   }
 
   /// Returns the ID of the rule containing `p`.
-  public func containingRule(_ p: Position) -> RuleID {
+  public func rule(containing p: Position) -> RuleID {
     RuleID(ordinal: Size(ruleStart.partitionPoint { y in y > p } - 1))
   }
 
