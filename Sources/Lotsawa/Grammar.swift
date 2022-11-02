@@ -1,344 +1,375 @@
-/// A collection of Backus-Naur Form (BNF) productions, each defining a symbol
+/// A symbol in the grammar with a 14-bit ID.
+public struct Symbol: Hashable, Comparable {
+  /// The identity of an instance.
+  public typealias ID = Int16
+
+  /// Creates an instance with the given `id`.
+  ///
+  /// - Precondition: 0 ≤ id < (1 << 14).
+  public init(id: ID) {
+    precondition(id >= 0 && id <= Self.maxID)
+    self.id = id
+  }
+
+  /// The ID of `self`.
+  public private(set) var id: ID
+
+  /// Returns `true` iff `l` must precede `r` in a sort based on `id`.
+  public static func <(l: Self, r: Self) -> Bool { l.id < r.id }
+
+  public static var maxID: ID { (1 << 14) - 1 }
+}
+
+// A type that can represent the size of any grammar.
+public typealias GrammarSize = UInt16
+
+/// A rule identifier for public consumption.
+public struct RuleID: Hashable, Comparable {
+  public let ordinal: GrammarSize // This could sometimes be a smaller type, but is it worthwhile?
+
+  /// Returns `true` iff `l` must precede `r` in a sort based on `ordinal`.
+  public static func <(l: Self, r: Self) -> Bool { l.ordinal < r.ordinal }
+}
+
+
+/// A collection of Backus-Naur Form (BNF) rules, each defining a symbol
 /// on its left-hand side in terms of a string of symbols on its right-hand
-/// side, where a symbol is an enhanced `RawSymbol` (see `Symbol`).
-public struct Grammar<RawSymbol: Hashable> {
+/// side.
+///
+/// - Parameter StoredSymbol: storage representation of `Symbol.id` values in this grammar.
+public struct Grammar<StoredSymbol: SignedInteger & FixedWidthInteger> {
 
-  /// A symbol for the nihilist normal form (NNF) of the raw grammar, per Aycock
-  /// and Horspool.
-  ///
-  /// During NNF transformation, each nullable `RawSymbol` is divided into two
-  /// versions: `.some,` which never derives the empty string 𝝐, and `.null`,
-  /// which always does.  Before NNF transformation, all symbols are stored in
-  /// the `.some` form.
-  enum Symbol: Hashable {
-    /// The non-nulling plain raw symbol
-    case some(RawSymbol)
-    
-    /// The nulling version of the symbol.
-    case null(RawSymbol)
-  }
-  
-  /// A type that stores all rules packed end-to-end, with the LHS symbol following the RHS symbols.
-  ///
-  /// For example A -> B C is stored as the subsequence [B, C, A].
-  typealias RuleStore = [Symbol]
-  
   /// Storage for all the rules.
-  private var ruleStore: [Symbol] = []
+  ///
+  /// Rules are packed end-to-end, with the RHS symbols in order, followed by the LHS symbol with
+  /// its high bit set.
+  ///
+  /// For example A -> B C is stored as the subsequence [B, C, A | *highbit*].
+  private(set) var ruleStore: [StoredSymbol] = []
 
-  /// A Backus-Naur Form (BNF) production.
-  struct Rule: Hashable {
-    /// The indices in `rulestore` of this rule's RHS symbols.
-    var rhsIndices: Range<RuleStore.Index>
+  /// Where each rule begins in `ruleStore`, in sorted order, plus a sentinel that marks the end of
+  /// rule storage.
+  private var ruleStart: [Size] = [0]
 
-    /// The index in `ruleStore` where the LHS symbol can be found.
-    var lhsIndex: Grammar.RuleStore.Index { rhsIndices.upperBound }
+  /// The greatest symbol ID value in any rule, or -1 if there are no rules.
+  private(set) var maxSymbolID: Symbol.ID = -1
 
-    /// A value that can uniquely identify a rule in the grammar.
-    struct ID: Hashable { var lhsIndex: RuleStore.Index }
+  let startSymbol: Symbol
 
-    /// A value that uniquely identifies this rule in the grammar.
-    var id: ID { ID(lhsIndex: lhsIndex) }
-
-    /// `self`, with the recognition marker (dot) before its first RHS symbol.
-    var dotted: Grammar.DottedRule { .init(postdotIndices: rhsIndices) }
-
-    /// The length of this rule's RHS.
-    var rhsCount: Int { rhsIndices.count }
-  }
-
-  /// The RHS alternatives for each nonterminal symbol.
-  private var rulesByLHS = MultiMap<Symbol, Rule>()
-
-  /// The IDs of all right-recursive rules.
-  private var rightRecursive: Set<Rule.ID> = []
+  /// Creates an empty instance intended (when rules have been added) to recognize `startSymbol`.
+  public init(recognizing startSymbol: Symbol) { self.startSymbol = startSymbol }
 }
 
 extension Grammar {
-  /// A string of symbols found on the RHS of a rule.
-  typealias SymbolString = LazyMapSequence<Range<RuleStore.Index>, Symbol>
+  /// A representation of the size of the grammar (the total length of all right-hand sides
+  /// of the rules plus the number of rules).
+  public typealias Size = GrammarSize
 
-  /// A partially-recognized suffix of a grammar rule's RHS, where a notional
-  /// “dot” marks the end of the recognized symbols of the RHS.
-  struct DottedRule: Hashable {
-    /// The indices in `rulestore` of the unrecognized RHS symbols.
-    var postdotIndices: Range<RuleStore.Index>
+  /// A location in the grammar; e.g. the position of a dot in a partially-recognized rule.
+  public typealias Position = GrammarSize
 
-    /// The index in ruleStore where the rule's LHS symbol can be found.
-    var lhsIndex: RuleStore.Index { postdotIndices.upperBound }
+  /// Returns the size of `self` (the sum of the lengths of each rule's RHS and LHS).
+  public var size: Size {
+    Size(ruleStore.count)
+  }
 
-    /// The index in `ruleStore` of the symbol following the dot.
-    var postdotIndex: RuleStore.Index? { postdotIndices.first }
+  /// The identifiers of all rules.
+  public var ruleIDs: LazyMapSequence<Range<Int>, RuleID> {
+    ruleStart.indices.dropLast().lazy.map { i in RuleID(ordinal: Size(i)) }
+  }
 
-    /// The number of symbols following the dot.
-    var postdotCount: Int { postdotIndices.count }
+  /// Returns the LHS symbol represented by the value `stored` found in `ruleStore`.
+  ///
+  /// Symbols on the LHS of a rule have a special representation in `ruleStore`.
+  static func lhsSymbol(_ stored: StoredSymbol) -> Symbol {
+    assert(stored < 0)
+    return Symbol(id: ~Symbol.ID(stored))
+  }
 
-    /// `self`, but with the dot advanced by one position.
-    var advanced: Self {
-      Self(postdotIndices: postdotIndices.dropFirst())
+  /// A Backus-Naur Form (BNF) rule, or production.
+  public struct Rule {
+    /// The RHS symbols followed by the LHS symbol, with its high bit set.
+    internal let storage: Array<StoredSymbol>.SubSequence
+
+    /// The symbol to be recognized.
+    public var lhs: Symbol { Grammar.lhsSymbol(storage.last!) }
+
+    public typealias RHS = LazyMapSequence<Array<StoredSymbol>.SubSequence, Symbol>
+
+    /// The sequence of symbols that lead to recognition of the `lhs`.
+    public var rhs: RHS {
+      storage.dropLast().lazy.map { x in Symbol(id: Symbol.ID(x)) }
     }
-
-    /// The identity of the full rule of which `self` is a suffix.
-    var ruleID: Rule.ID { .init(lhsIndex: lhsIndex) }
-
-    /// True iff the rule is fully-recognized.
-    var isComplete: Bool { postdotIndices.isEmpty }
-  }
-}
-
-extension Grammar.Symbol {
-  /// `true` iff this symbol is known to derive 𝝐 and only 𝝐
-  var isNulling: Bool {
-    if case .null = self { return true } else { return false }
   }
 
-  /// The underlying raw (client-facing) symbol value.
-  var raw: RawSymbol {
-    switch self { case let .some(r), let .null(r): return r }
+  /// A random-access collection of Rules.
+  public typealias Rules = LazyMapSequence<Range<Int>, Rule>
+
+  /// The collection of all rules in the grammar.
+  public var rules: Rules {
+    ruleStart.indices.dropLast().lazy.map {
+      i in Rule(storage: ruleStore[Int(ruleStart[i])..<Int(ruleStart[i + 1])])
+    }
   }
 
-  /// `self`𝝐 (where X𝝐𝝐 ::= X𝝐)
-  var asNull: Self { .null(raw) }
-
-  /// Replaces `self` with `self.asNull`.
-  mutating func nullify() { self = self.asNull }
-}
-
-extension Grammar {
-  /// The rules for a given LHS symbol.
-  typealias Alternatives = [Rule]
-
-  /// Returns the right-hand side alternatives for lhs, or an empty collection if lhs is a terminal.
-  func alternatives(_ lhs: Symbol) -> Alternatives { rulesByLHS[lhs] }
-
-  /// Returns the LHS symbol for the rule corresponding to `t`.
-  func lhs(_ t: DottedRule) -> Symbol { ruleStore[t.lhsIndex] }
-
-  /// Returns the LHS symbol of `r`.
-  func lhs(_ r: Rule) -> Symbol { ruleStore[r.lhsIndex] }
-
-  /// Returns the next expected symbol of `t`, or `nil` if `t.isComplete`.
-  func postdot(_ t: DottedRule) -> Symbol? { ruleStore[t.postdotIndices].first }
-
-  /// Creates an preprocessed version of `rawRules` suitable for use by a
-  /// `Recognizer`, where `rawRules` is a BNF grammar of `RawSymbol`s.
-  public init<RawRules: Collection, RHS: Collection>(_ rawRules: RawRules)
-    where RawRules.Element == (lhs: RawSymbol, rhs: RHS), RHS.Element == RawSymbol
+  /// Adds a rule recognizing `rhs` as `lhs`.
+  ///
+  /// - Precondition: `lhs` and all elements of `rhs` are non-negative; the resulting size of the
+  ///   grammar is representable by `Size`.
+  @discardableResult
+  public mutating func addRule<RHS: Collection>(lhs: Symbol, rhs: RHS) -> RuleID
+    where RHS.Element == Symbol
   {
-    // Build an organized representation of the raw rules.
-    for (s, rhs) in rawRules {
-      let start = ruleStore.count
-      ruleStore.append(contentsOf: rhs.lazy.map { s in .some(s) } )
-      let r = Rule(rhsIndices: start..<ruleStore.endIndex)
-      ruleStore.append(.some(s))
-      rulesByLHS[.some(s)].append(r)
-    }
+    maxSymbolID = max(maxSymbolID, max(lhs.id, rhs.lazy.map(\.id).max() ?? -1))
+    ruleStore.amortizedLinearReserveCapacity(ruleStore.count + rhs.count + 1)
+    ruleStore.append(contentsOf: rhs.lazy.map { s in StoredSymbol(s.id) })
+    ruleStore.append(StoredSymbol(~lhs.id))
+    ruleStart.append(Size(ruleStore.count))
+    return RuleID(ordinal: Size(ruleStart.count - 2))
+  }
+}
 
-    // Preprocessing steps.
-    enterNihilistNormalForm()
-    identifyRightRecursions()
+extension Grammar {
+  /// Returns the LHS of `r`.
+  func lhs(_ r: RuleID) -> Symbol {
+    rules[Int(r.ordinal)].lhs
   }
 
-  /// Puts the grammar in nihilist normal form (NNF), per Aycock and Horspool.
-  mutating func enterNihilistNormalForm() {
-    // Build a mapping from symbol to the set of rules on whose RHS the symbol appears.
-    var rulesByRHS = MultiMap<Symbol, Rule>()
-    for rules in rulesByLHS.values {
-      for r in rules {
-        for s in rhs(r) { rulesByRHS[s].append(r) }
+  /// Returns the RHS of `r`.
+  func rhs(_ r: RuleID) -> Rule.RHS {
+    rules[Int(r.ordinal)].rhs
+  }
+
+  /// Returns the dot position at the beginning of `r`'s RHS.
+  func rhsStart(_ r: RuleID) -> Position {
+    Position(rules[Int(r.ordinal)].rhs.startIndex)
+  }
+
+  /// Returns the ID of the rule containing `p`.
+  public func containingRule(_ p: Position) -> RuleID {
+    RuleID(ordinal: Size(ruleStart.partitionPoint { y in y > p } - 1))
+  }
+
+  /// Adds a new unique symbol to self and returns it.
+  ///
+  /// - Precondition: `maxSymbol < Symbol.max`
+  mutating func newSymbol() -> Symbol {
+    maxSymbolID += 1
+    return Symbol(id: maxSymbolID)
+  }
+
+  /// Returns the postdot symbol corresponding to a dot at `p`, or nil if represents a completion.
+  func postdot(at p: Position) -> Symbol? {
+    let s = ruleStore[Int(p)]
+    return s < 0 ? nil : Symbol(id: Symbol.ID(s))
+  }
+
+  /// Returns the LHS recognized when a dot appears at `p`, or nil if `p` doesn't represent a
+  /// completion.
+  func recognized(at p: Position) -> Symbol? {
+    let s = ruleStore[Int(p)]
+    return s >= 0 ? nil : Self.lhsSymbol(s)
+  }
+}
+
+/// A grammar type that represent just about any logical grammar, but may waste
+/// storage space and thus cost some performance due to poor locality-of-reference.
+public typealias DefaultGrammar = Grammar<Symbol.ID>
+
+/// Preprocessing support
+extension Grammar {
+  /// A non-nulling symbol involved in rule rewriting, including its position in the original rule
+  /// and whether it is a nullable symbol.
+  typealias RewriteSymbol = (position: Int, symbol: Symbol, isNullable: Bool)
+
+  /// A sequence of symbols with auxilliary information used in rewriting grammar rules.
+  typealias RewriteFragment = Array<RewriteSymbol>.SubSequence
+
+  /// Returns a version of `self` with all nullable symbols removed, along with a mapping from
+  /// positions in the rewritten grammar to corresponding positions in `self`, and an indication of
+  /// whether `self.startSymbol` is nullable.
+  ///
+  /// - Nulling symbols in `self` do not appear in the result:
+  /// - All other symbols in `self` appear in the result, and derive the same non-empty terminal
+  ///   strings as in `self`.
+  /// - Naturally, no symbols in the result derive the empty string.
+  /// - The result contains some newly-synthesized symbols whose values are greater than
+  ///   `self.maxSymbol`.
+  /// - Each position in the result that is not at the end of a RHS corresponds to a position in
+  ///   `self` where the same prefix of a given `self`-rule's non-nulling RHS elements have been
+  ///   recognized.
+  func eliminatingNulls() -> (Self, DiscreteMap<Position, Position>, isNullable: Bool) {
+    var cooked = Self(recognizing: startSymbol)
+    cooked.maxSymbolID = maxSymbolID
+    var rawPositions = DiscreteMap<Position, Position>()
+    let n = nullSymbolSets()
+
+    var buffer: [RewriteSymbol] = []
+
+    for r in rules {
+      // Initialize the buffer to the LHS plus non-nulling symbols on the RHS (with positions).
+      let nonNullingRHS
+        = r.rhs.indices.lazy.map { i in
+          (position: i, symbol: r.rhs[i], isNullable: n.nullable.contains(r.rhs[i]))
+        }
+        .filter { e in !n.nulling.contains(e.symbol) }
+      if nonNullingRHS.isEmpty { continue }
+
+      buffer.replaceSubrange(
+        buffer.startIndex...,
+        with: CollectionOfOne((position: 0, symbol: r.lhs, isNullable: false)))
+
+      buffer.append(contentsOf: nonNullingRHS)
+      cooked.addDenullified(buffer[...], updating: &rawPositions)
+    }
+    return (cooked, rawPositions, n.nullable.contains(startSymbol))
+  }
+
+  /// Given a non-nulling rule from a raw grammar with its LHS in `rawRule.first` and the
+  /// non-nulling symbols of its RHS in `rawRule.dropFirst()`, adds a denullified rewrite to self,
+  /// updating `rawPositions` to reflect the correspondences.
+  mutating func addDenullified(
+    _ rawRule: RewriteFragment,
+    updating rawPositions: inout DiscreteMap<Position, Position>
+  ) {
+    // FIXME (efficiency): this function currently allocates and concatenates new fragments.  It
+    // would be better do all that work directly in the `RewriteBuffer`, even if that meant
+    // sometimes growing it.  That would complicate this code a bit, so might not be worth it.
+
+    // Using fragments even when we know we have a single symbol (e.g. lhs) simplifies some code.
+    var lhs = rawRule.prefix(1)
+    var rhs = rawRule.dropFirst()
+
+    // The longest suffix of nullable symbols.
+    let nullableSuffix = rhs.suffix(while: \.isNullable)
+
+    // Rewrite chunks of the RHS
+    while !rhs.isEmpty {
+      guard let qStart = rhs.firstIndex(where: \.isNullable ) else {
+        // Trivial case; there are no nullable symbols
+        addRewrittenRule(lhs: lhs, rhs: rhs, updating: &rawPositions)
+        return
       }
+
+      // Break the RHS into (`head`, `anchor`, `q`, `tail`)
+      //
+      // where:
+      // 1. `q` is the leftmost nullable symbol.
+      // 2. `anchor` is 1 symbol iff `q` is not the leftmost symbol and `tail` is nullable;
+      //    otherwise `anchor` is empty.
+      //
+      //    Explanation: When `head` is nonempty, we'll factor out a common prefix, creating [`lhs`
+      //    -> `head` `lhs1`] where `lhs1` is a synthesized continuation symbol, which must not
+      //    itself be nullable (since our goal is to eliminate those). If a non-nullable `anchor`
+      //    can be found, it must therefore be included in `lhs1`.  However, when `q` is the
+      //    leftmost symbol and `tail` is nullable, no anchor is needed, because `lhs` itself
+      //    started out nullable, and the case where `lhs1` would have been null is dealt with by
+      //    omitting `lhs` on the RHS of other rewritten rules.
+      let tailIsNullable = qStart >= nullableSuffix.startIndex
+      let anchorWidth = qStart > rhs.startIndex && tailIsNullable ? 1 : 0
+      let head = rhs[..<(qStart - anchorWidth)]
+      let anchor = rhs[..<qStart].suffix(anchorWidth)
+      let q = rhs[qStart...].prefix(1)
+      let tail = rhs[qStart...].dropFirst()
+
+      // If head is non-empty synthesize a symbol in lhs1 for head's continuation, adding
+      // lhs -> head lhs1.  Otherwise, just use lhs as lhs1.
+      let lhs1: RewriteFragment
+      if head.isEmpty { lhs1 = lhs }
+      else {
+        lhs1 = synthesizedLHS(for: rhs[anchor.startIndex...])
+        addRewrittenRule(lhs: lhs, rhs: head + lhs1, updating: &rawPositions)
+      }
+
+      // If tail length > 1, synthesize a symbol in lhs2 for tail.  Otherwise, lhs2 is tail itself.
+      let lhs2 = tail.count > 1 ? synthesizedLHS(for: tail) : tail
+
+      if tailIsNullable {
+        if !anchor.isEmpty {
+          addRewrittenRule(lhs: lhs1, rhs: anchor, updating: &rawPositions)
+        }
+        addRewrittenRule(lhs: lhs1, rhs: anchor + q, updating: &rawPositions)
+      }
+      if !lhs2.isEmpty {
+        addRewrittenRule(lhs: lhs1, rhs: anchor + q + lhs2, updating: &rawPositions)
+        addRewrittenRule(lhs: lhs1, rhs: anchor + lhs2, updating: &rawPositions)
+      }
+      if tail.count <= 1 { break }
+      lhs = lhs2
+      rhs = tail
     }
 
-    // Discover which symbols sometimes derive (nullable) and always (nulling) derive 𝝐.
-    let (nullableSymbols, nullingSymbols) = nullSymbolSets(rulesByRHS: rulesByRHS)
-
-    // Rules for nulling symbols have a simple rewrite.
-    for s in nullingSymbols { rewriteRules(withNullingLHS: s) }
-
-    // Other rules with nullable symbols on the RHS
-    let rulesWithNullableParts = Set(nullableSymbols.lazy.map { s in rulesByRHS[s] }.joined())
-
-    for r in rulesWithNullableParts where !nullingSymbols.contains(lhs(r)) {
-      clone(r, forNullablesStartingAt: 0)
-    }
-
-    /// Replaces rules producing `s` with rules producing `s`𝝐, with each symbol
-    /// B on the rhs of such a rule replaced with B𝝐.
-    func rewriteRules(withNullingLHS s: Symbol) {
-      let rules = rulesByLHS.removeValues(forKey: s)
-      rulesByLHS[s.asNull] = rules
-      for r in rules {
-        for i in r.rhsIndices { ruleStore[i].nullify() }
-        ruleStore[r.lhsIndex].nullify()
-      }
-    }
-
-    /// For each combination K of nullable symbol positions starting at
-    /// `rhsOffset` on `r`'s RHS, replicates `r` with symbols in positions K
-    /// replaced by their nulling counterparts.
-    func clone(_ r: Rule, forNullablesStartingAt rhsOffset: Int) {
-      // TODO: consider eliminating recursion
-      for i in rhsOffset..<r.rhsCount where nullableSymbols.contains(rhs(r).nth(i)) {
-        // Reserve storage so source of copy has a stable address.
-        ruleStore.amortizedLinearReserveCapacity(ruleStore.count + r.rhsCount + 1)
-
-        // Copy the symbols, remembering where they went.
-        let cloneStart = ruleStore.count
-        let src = ruleStore.withUnsafeBufferPointer { b in b }
-        ruleStore.append(contentsOf: src[r.rhsIndices.lowerBound...r.rhsIndices.upperBound])
-
-        // Replace the ith one with its nulling version.
-        ruleStore[cloneStart + i] = rhs(r).nth(i).asNull
-
-        // Register the new rule.
-        let r1 = Rule(rhsIndices: cloneStart..<(ruleStore.count - 1))
-        rulesByLHS[lhs(r1)].append(r1)
-
-        // Be sure to clone again for any remaining nulling symbols in the clone.
-        clone(r1, forNullablesStartingAt: i + 1)
-      }
+    /// Returns a single-symbol fragment appropriate for the LHS of a rule having `rhs` as its RHS.
+    func synthesizedLHS(for rhs: RewriteFragment) -> RewriteFragment {
+      [(position: rhs.first!.position, symbol: newSymbol(), isNullable: false)][...]
     }
   }
 
-  /// Returns the set of nullable symbols (which sometimes derive 𝝐) and the subset of nulling
-  /// symbols (which always derive 𝝐) in a grammar that is not yet in nihilist normal form.
-  func nullSymbolSets(rulesByRHS: MultiMap<Symbol, Rule>)
-    -> (nullable: Set<Symbol>, nulling: Set<Symbol>)
+  /// Adds a rule deriving `rhs` from `lhs`, registering correspondences between positions in `self`
+  /// and those in the un-denullified grammar in `rawPositions`.
+  ///
+  /// - Precondition: `lhs` contains exactly one symbol.
+  mutating func addRewrittenRule(
+    lhs: RewriteFragment, rhs: RewriteFragment,
+    updating rawPositions: inout DiscreteMap<Position, Position>)
   {
-    // Note: Warshall's algorithm for transitive closure can help here.
-    var nullable = Set<Symbol>()
-    var nulling = Set<Symbol>()
-    for (s, alternatives) in rulesByLHS.storage {
-      let x = alternatives.satisfaction { r in r.rhsCount == 0 }
-      if x == .all { discoverNulling(s) }
-      else if x != .none { discoverNullable(s) }
+    precondition(lhs.count == 1)
+    ruleStore.amortizedLinearReserveCapacity(ruleStore.count + rhs.count + 1)
+    var remainder = rhs
+    while let s = remainder.popFirst() {
+      rawPositions.appendMapping(from: GrammarSize(ruleStore.count), to: GrammarSize(s.position))
+      ruleStore.append(StoredSymbol(s.symbol.id))
     }
-
-    /// Marks `s` as nulling, and draws any consequent conlusions.
-    func discoverNulling(_ s: Symbol) {
-      // Every nulling symbol is nullable
-      if !nullable.contains(s) { discoverNullable(s) }
-      nulling.insert(s)
-      // We may be able to conclude that other symbols are also nulling.
-      for r in rulesByRHS[s] {
-        let s0 = self.lhs(r)
-        if nulling.contains(s0) { continue }
-        if rulesByLHS[s0]
-             .allSatisfy({ r in rhs(r).allSatisfy(nulling.contains) })
-        {
-          discoverNulling(s0)
-        }
-      }
-    }
-
-    /// Marks `s` as nullable, and draws any consequent conlusions.
-    func discoverNullable(_ s: Symbol) {
-      nullable.insert(s)
-      // We may be able to conclude that other symbols are nullable.
-      for r in rulesByRHS[s] {
-        let s0 = lhs(r)
-        if !nullable.contains(s0) && rhs(r).allSatisfy(nullable.contains) {
-          discoverNullable(s0)
-        }
-      }
-    }
-    return (nullable, nulling)
+    // TODO: think about whether we want to append positions for before/after the lhs.
+    ruleStore.append(StoredSymbol(~lhs.first!.symbol.id))
+    ruleStart.append(Size(ruleStore.count))
   }
 
-  /// Identifies and memoizes the set of right-recursive rules in `self`.
-  mutating func identifyRightRecursions() {
-    for rules in rulesByLHS.values {
-      for r in rules {
-        if computeIsRightRecursive(r) { rightRecursive.insert(r.id) }
-      }
-    }
-  }
-}
-
-/// Functions needed for Leo support.
-extension Grammar {
-  // Note: UNUSED
-  /// Returns `true` iff `s` is a terminal symbol.
-  func isTerminal(_ s: Symbol) -> Bool { return alternatives(s).isEmpty }
-
-  /// Returns the RHS symbols of `x` that have yet to be recognized.
-  func postdotRHS(_ x: DottedRule) -> SymbolString {
-    x.postdotIndices.lazy.map { i in ruleStore[i] }
-  }
-
-  /// Returns the RHS symbols of `x`.
-  func rhs(_ x: Rule) -> SymbolString { postdotRHS(x.dotted) }
-
-  /// Returns the rightmost non-nulling symbol of `r`.
-  ///
-  /// - Precondition: `self` is in nihilist normal form.
-  func rightmostNonNullingSymbol(_ r: Rule) -> Symbol? {
-    rhs(r).last { s in !s.isNulling }
-  }
-
-  /// Returns `true` iff x is right-recursive.
-  ///
-  /// - Note: this computation can be costly and the result should be memoized.
-  /// - Precondition: `self` is in nihilist normal form.
-  func computeIsRightRecursive(_ x: Rule) -> Bool {
-    // Warshall works here.
-    guard let rnn = rightmostNonNullingSymbol(x) else {
-      return false
-    }
-    if lhs(x) == rnn { return true }
-    var visited: Set<Symbol> = []
-    var q: Set<Symbol> = [rnn]
-
-    while let s = q.popFirst() {
-      visited.insert(s)
-      for r in alternatives(s) {
-        guard let rnn = rightmostNonNullingSymbol(r) else { continue }
-        if rnn == lhs(x) { return true }
-        if !visited.contains(rnn) { q.insert(rnn) }
-      }
-    }
-    return false
-  }
-
-  /// Returns `postdot(x)` iff it is the rightmost non-nulling symbol and `nil` otherwise.
-  ///
-  /// - Precondition: `self` is in nihilist normal form.
-  func penult(_ x: DottedRule) -> Symbol? {
-    guard let next = postdot(x) else { return nil }
-    return !next.isNulling && postdotRHS(x.advanced).allSatisfy { s in s.isNulling }
-      ? next : nil
-  }
-
-  /// Returns true iff `x`'s underlying rule is right-recursive.
-  ///
-  /// - Precondition: `self`'s right recursions have been computed.
-  func isRightRecursive(_ x: DottedRule) -> Bool {
-    rightRecursive.contains(x.ruleID)
+  func symbols() -> (terminals: Set<Symbol>, nonTerminals: Set<Symbol>) {
+    let nonTerminals = Set(rules.lazy.map(\.lhs))
+    let terminals = Set(rules.lazy.map(\.rhs).joined()).subtracting(nonTerminals)
+    return (terminals, nonTerminals)
   }
 }
 
 extension Grammar {
-  /// A string representation of `self`.
-  func description(_ x: DottedRule) -> String {
-    var r = "\(lhs(x)) ->\t"
-    let fullRule = alternatives(lhs(x)).first { $0.id == x.ruleID }!
-    var toPrint = fullRule.rhsIndices
-    if toPrint.isEmpty { r += "•" }
-    while let i = toPrint.popFirst() {
-      r += "\(ruleStore[i]) "
-      if toPrint.count == x.postdotCount { r += "• " }
-    }
-    return r
+  internal init(
+    ruleStore: [StoredSymbol], ruleStart: [GrammarSize], maxSymbolID: Symbol.ID, startSymbol: Symbol
+  ) {
+    self.ruleStore = ruleStore
+    self.ruleStart = ruleStart
+    self.maxSymbolID = maxSymbolID
+    self.startSymbol = startSymbol
+  }
+
+  func serialized() -> String {
+    """
+    Grammar<\(StoredSymbol.self)>(
+      ruleStore: \(ruleStore),
+      ruleStart: \(ruleStart),
+      maxSymbolID: \(maxSymbolID)
+      startSymbol: \(startSymbol))
+    """
   }
 }
 
-extension Grammar.Symbol: CustomStringConvertible {
-  /// A string representation of `self`.
-  var description: String {
-    switch self {
-    case let .some(r): return "\(r)"
-    case let .null(r): return "\(r)𝜀"
+extension Grammar {
+  /// Returns the position, for each right-recursive rule, of its last RHS symbol.
+  ///
+  /// - Precondition: `self` contains no nullable symbols.
+  func leoPositions() -> Set<Position> {
+    var result = Set<Position>()
+    var rightmostDerivable = AdjacencyMatrix()
+
+    for r in rules {
+      rightmostDerivable.addEdge(from: Int(r.lhs.id), to: Int(r.rhs.last!.id))
     }
+    rightmostDerivable.formTransitiveClosure()
+    for r in rules {
+      if rightmostDerivable.hasEdge(from: Int(r.rhs.last!.id), to: Int(r.lhs.id)) {
+        result.insert(Position(r.rhs.dropLast().endIndex))
+      }
+    }
+    return result
   }
 }
-

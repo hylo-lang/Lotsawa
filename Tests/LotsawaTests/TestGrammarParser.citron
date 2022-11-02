@@ -1,0 +1,51 @@
+%class_name TestGrammarParser
+
+%preface {
+  import CitronParserModule
+  import CitronLexerModule
+
+  extension _CitronParserUnexpectedTokenError : CustomDebugStringConvertible {
+    public var debugDescription: String {
+      if let t = token as? TestGrammar.AST.Token {
+        return "\n\(t.position): error: unexpected token (\(t), tokenCode: \(tokenCode))"
+      }
+      return "error: unexpected token (\(token), tokenCode: \(tokenCode))"
+    }
+  }
+}
+
+%default_nonterminal_type Void
+
+%nonterminal_type grammar {TestGrammar.AST.RuleList}
+%nonterminal_type rule_list {TestGrammar.AST.RuleList}
+%nonterminal_type rule {TestGrammar.AST.Rule}
+%nonterminal_type alternative_list {[TestGrammar.AST.RHS]}
+%nonterminal_type rhs {TestGrammar.AST.RHS}
+%nonterminal_type rhs_element {[TestGrammar.AST.Token]}
+
+%start_symbol grammar
+%token_type {TestGrammar.AST.Token}
+
+%token ILLEGAL_CHARACTER.
+
+grammar ::= rule_list(r). {r}
+
+rule_list ::= rule(r). {[r]}
+rule_list ::= rule_list(l) rule(r). {l + CollectionOfOne(r)}
+
+rule ::= LHS(l) IS_DEFINED_AS alternative_list(r).
+{ (lhs: l, alternatives: r) }
+
+alternative_list ::= rhs(r). { [r] }
+alternative_list ::= alternative_list(l) ALTERNATION rhs(r). { l +  [r] }
+
+rhs ::= rhs_element(r). {r}
+rhs ::= rhs(l) rhs_element(r). {l+r}
+
+rhs_element ::= UNDERSCORE. { [] }
+rhs_element ::= SYMBOL(e). { [e] }
+rhs_element ::= LITERAL(e). { [e] }
+
+/* Local Variables: */
+/* mode: lemon */
+/* End: */

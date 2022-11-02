@@ -3,6 +3,24 @@
 struct MultiMap<K: Hashable, V> {
   typealias Storage = Dictionary<K, [V]>
 
+  /// Creates an instance whose keys are the set of results of applying the given closure to each
+  /// element of `s`, and whose values for a given key are the arrays of `s` elements for which
+  /// `KeyForValue` returned that key.
+  init<S: Sequence>(
+    grouping s: S,
+    by keyForValue: (S.Element) throws -> K
+  ) rethrows where V == S.Element {
+    storage = try Storage.init(grouping: s, by: keyForValue)
+  }
+
+  /// Creates an instance mapping every key to an empty array.
+  init() {}
+
+  init(storage: Storage) {
+    self.storage = storage
+  }
+
+  /// Accesses the array of values associated with k.
   subscript(k: K) -> [V] {
     set { storage[k] = newValue }
     _modify { yield &storage[k, default: []] }
@@ -23,7 +41,10 @@ struct MultiMap<K: Hashable, V> {
     get { storage.values }
   }
 
+  /// Removes all values associated with key `k`.
   mutating func removeKey(_ k: K) { storage[k] = nil }
+
+  /// Removes and returns all values associated with key `k`.
   mutating func removeValues(forKey k: K) -> [V] { storage.removeValue(forKey: k) ?? [] }
 
   private(set) var storage: Storage = [:]
