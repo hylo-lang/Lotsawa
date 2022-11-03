@@ -158,10 +158,16 @@ extension Grammar {
     return Symbol(id: maxSymbolID)
   }
 
-  /// Returns the postdot symbol corresponding to a dot at `p`, or nil if represents a completion.
+  /// Returns the postdot symbol corresponding to a dot at `p`, or nil if `p` represents a completion.
   func postdot(at p: Position) -> Symbol? {
     let s = ruleStore[Int(p)]
     return s < 0 ? nil : Symbol(id: Symbol.ID(s))
+  }
+
+  /// Returns the predot symbol corresponding to a dot at `p`, or nil if `p` represents a prediction.
+  func predot(at p: Position) -> Symbol? {
+    if p == 0 { return nil }
+    return postdot(at: p - 1)
   }
 
   /// Returns the LHS recognized when a dot appears at `p`, or nil if `p` doesn't represent a
