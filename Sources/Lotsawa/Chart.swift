@@ -280,3 +280,56 @@ extension Chart {
     return setStart.last != setStart.dropLast().last
   }
 }
+
+protocol DebuggableProductType: CustomReflectable, CustomStringConvertible {
+  associatedtype ReflectedChildren: Collection
+    where ReflectedChildren.Element == (key: String, value: Any)
+  var reflectedChildren: ReflectedChildren { get }
+}
+
+extension DebuggableProductType {
+  var customMirror: Mirror {
+    .init(self, children: reflectedChildren.lazy.map {(label: $0.key, value: $0.value)})
+  }
+
+  var description: String {
+    "{"
+      + String(reflectedChildren.map { "\($0.key): \($0.value)" }
+                 .joined(separator: ", "))
+      + "}"
+  }
+}
+
+extension Chart.Item: DebuggableProductType {
+  enum Kind { case completion, prefix, leo }
+  var reflectedChildren: KeyValuePairs<String, Any> {
+    [
+      "type": (isCompletion ? .completion : isLeo ? .leo : .prefix) as Kind,
+      "symbolID": (transitionSymbol ?? lhs)!.id,
+      "origin": origin,
+      "dotPosition": dotPosition
+    ]
+  }
+}
+
+extension Chart: CustomStringConvertible {
+  public var description: String {
+    var r = "[\n"
+    var s = setStart[...]
+    for i in entries.indices {
+      if i == s.first {
+        r += "// \(s.startIndex)\n"
+        _ = s.popFirst()
+      }
+      r += "\(entries[i])\n"
+    }
+    r += "\n]"
+    return r
+  }
+}
+
+extension Chart.Entry: DebuggableProductType {
+  var reflectedChildren: [(key: String, value: Any)] {
+    item.reflectedChildren + [("predotOrigin", predotOrigin)]
+  }
+}
