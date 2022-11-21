@@ -106,4 +106,16 @@ class RecognizerTests: XCTestCase {
     XCTAssertNil(r.recognize("a"))
     XCTAssertNotNil(r.recognize(""), "\n\(r)")
   }
+
+  func testAmbiguity() throws {
+    let g = try """
+      B ::= 'a' B | 'a'
+      X ::= B B B
+      """
+      .asTestGrammar(recognizing: "X")
+    var r = TestRecognizer(g)
+
+    XCTAssertNil(r.recognize("aaaa"))
+    print(r)
+  }
 }
