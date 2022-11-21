@@ -21,6 +21,13 @@ public struct Recognizer<StoredSymbol: SignedInteger & FixedWidthInteger>
   private var leoCandidate: [Symbol: Chart.Item?] = [:]
 }
 
+/// applies `f` to `x`.
+///
+/// Useful for making certain constructs more readable
+func mutate<T, R>(_ x: inout T, applying f: (inout T)->R) -> R {
+  f(&x)
+}
+
 extension Recognizer {
   /// Creates an instance that recognizes `start` in `g`.
   public init(_ g: PreprocessedGrammar<StoredSymbol>) {
@@ -67,6 +74,10 @@ extension Recognizer {
       derive(.init(item: d, predotOrigin: head.origin))
     }
     else {
+      assert(
+        predecessors.allSatisfy(\.isEarley),
+        "Leo item is not first in predecessors.")
+
       for p in predecessors {
         derive(.init(item: p.advanced(in: g), predotOrigin: origin))
       }
@@ -78,7 +89,9 @@ extension Recognizer {
     let s = g.recognized(at: x.dotPosition + 1)!
 
     let predecessors = chart.transitionItems(on: s, inEarleySet: x.origin)
-    if let head = predecessors.first, head.isLeo { return head }
+    if let head = predecessors.first, head.isLeo {
+      return head
+    }
     return nil
   }
 
@@ -91,7 +104,9 @@ extension Recognizer {
     if let t = x.item.transitionSymbol {
       // Check incomplete items for leo candidate-ness.
       if leoPositions.contains(x.item.dotPosition) {
-        { v in v = v == nil ? .some(x.item) : .some(nil) }(&leoCandidate[t])
+        // The first time we find a leo predecessor with transition symbol t, store it as a
+        // candidate, but thereafter, store nil.
+        mutate(&leoCandidate[t]) { v in v = v == nil ? .some(x.item) : .some(nil) }
       }
       predict(t)
     }
