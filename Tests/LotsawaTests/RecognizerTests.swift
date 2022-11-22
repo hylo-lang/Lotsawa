@@ -22,8 +22,8 @@ class RecognizerTests: XCTestCase {
 
   func testRightRecursiveArithmetic() throws {
     let g = try """
-      sum ::= sum additive product | product
-      product ::= product multiplicative factor | factor
+      sum ::= product additive sum | product
+      product ::= factor multiplicative product  | factor
       factor ::= '(' sum ')' | number
       number ::= digit number | digit
       digit ::= '0' | '1' | '2' | '3' | '4' | '5' | '6' | '7' | '8' | '9'
