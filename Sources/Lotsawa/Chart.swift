@@ -253,7 +253,7 @@ extension Chart {
   func transitionItems(on s: Symbol, inEarleySet i: UInt32)
     -> LazyPrefixWhileSequence<LazyMapSequence<LazyFilterSequence<EarleySet.Indices>, Item>>
   {
-    let ithSet = earleySet(i)
+    let ithSet = i == currentEarleme ? currentEarleySet : earleySet(i)
     let k = Item.transitionKey(s)
 
     let j = ithSet.partitionPoint { d in d.item.transitionKey >= k }
@@ -278,6 +278,13 @@ extension Chart {
   mutating func finishEarleme() -> Bool {
     setStart.append(entries.count)
     return setStart.last != setStart.dropLast().last
+  }
+}
+
+extension Chart {
+  mutating func replaceEntry(at i: Int, withMemoOf x: Item, transitionSymbol t: Symbol ) {
+    entries[i].item = Chart.Item(memoizing: x, transitionSymbol: t)
+    entries[i].predotOrigin = 0
   }
 }
 

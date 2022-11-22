@@ -15,10 +15,6 @@ public struct Recognizer<StoredSymbol: SignedInteger & FixedWidthInteger>
 
   /// Storage for all DerivationGroups, grouped by Earleme and sorted within each Earleme.
   private var chart = Chart()
-
-  /// A mapping from transition symbol to either a unique Leo candidate item, or to `nil` indicating
-  /// that there were multiple candidates for that symbol.
-  private var leoCandidate: [Symbol: Chart.Item?] = [:]
 }
 
 /// applies `f` to `x`.
@@ -41,8 +37,6 @@ extension Recognizer {
   /// Prepares `self` to recognize an input of length `n`.
   public mutating func initialize() {
     chart.removeAll()
-    leoCandidate.removeAll(keepingCapacity: true)
-
     predict(g.startSymbol)
   }
 
@@ -102,12 +96,6 @@ extension Recognizer {
     if !chart.insert(x) { return }
 
     if let t = x.item.transitionSymbol {
-      // Check incomplete items for leo candidate-ness.
-      if leoPositions.contains(x.item.dotPosition) {
-        // The first time we find a leo predecessor with transition symbol t, store it as a
-        // candidate, but thereafter, store nil.
-        mutate(&leoCandidate[t]) { v in v = v == nil ? .some(x.item) : .some(nil) }
-      }
       predict(t)
     }
     else { // it's complete
@@ -119,14 +107,26 @@ extension Recognizer {
   ///
   /// - Precondition: the current set is otherwise complete.
   mutating func addLeoItems() {
-    for case let (t, .some(d)) in leoCandidate {
-      let memo = leoPredecessor(d) ?? d.advanced(in: g)
-      chart.insert(
-        .init(
-          item: Chart.Item(memoizing: memo, transitionSymbol: t),
-          predotOrigin: 0))
+    // FIXME: this could be skipped if there are no items with dots in leo positions.
+    var lastTransitionSymbol: Symbol? = nil
+    for i in chart.currentEarleySet.indices {
+      let x = chart.currentEarleySet[i].item
+
+      guard let t: Symbol = x.transitionSymbol
+      else { break } // completions are at the end
+      if lastTransitionSymbol == t { continue }
+      lastTransitionSymbol = t
+
+      if !leoPositions.contains(x.dotPosition) { continue }
+      if i + 1 != chart.currentEarleySet.count
+           && chart.currentEarleySet[i + 1].item.transitionSymbol == t {
+        continue
+      }
+      chart.replaceEntry(
+        at: i, withMemoOf: leoPredecessor(x) ?? x.advanced(in: g),
+        transitionSymbol: t
+      )
     }
-    leoCandidate.removeAll(keepingCapacity: true)
   }
 
   /// Completes the current earleme and moves on to the next one, returning `true` unless no
