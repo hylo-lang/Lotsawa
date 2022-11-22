@@ -15,10 +15,13 @@ public struct Recognizer<StoredSymbol: SignedInteger & FixedWidthInteger>
 
   /// Storage for all DerivationGroups, grouped by Earleme and sorted within each Earleme.
   private var chart = Chart()
+}
 
-  /// A mapping from transition symbol to either a unique Leo candidate item, or to `nil` indicating
-  /// that there were multiple candidates for that symbol.
-  private var leoCandidate: [Symbol: Chart.Item?] = [:]
+/// applies `f` to `x`.
+///
+/// Useful for making certain constructs more readable
+func mutate<T, R>(_ x: inout T, applying f: (inout T)->R) -> R {
+  f(&x)
 }
 
 extension Recognizer {
@@ -34,8 +37,6 @@ extension Recognizer {
   /// Prepares `self` to recognize an input of length `n`.
   public mutating func initialize() {
     chart.removeAll()
-    leoCandidate.removeAll(keepingCapacity: true)
-
     predict(g.startSymbol)
   }
 
@@ -67,6 +68,10 @@ extension Recognizer {
       derive(.init(item: d, predotOrigin: head.origin))
     }
     else {
+      assert(
+        predecessors.allSatisfy(\.isEarley),
+        "Leo item is not first in predecessors.")
+
       for p in predecessors {
         derive(.init(item: p.advanced(in: g), predotOrigin: origin))
       }
@@ -78,7 +83,9 @@ extension Recognizer {
     let s = g.recognized(at: x.dotPosition + 1)!
 
     let predecessors = chart.transitionItems(on: s, inEarleySet: x.origin)
-    if let head = predecessors.first, head.isLeo { return head }
+    if let head = predecessors.first, head.isLeo {
+      return head
+    }
     return nil
   }
 
@@ -89,10 +96,6 @@ extension Recognizer {
     if !chart.insert(x) { return }
 
     if let t = x.item.transitionSymbol {
-      // Check incomplete items for leo candidate-ness.
-      if leoPositions.contains(x.item.dotPosition) {
-        { v in v = v == nil ? .some(x.item) : .some(nil) }(&leoCandidate[t])
-      }
       predict(t)
     }
     else { // it's complete
@@ -104,14 +107,26 @@ extension Recognizer {
   ///
   /// - Precondition: the current set is otherwise complete.
   mutating func addLeoItems() {
-    for case let (t, .some(d)) in leoCandidate {
-      let memo = leoPredecessor(d) ?? d.advanced(in: g)
-      chart.insert(
-        .init(
-          item: Chart.Item(memoizing: memo, transitionSymbol: t),
-          predotOrigin: 0))
+    // FIXME: this could be skipped if there are no items with dots in leo positions.
+    var lastTransitionSymbol: Symbol? = nil
+    for i in chart.currentEarleySet.indices {
+      let x = chart.currentEarleySet[i].item
+
+      guard let t: Symbol = x.transitionSymbol
+      else { break } // completions are at the end
+      if lastTransitionSymbol == t { continue }
+      lastTransitionSymbol = t
+
+      if !leoPositions.contains(x.dotPosition) { continue }
+      if i + 1 != chart.currentEarleySet.count
+           && chart.currentEarleySet[i + 1].item.transitionSymbol == t {
+        continue
+      }
+      chart.replaceEntry(
+        at: i, withMemoOf: leoPredecessor(x) ?? x.advanced(in: g),
+        transitionSymbol: t
+      )
     }
-    leoCandidate.removeAll(keepingCapacity: true)
   }
 
   /// Completes the current earleme and moves on to the next one, returning `true` unless no
