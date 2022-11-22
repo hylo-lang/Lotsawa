@@ -109,13 +109,12 @@ class RecognizerTests: XCTestCase {
 
   func testAmbiguity() throws {
     let g = try """
-      B ::= 'a' B | 'a'
+      B ::= B 'a' | 'a'
       X ::= B B B
       """
       .asTestGrammar(recognizing: "X")
     var r = TestRecognizer(g)
 
     XCTAssertNil(r.recognize("aaaa"))
-    print(r)
   }
 }

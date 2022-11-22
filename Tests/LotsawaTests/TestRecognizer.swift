@@ -53,7 +53,7 @@ struct TestRecognizer: CustomStringConvertible {
           result.append(" (\(currentItem.origin))")
           result.append(" \(itemDerivations.map { d in d.predotOrigin })")
         }
-        result.append(" \(currentItem)\n")
+        result.append("\n")
         allDerivations = allDerivations[itemDerivations.endIndex...]
       }
     }
