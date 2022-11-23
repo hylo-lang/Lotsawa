@@ -15,6 +15,9 @@ public struct Recognizer<StoredSymbol: SignedInteger & FixedWidthInteger>
 
   /// Storage for all DerivationGroups, grouped by Earleme and sorted within each Earleme.
   private var chart = Chart()
+
+  /// True iff at least one Leo candidate item was added to the current earley set.
+  private var leoCandidateFound = false
 }
 
 /// applies `f` to `x`.
@@ -55,6 +58,14 @@ extension Recognizer {
         predict(g.rhs(r).first!)
       }
     }
+  }
+
+  mutating func insert(_ newEntry: Chart.Entry) -> Bool {
+    if !chart.insert(newEntry) { return false }
+    if leoPositions.contains(newEntry.item.dotPosition) {
+      self.leoCandidateFound = true
+    }
+    return true
   }
 
   /// Respond to the discovery of `s` starting at `origin` and ending in the current earleme.
@@ -107,7 +118,6 @@ extension Recognizer {
   ///
   /// - Precondition: the current set is otherwise complete.
   mutating func createLeoItems() {
-    // FIXME: this could be skipped if there are no items with dots in leo positions.
     let endOfSet = chart.currentEarleySet.endIndex
     var i = chart.currentEarleySet.startIndex
     while i != endOfSet {
@@ -143,7 +153,10 @@ extension Recognizer {
   /// Completes the current earleme and moves on to the next one, returning `true` unless no
   /// progress was made in the current earleme.
   public mutating func finishEarleme() -> Bool {
-    createLeoItems()
+    if leoCandidateFound {
+      createLeoItems()
+      leoCandidateFound = false
+    }
     return chart.finishEarleme()
   }
 
