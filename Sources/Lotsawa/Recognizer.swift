@@ -103,36 +103,47 @@ extension Recognizer {
     }
   }
 
-  /// Adds the leo items indicated for the current set.
+  /// Replaces appropriate Earley items with Leo items indicated for the current set.
   ///
   /// - Precondition: the current set is otherwise complete.
-  mutating func addLeoItems() {
+  mutating func createLeoItems() {
     // FIXME: this could be skipped if there are no items with dots in leo positions.
-    var lastTransitionSymbol: Symbol? = nil
-    for i in chart.currentEarleySet.indices {
+    let endOfSet = chart.currentEarleySet.endIndex
+    var i = chart.currentEarleySet.startIndex
+    while i != endOfSet {
       let x = chart.currentEarleySet[i].item
-
       guard let t: Symbol = x.transitionSymbol
-      else { break } // completions are at the end
-      if lastTransitionSymbol == t { continue }
-      lastTransitionSymbol = t
+      else { break } // items with no transition Symbol are completions, at the end of the set.
 
-      if !leoPositions.contains(x.dotPosition) { continue }
-      if i + 1 != chart.currentEarleySet.count
-           && chart.currentEarleySet[i + 1].item.transitionSymbol == t {
-        continue
+      // Skip over multiple derivations of the same item
+      let endOfItem = chart.currentEarleySet[i...].dropFirst().prefix {
+        $0.item == x
+      }.endIndex
+
+      // If the position is at the end and the transition symbol was unique in this set
+      if leoPositions.contains(x.dotPosition) && (
+           endOfItem == endOfSet || chart.currentEarleySet[endOfItem].item.transitionSymbol != t)
+      {
+        // Replace derivations with Leo derivations
+        let memoized = leoPredecessor(x) ?? x.advanced(in: g)
+        while i != endOfItem {
+          chart.replaceItem(at: i, withLeoMemoOf: memoized, transitionSymbol: t)
+          i += 1
+        }
       }
-      chart.replaceEntry(
-        at: i, withMemoOf: leoPredecessor(x) ?? x.advanced(in: g),
-        transitionSymbol: t
-      )
+      else {
+        // Else skip over everything with this transition symbol
+        i = chart.currentEarleySet[endOfItem...].prefix {
+          $0.item.transitionSymbol == t
+        }.endIndex
+      }
     }
   }
 
   /// Completes the current earleme and moves on to the next one, returning `true` unless no
   /// progress was made in the current earleme.
   public mutating func finishEarleme() -> Bool {
-    addLeoItems()
+    createLeoItems()
     return chart.finishEarleme()
   }
 

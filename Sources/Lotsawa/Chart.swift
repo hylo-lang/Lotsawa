@@ -217,6 +217,7 @@ extension Chart {
       var r = self
       r.symbolID = Symbol.ID(truncatingIfNeeded: g.ruleStore[Int(dotPosition)])
       r.isEarley = true
+      assert(r.isCompletion)
       return r
     }
   }
@@ -282,9 +283,8 @@ extension Chart {
 }
 
 extension Chart {
-  mutating func replaceEntry(at i: Int, withMemoOf x: Item, transitionSymbol t: Symbol ) {
+  mutating func replaceItem(at i: Int, withLeoMemoOf x: Item, transitionSymbol t: Symbol ) {
     entries[i].item = Chart.Item(memoizing: x, transitionSymbol: t)
-    entries[i].predotOrigin = 0
   }
 }
 
