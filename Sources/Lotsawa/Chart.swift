@@ -107,14 +107,11 @@ extension Chart {
     }
 
 
-    /// Lookup key for the start of the sequence of completions for a given symbol
-    ///
-    /// Any Leo item always precedes Earley derivations in this sequence.
-    var completionKey: UInt32 { storage.isCompletion_symbol_isEarley_originHi }
-
-    /// Lookup key for the start of the sequence of completions of symbol `s`.
-    static func completionKey(_ s: Symbol) -> UInt32 {
-      return UInt32(truncatingIfNeeded: ~s.id) << 17
+    /// Lookup key for the start of the sequence of completions of symbol `s` with the given
+    /// `origin`.
+    static func completionKey(_ s: Symbol, origin: UInt32) -> UInt64 {
+      return UInt64(truncatingIfNeeded: ~s.id) << (17+32)
+        | UInt64(origin) << 16
     }
 
     /// Returns `true` iff `lhs` should precede `rhs` in a Earley set.
@@ -289,16 +286,23 @@ extension Chart {
     return items.prefix(while: { x in x.symbolID == s.id })
   }
 
-  /// Returns the entries in Earley set `i` that complete a recognition of `lhs`.
-  func completions(of lhs: Symbol, inEarleySet i: UInt32) -> some Collection<Entry>
-  {
-    let ithSet = earleySet(i)
-    let k = Item.completionKey(lhs)
+  /// Returns the entries that complete a recognition of `lhs` covering `extent`.
+  func completions(of lhs: Symbol, over extent: Range<SourcePosition>) -> some Collection<Entry> {
+    let ithSet = earleySet(extent.upperBound)
+    let k = Item.completionKey(lhs, origin: extent.lowerBound)
 
-    let j = ithSet.partitionPoint { d in d.item.completionKey >= k }
+    let j = ithSet.partitionPoint { d in d.item.key >= k }
     let r0 = ithSet[j...]
-    let r = r0.lazy.prefix(while: { x in x.item.lhs == lhs })
+    let r = r0.lazy.prefix(while: { x in x.item.lhs == lhs && x.item.origin == extent.lowerBound })
     return r
+  }
+
+  /// Returns the predotOrigins of entries of Earley set `i` whose item is `x`
+  func predotOrigins(of x: Item, inEarleySet i: UInt32) -> some Collection<UInt32> {
+    let ithSet = earleySet(i)
+    let key = Entry(item: x, predotOrigin: 0)
+    let j = ithSet.partitionPoint { d in d >= key }
+    return ithSet[j...].lazy.prefix(while: { y in y.item == x }).map(\.predotOrigin)
   }
 
   /// Completes the current earleme and moves on to the next one, returning `true` unless no

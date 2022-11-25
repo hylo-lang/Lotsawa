@@ -14,7 +14,7 @@ public struct Recognizer<StoredSymbol: SignedInteger & FixedWidthInteger>
   private let leoPositions: Set<Grammar.Position>
 
   /// Storage for all DerivationGroups, grouped by Earleme and sorted within each Earleme.
-  private var chart = Chart()
+  public private(set) var chart = Chart()
 
   /// True iff at least one Leo candidate item was added to the current earley set.
   private var leoCandidateFound = false
@@ -46,7 +46,7 @@ extension Recognizer {
   public var currentEarleme: UInt32 { chart.currentEarleme }
 
   /// Returns the chart entry that predicts the start of `r`.
-  func prediction(_ r: RuleID) -> Chart.Entry {
+  private func prediction(_ r: RuleID) -> Chart.Entry {
     .init(item: .init(predicting: r, in: g, at: currentEarleme), predotOrigin: 0)
   }
 
@@ -102,7 +102,7 @@ extension Recognizer {
 
   /// Ensures that `x` is represented in the current derivation set, and draws any consequent
   /// conclusions.
-  mutating func derive(_ x: Chart.Entry) {
+  private mutating func derive(_ x: Chart.Entry) {
     assert(!x.item.isLeo)
     if !chart.insert(x) { return }
 
@@ -166,9 +166,9 @@ extension Recognizer {
     if currentEarleme == 0 { return false }
     if currentEarleme == 1 && acceptsNull { return true }
 
-    let completions = chart.completions(of: g.startSymbol, inEarleySet: currentEarleme - 1)
+    let completions = chart.completions(of: g.startSymbol, over: 0..<(currentEarleme - 1))
 
-    return completions.contains { d in d.item.origin == 0 }
+    return !completions.isEmpty
   }
 
   func earleySet(_ i: UInt32) -> Chart.EarleySet {

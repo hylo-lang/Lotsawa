@@ -66,4 +66,44 @@ class ChartInternalTests: XCTestCase {
     //   isLeo
     //   leoMemo
   }
+
+  func testUnambiguousLeftDerivation() throws {
+    let g = try """
+      sum ::= sum additive product | product
+      product ::= product multiplicative factor | factor
+      factor ::= '(' sum ')' | number
+      number ::= number digit | digit
+      digit ::= '0' | '1' | '2' | '3' | '4' | '5' | '6' | '7' | '8' | '9'
+      additive ::= '+' | '-'
+      multiplicative ::= '*' | '/'
+      """
+      .asTestGrammar(recognizing: "sum")
+    var r = TestRecognizer(g)
+    let unrecognized = r.recognize("1+2")
+    XCTAssertNil(unrecognized, "\n\(r)")
+
+    let sum = g.symbols["sum"]!
+    let product = g.symbols["product"]!
+    let number = g.symbols["number"]!
+    let digit = g.symbols["digit"]!
+    let additive = g.symbols["additive"]!
+    let multiplicative = g.symbols["multiplicative"]!
+
+    let chart = r.base.chart
+    let tops = chart.completions(of: sum, over: 0..<3)
+    XCTAssertEqual(tops.count, 1)
+    let top = tops.first!
+    let topRuleID = g.raw.rule(containing: top.item.dotPosition)
+    let topRule = g.raw.storedRule(topRuleID)
+    XCTAssertEqual(topRule.lhs, sum)
+    XCTAssertEqual(Array(topRule.rhs), [sum, additive, product])
+
+    let pd0 = chart.predotOrigins(of: top.item, inEarleySet: 3)
+    XCTAssertEqual(Array(pd0), [2])
+    let rhsProducts = chart.completions(of: product, over: 2..<3)
+    XCTAssertEqual(rhsProducts.count, 1)
+    let rhsProduct = rhsProducts.first!
+
+    _ = (number, digit, multiplicative) // warning suppression
+  }
 }
