@@ -194,8 +194,9 @@ extension Chart {
       UInt16(truncatingIfNeeded: storage.originLow_dotPosition)
     }
 
-    /// Returns `self`, which must be an incomplete Earley item, with the dot advanced over one
-    /// symbol.
+    /// Returns `self` with the dot advanced over one symbol.
+    ///
+    /// - Precondition: `self` is an incomplete Earley item,
     func advanced<S>(in g: Grammar<S>) -> Item {
       assert(isEarley)
       assert(!isCompletion)
