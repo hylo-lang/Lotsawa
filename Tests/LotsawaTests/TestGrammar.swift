@@ -78,7 +78,7 @@ extension TestGrammar: CustomStringConvertible {
   /// Returns a human-readable representation of `p` as a dotted rule.
   func dottedText(_ p: DefaultGrammar.Position) -> String {
     let r0 = raw.rule(containing: p)
-    let r = raw.rules[Int(r0.ordinal)]
+    let r = raw.storedRule(r0)
 
     let rhsText = r.rhs.lazy.map { s in text(s) }
     let predotCount = Int(p) - r.rhs.startIndex

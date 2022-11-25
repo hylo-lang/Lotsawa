@@ -102,11 +102,8 @@ extension Grammar {
     }
   }
 
-  /// A random-access collection of Rules.
-  public typealias Rules = LazyMapSequence<Range<Int>, Rule>
-
   /// The collection of all rules in the grammar.
-  public var rules: Rules {
+  public var rules: some RandomAccessCollection<Rule> {
     ruleStart.indices.dropLast().lazy.map {
       i in Rule(storage: ruleStore[Int(ruleStart[i])..<Int(ruleStart[i + 1])])
     }
@@ -130,19 +127,24 @@ extension Grammar {
 }
 
 extension Grammar {
+  /// Returns the Rule corresponding to i
+  public func storedRule(_ r: RuleID) -> Rule {
+    rules[rules.index(rules.startIndex, offsetBy: Int(r.ordinal))]
+  }
+
   /// Returns the LHS of `r`.
   func lhs(_ r: RuleID) -> Symbol {
-    rules[Int(r.ordinal)].lhs
+    storedRule(r).lhs
   }
 
   /// Returns the RHS of `r`.
   func rhs(_ r: RuleID) -> Rule.RHS {
-    rules[Int(r.ordinal)].rhs
+    storedRule(r).rhs
   }
 
   /// Returns the dot position at the beginning of `r`'s RHS.
   func rhsStart(_ r: RuleID) -> Position {
-    Position(rules[Int(r.ordinal)].rhs.startIndex)
+    Position(storedRule(r).rhs.startIndex)
   }
 
   /// Returns the ID of the rule containing `p`.
