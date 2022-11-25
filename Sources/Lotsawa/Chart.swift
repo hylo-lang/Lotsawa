@@ -129,7 +129,14 @@ extension Chart {
 
     /// True iff `self` represents a completion
     var isCompletion: Bool {
-      Int32(bitPattern: storage.isCompletion_symbol_isEarley_originHi) < 0
+      get {
+        Int32(bitPattern: storage.isCompletion_symbol_isEarley_originHi) < 0
+      }
+      set {
+        if newValue != isCompletion {
+          storage.isCompletion_symbol_isEarley_originHi ^= (1 << 31)
+        }
+      }
     }
 
     /// The transition symbol if `self` is not a completion; otherwise the bitwise inverse of the
@@ -206,6 +213,26 @@ extension Chart {
       assert(r.dotPosition == self.dotPosition + 1)
       assert(r.symbolID == s)
       assert(r.isCompletion == (s < 0))
+      return r
+    }
+
+    /// Returns `self` with the dot moved back over one symbol.
+    ///
+    /// - Precondition: `self` is a non-prediction Earley item.
+    func prefix<S>(in g: Grammar<S>) -> Item {
+      assert(isEarley)
+
+      var r = self
+
+      r.storage.originLow_dotPosition -= 1
+      r.symbolID = g.predot(at: dotPosition)!.id
+      r.isCompletion = false
+
+      assert(r.isEarley)
+      assert(r.origin == self.origin)
+      assert(r.dotPosition == self.dotPosition - 1)
+      assert(r.symbolID == g.predot(at: dotPosition)!.id)
+      assert(r.isCompletion == false)
       return r
     }
 
