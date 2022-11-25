@@ -74,7 +74,7 @@ extension Grammar {
   }
 
   /// The identifiers of all rules.
-  public var ruleIDs: LazyMapSequence<Range<Int>, RuleID> {
+  public var ruleIDs: some RandomAccessCollection<RuleID> {
     ruleStart.indices.dropLast().lazy.map { i in RuleID(ordinal: Size(i)) }
   }
 

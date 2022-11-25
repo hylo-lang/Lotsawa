@@ -6,7 +6,7 @@ extension Collection {
 
   /// Returns a lazy view of `self` omitting elements which are equivalent to their right-hand neighbor.
   func droppingAdjacentDuplicates(equivalence: @escaping (Element, Element)->Bool)
-    -> LazyMapSequence<LazyFilterSequence<Indices>, Element>
+    -> some Collection<Element>
   {
     indices.lazy.filter { i in
       index(after: i) == endIndex || !equivalence(self[i], self[index(after: i)])
@@ -16,8 +16,7 @@ extension Collection {
 
 extension Collection where Element: Equatable {
   /// Returns a lazy view of `self` omitting elements which compare equal to their right-hand neighbor.
-  func droppingAdjacentDuplicates()
-    -> LazyMapSequence<LazyFilterSequence<Indices>, Element>
+  func droppingAdjacentDuplicates() -> some Collection<Element>
   {
     indices.lazy.filter { i in
       index(after: i) == endIndex || self[i] != self[index(after: i)]
