@@ -223,7 +223,7 @@ extension Chart {
       var r = self
 
       r.storage.originLow_dotPosition -= 1
-      r.symbolID = g.predot(at: dotPosition)!.id
+      r.symbolID = g.postdot(at: r.dotPosition)!.id
       r.isCompletion = false
 
       assert(r.isEarley)
@@ -303,6 +303,16 @@ extension Chart {
     let key = Entry(item: x, predotOrigin: 0)
     let j = ithSet.partitionPoint { d in d >= key }
     return ithSet[j...].lazy.prefix(while: { y in y.item == x }).map(\.predotOrigin)
+  }
+
+  /// Returns the entries representing one fewer recognized RHS symbols than `x` covering
+  /// where the recognized grammar is `g`.
+  func prefixes<S>(of x: Entry, in g: Grammar<S>) -> some Collection<Entry>
+  {
+    let endSet = earleySet(x.predotOrigin)
+    let p = x.item.prefix(in: g)
+    let j = endSet.partitionPoint { d in d.item >= p }
+    return endSet[j...].lazy.prefix(while: { y in y.item == p })
   }
 
   /// Completes the current earleme and moves on to the next one, returning `true` unless no

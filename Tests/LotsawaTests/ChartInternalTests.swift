@@ -1,6 +1,17 @@
 @testable import Lotsawa
 import XCTest
 
+struct UnexpectedlyEmpty: Error {}
+
+fileprivate extension Collection {
+  func checkedOnlyElement(_ message: @autoclosure () -> String = "", file: StaticString = #filePath, line: UInt = #line) throws -> Element {
+    XCTAssert(!self.isEmpty, message(), file: file, line: line)
+    if self.isEmpty { throw UnexpectedlyEmpty() }
+    XCTAssert(self.dropFirst().isEmpty, message(), file: file, line: line)
+    return self.first!
+  }
+}
+
 class ChartInternalTests: XCTestCase {
   func testItemOperations() throws {
     let g = try """
@@ -90,20 +101,30 @@ class ChartInternalTests: XCTestCase {
     let multiplicative = g.symbols["multiplicative"]!
 
     let chart = r.base.chart
-    let tops = chart.completions(of: sum, over: 0..<3)
-    XCTAssertEqual(tops.count, 1)
-    let top = tops.first!
-    let topRuleID = g.raw.rule(containing: top.item.dotPosition)
+    let top3 = try chart.completions(of: sum, over: 0..<3).checkedOnlyElement()
+    XCTAssert(top3.item.isCompletion)
+    let topRuleID = g.raw.rule(containing: top3.item.dotPosition)
     let topRule = g.raw.storedRule(topRuleID)
     XCTAssertEqual(topRule.lhs, sum)
     XCTAssertEqual(Array(topRule.rhs), [sum, additive, product])
 
-    let pd0 = chart.predotOrigins(of: top.item, inEarleySet: 3)
-    XCTAssertEqual(Array(pd0), [2])
-    let rhsProducts = chart.completions(of: product, over: 2..<3)
-    XCTAssertEqual(rhsProducts.count, 1)
-    let rhsProduct = rhsProducts.first!
+    let pd3 = chart.predotOrigins(of: top3.item, inEarleySet: 3)
+    XCTAssertEqual(Array(pd3), [2])
+    let rhsProduct = try chart.completions(of: product, over: 2..<3)
+      .checkedOnlyElement()
+    XCTAssert(rhsProduct.item.isCompletion)
 
-    _ = (number, digit, multiplicative) // warning suppression
+    let top2 = try chart.prefixes(of: top3, in: g.raw).checkedOnlyElement()
+    XCTAssertEqual(g.raw.rule(containing: top2.item.dotPosition), topRuleID)
+
+    XCTAssertEqual(top2.item.transitionSymbol, product)
+
+    let top1 = try chart.prefixes(of: top2, in: g.raw).checkedOnlyElement()
+    XCTAssertEqual(g.raw.rule(containing: top1.item.dotPosition), topRuleID)
+
+    let top0 = try chart.prefixes(of: top1, in: g.raw).checkedOnlyElement()
+    XCTAssertEqual(g.raw.rule(containing: top0.item.dotPosition), topRuleID)
+
+    // Could explore more, but it's time to create a better abstraction.
   }
 }
