@@ -4,7 +4,8 @@ extension Collection {
     i == endIndex ? nil : self[i]
   }
 
-  /// Returns a lazy view of `self` omitting elements which are equivalent to their right-hand neighbor.
+  /// Returns a lazy view of `self` omitting elements that are equivalent to their right-hand
+  /// neighbor.
   func droppingAdjacentDuplicates(equivalence: @escaping (Element, Element)->Bool)
     -> some Collection<Element>
   {
@@ -15,8 +16,32 @@ extension Collection {
 }
 
 extension Collection where Element: Equatable {
-  /// Returns a lazy view of `self` omitting elements which compare equal to their right-hand neighbor.
+  /// Returns a lazy view of `self` omitting elements that compare equal to their right-hand
+  /// neighbor.
   func droppingAdjacentDuplicates() -> some Collection<Element>
+  {
+    indices.lazy.filter { i in
+      index(after: i) == endIndex || self[i] != self[index(after: i)]
+    }.map { i in self[i] }
+  }
+}
+
+extension BidirectionalCollection {
+  /// Returns a lazy view of `self` omitting elements that are equivalent to their right-hand
+  /// neighbor.
+  func droppingAdjacentDuplicates(equivalence: @escaping (Element, Element)->Bool)
+    -> some BidirectionalCollection<Element>
+  {
+    indices.lazy.filter { i in
+      index(after: i) == endIndex || !equivalence(self[i], self[index(after: i)])
+    }.map { i in self[i] }
+  }
+}
+
+extension BidirectionalCollection where Element: Equatable {
+  /// Returns a lazy view of `self` omitting elements that compare equal to their right-hand
+  /// neighbor.
+  func droppingAdjacentDuplicates() -> some BidirectionalCollection<Element>
   {
     indices.lazy.filter { i in
       index(after: i) == endIndex || self[i] != self[index(after: i)]

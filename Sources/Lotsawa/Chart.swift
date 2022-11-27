@@ -276,18 +276,20 @@ extension Chart {
   }
 
   /// Returns the items in Earley set `i` whose use is triggered by the recognition of `s`.
-  func transitionItems(on s: Symbol, inEarleySet i: UInt32) -> some Collection<Item>
+  func transitionItems(on s: Symbol, inEarleySet i: UInt32) -> some BidirectionalCollection<Item>
   {
     let ithSet = i == currentEarleme ? currentEarleySet : earleySet(i)
     let k = Item.transitionKey(s)
 
     let j = ithSet.partitionPoint { d in d.item.transitionKey >= k }
     let items = ithSet[j...].lazy.map(\.item).droppingAdjacentDuplicates()
-    return items.prefix(while: { x in x.symbolID == s.id })
+    return items.lazy.prefix(while: { x in x.symbolID == s.id })
   }
 
   /// Returns the entries that complete a recognition of `lhs` covering `extent`.
-  func completions(of lhs: Symbol, over extent: Range<SourcePosition>) -> some Collection<Entry> {
+  func completions(of lhs: Symbol, over extent: Range<SourcePosition>)
+    -> some BidirectionalCollection<Entry>
+  {
     let ithSet = earleySet(extent.upperBound)
     let k = Item.completionKey(lhs, origin: extent.lowerBound)
 
@@ -298,7 +300,7 @@ extension Chart {
   }
 
   /// Returns the predotOrigins of entries of Earley set `i` whose item is `x`
-  func predotOrigins(of x: Item, inEarleySet i: UInt32) -> some Collection<UInt32> {
+  func predotOrigins(of x: Item, inEarleySet i: UInt32) -> some BidirectionalCollection<UInt32> {
     let ithSet = earleySet(i)
     let key = Entry(item: x, predotOrigin: 0)
     let j = ithSet.partitionPoint { d in d >= key }
@@ -307,7 +309,7 @@ extension Chart {
 
   /// Returns the entries representing one fewer recognized RHS symbols than `x` covering
   /// where the recognized grammar is `g`.
-  func prefixes<S>(of x: Entry, in g: Grammar<S>) -> some Collection<Entry>
+  func prefixes<S>(of x: Entry, in g: Grammar<S>) -> some BidirectionalCollection<Entry>
   {
     let endSet = earleySet(x.predotOrigin)
     let p = x.item.prefix(in: g)
