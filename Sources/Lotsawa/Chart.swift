@@ -1,12 +1,18 @@
 /// Storage for incremental recognition results and the core representation of a parse forest.
 public struct Chart
 {
+  /// Storage for all chart entries
+  typealias Entries = Array<Entry>
+
+  /// Identifier of an entry in the chart.
+  typealias Position = Entries.Index
+
   /// Storage for all DerivationGroups, grouped by Earleme and sorted within each Earleme.
-  private var entries: [Entry] = []
+  internal private(set) var entries: [Entry] = []
 
   /// The position in `chart` where each Earley/derivation set begins, plus a sentinel for the end
   /// of the last complete set.
-  private var setStart: [Array<Entry>.Index] = [0]
+  private var setStart: [Position] = [0]
 }
 
 public typealias SourcePosition = UInt32
@@ -287,15 +293,16 @@ extension Chart {
   }
 
   /// Returns the entries that complete a recognition of `lhs` covering `extent`.
-  func completions(of lhs: Symbol, over extent: Range<SourcePosition>)
-    -> some BidirectionalCollection<Entry>
+  ///
+  /// - Complexity: O(N) where N is the length of the result.
+  func completions(of lhs: Symbol, over extent: Range<SourcePosition>) -> Entries.SubSequence
   {
     let ithSet = earleySet(extent.upperBound)
     let k = Item.completionKey(lhs, origin: extent.lowerBound)
 
     let j = ithSet.partitionPoint { d in d.item.key >= k }
     let r0 = ithSet[j...]
-    let r = r0.lazy.prefix(while: { x in x.item.lhs == lhs && x.item.origin == extent.lowerBound })
+    let r = r0.prefix(while: { x in x.item.lhs == lhs && x.item.origin == extent.lowerBound })
     return r
   }
 
@@ -309,12 +316,14 @@ extension Chart {
 
   /// Returns the entries representing one fewer recognized RHS symbols than `x` covering
   /// where the recognized grammar is `g`.
-  func prefixes<S>(of x: Entry, in g: Grammar<S>) -> some BidirectionalCollection<Entry>
+  ///
+  /// - Complexity: O(N) where N is the length of the result.
+  func prefixes<S>(of x: Entry, in g: Grammar<S>) -> Entries.SubSequence
   {
     let endSet = earleySet(x.predotOrigin)
     let p = x.item.prefix(in: g)
     let j = endSet.partitionPoint { d in d.item >= p }
-    return endSet[j...].lazy.prefix(while: { y in y.item == p })
+    return endSet[j...].prefix(while: { y in y.item == p })
   }
 
   /// Completes the current earleme and moves on to the next one, returning `true` unless no
