@@ -1,8 +1,25 @@
 import XCTest
 @testable import Lotsawa
 
+extension TestForest {
+  func checkUniqueDerivation(
+    ofLHS expectedRule: String,
+    over locus: Range<SourcePosition>,
+    rhsOrigins expectedRHSOrigins: [SourcePosition],
+    _ message: @autoclosure () -> String = "", file: StaticString = #filePath, line: UInt = #line
+  ) throws {
+    let d = try derivations(of: String(expectedRule.split(separator: " ").first!), over: locus)
+      .checkedOnlyElement(message(), file: file, line: line)
+    XCTAssertEqual(
+      d.ruleName, expectedRule, "ruleName mismatch" + message(),
+      file: file, line: line)
+    XCTAssertEqual(
+      d.rhsOrigins, expectedRHSOrigins, "rhsOrigin mismatch" + message(),
+      file: file, line: line)
+  }
+}
+
 class ForestTests: XCTestCase {
-  /*
   func testLeftRecursiveArithmetic() throws {
     let g = try """
       sum ::= sum additive product | product
@@ -14,41 +31,60 @@ class ForestTests: XCTestCase {
       multiplicative ::= '*' | '/'
       """
       .asTestGrammar(recognizing: "sum")
-    var r = TestRecognizer(g)
+    var r = TestRecognizer(g) //    01234567890
     let unrecognized = r.recognize("42+(9/3-20)")
+    XCTAssertNil(unrecognized)
 
-    XCTAssertNil(unrecognized, "\n\(r)")
-  }
+    let f = r.forest
+    try f.checkUniqueDerivation(
+      ofLHS: "sum ::= sum additive product", over: 0..<11, rhsOrigins: [0, 2, 3])
 
-  func testRightRecursiveArithmetic() throws {
-    let g = try """
-      sum ::= product additive sum | product
-      product ::= factor multiplicative product  | factor
-      factor ::= '(' sum ')' | number
-      number ::= digit number | digit
-      digit ::= '0' | '1' | '2' | '3' | '4' | '5' | '6' | '7' | '8' | '9'
-      additive ::= '+' | '-'
-      multiplicative ::= '*' | '/'
-      """
-      .asTestGrammar(recognizing: "sum")
-    var r = TestRecognizer(g)
-    let unrecognized = r.recognize("42+(9/3-20)")
+    try f.checkUniqueDerivation(ofLHS: "sum ::= product", over: 0..<2, rhsOrigins: [0])
+    try f.checkUniqueDerivation(ofLHS: "product ::= factor", over: 0..<2, rhsOrigins: [0])
+    try f.checkUniqueDerivation(ofLHS: "factor ::= number", over: 0..<2, rhsOrigins: [0])
+    try f.checkUniqueDerivation(ofLHS: "number ::= number digit", over: 0..<2, rhsOrigins: [0, 1])
 
-    XCTAssertNil(unrecognized, "\n\(r)")
+    try f.checkUniqueDerivation(ofLHS: "number ::= digit", over: 0..<1, rhsOrigins: [0])
+    try f.checkUniqueDerivation(ofLHS: "digit ::= '4'", over: 0..<1, rhsOrigins: [0])
 
-    // Intended parse tree:
-    //
-    // (sum
-    //
-    //  (sum
-    //   (product
-    //    (factor
-    //     (number
-    //      (digit "4")
-    //      (number (digit "2"))))))
-    //
-    //  (additive "+")
-    //
+    try f.checkUniqueDerivation(ofLHS: "digit ::= '2'", over: 1..<2, rhsOrigins: [1])
+
+    try f.checkUniqueDerivation(ofLHS: "additive ::= '+'", over: 2..<3, rhsOrigins: [2])
+
+    try f.checkUniqueDerivation(ofLHS: "product ::= factor", over: 3..<11, rhsOrigins: [3])
+    try f.checkUniqueDerivation(ofLHS: "factor ::= '(' sum ')'", over: 3..<11, rhsOrigins: [3, 4, 10])
+
+    try f.checkUniqueDerivation(
+      ofLHS: "sum ::= sum additive product", over: 4..<10, rhsOrigins: [4, 7, 8])
+
+    try f.checkUniqueDerivation(ofLHS: "sum ::= product", over: 4..<7, rhsOrigins: [4])
+    try f.checkUniqueDerivation(
+      ofLHS: "product ::= product multiplicative factor", over: 4..<7, rhsOrigins: [4, 5, 6])
+
+    try f.checkUniqueDerivation(ofLHS: "product ::= factor", over: 4..<5, rhsOrigins: [4])
+    try f.checkUniqueDerivation(ofLHS: "factor ::= number", over: 4..<5, rhsOrigins: [4])
+    try f.checkUniqueDerivation(ofLHS: "number ::= digit", over: 4..<5, rhsOrigins: [4])
+    try f.checkUniqueDerivation(ofLHS: "digit ::= '9'", over: 4..<5, rhsOrigins: [4])
+
+    try f.checkUniqueDerivation(ofLHS: "multiplicative ::= '/'", over: 5..<6, rhsOrigins: [5])
+    try f.checkUniqueDerivation(ofLHS: "multiplicative ::= '/'", over: 5..<6, rhsOrigins: [5])
+
+    try f.checkUniqueDerivation(ofLHS: "factor ::= number", over: 6..<7, rhsOrigins: [6])
+    try f.checkUniqueDerivation(ofLHS: "number ::= digit", over: 6..<7, rhsOrigins: [6])
+    try f.checkUniqueDerivation(ofLHS: "digit ::= '3'", over: 6..<7, rhsOrigins: [6])
+
+    try f.checkUniqueDerivation(ofLHS: "additive ::= '-'", over: 7..<8, rhsOrigins: [7])
+
+    try f.checkUniqueDerivation(ofLHS: "product ::= factor", over: 8..<10, rhsOrigins: [8])
+    try f.checkUniqueDerivation(ofLHS: "factor ::= number", over: 8..<10, rhsOrigins: [8])
+    try f.checkUniqueDerivation(ofLHS: "number ::= number digit", over: 8..<10, rhsOrigins: [8, 9])
+
+    try f.checkUniqueDerivation(ofLHS: "number ::= digit", over: 8..<9, rhsOrigins: [8])
+    try f.checkUniqueDerivation(ofLHS: "digit ::= '2'", over: 8..<9, rhsOrigins: [8])
+
+    try f.checkUniqueDerivation(ofLHS: "digit ::= '0'", over: 9..<10, rhsOrigins: [9])
+}
+
     //  (product
     //
     //   (factor
@@ -72,7 +108,23 @@ class ForestTests: XCTestCase {
     //
     //     ")"
     //     ))))
-  }
+
+/*
+  func testRightRecursiveArithmetic() throws {
+    let g = try """
+      sum ::= product additive sum | product
+      product ::= factor multiplicative product  | factor
+      factor ::= '(' sum ')' | number
+      number ::= digit number | digit
+      digit ::= '0' | '1' | '2' | '3' | '4' | '5' | '6' | '7' | '8' | '9'
+      additive ::= '+' | '-'
+      multiplicative ::= '*' | '/'
+      """
+      .asTestGrammar(recognizing: "sum")
+    var r = TestRecognizer(g)
+    let unrecognized = r.recognize("42+(9/3-20)")
+
+    XCTAssertNil(unrecognized, "\n\(r)")
 
   func testEmptyRules() throws {
     let g = try """

@@ -3,9 +3,15 @@ import XCTest
 
 struct UnexpectedlyEmpty: Error {}
 
-fileprivate extension Collection {
-  func checkedOnlyElement(_ message: @autoclosure () -> String = "", file: StaticString = #filePath, line: UInt = #line) throws -> Element {
-    XCTAssert(!self.isEmpty, message(), file: file, line: line)
+extension Collection {
+  func checkedOnlyElement(
+    _ message: @autoclosure () -> String = "",
+    file: StaticString = #filePath, line: UInt = #line) throws -> Element
+  {
+    XCTAssert(
+      !self.isEmpty, message() + " Expected exactly one element in \(Array(self))",
+      file: file, line: line)
+
     if self.isEmpty { throw UnexpectedlyEmpty() }
     XCTAssert(self.dropFirst().isEmpty, message(), file: file, line: line)
     return self.first!
