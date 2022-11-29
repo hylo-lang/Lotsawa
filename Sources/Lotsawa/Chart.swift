@@ -113,10 +113,11 @@ extension Chart {
     }
 
 
-    /// Lookup key for the start of the sequence of completions of symbol `s` with the given
+    /// Lookup key for the start of the sequence of Earley completions of symbol `s` with the given
     /// `origin`.
     static func completionKey(_ s: Symbol, origin: UInt32) -> UInt64 {
       return UInt64(truncatingIfNeeded: ~s.id) << (17+32)
+        | (1 as UInt64) << (16 + 32)
         | UInt64(origin) << 16
     }
 
