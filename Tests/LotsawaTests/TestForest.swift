@@ -5,8 +5,14 @@ struct TestForest {
   let language: TestGrammar
 
   struct Derivation {
-    let ruleName: String
-    let rhsOrigins: [SourcePosition]
+    let base: Forest<Symbol.ID>.Derivation
+    let language: TestGrammar
+
+    var ruleName: String {
+      "\(language.text(base.lhs)) ::= \(base.rhs.map { language.text($0) }.joined(separator: " "))"
+    }
+
+    var rhsOrigins: [SourcePosition] { Array(base.rhsOrigins) }
   }
 
   func derivations(of lhsName: String, over locus: Range<SourcePosition>) -> [Derivation] {
@@ -14,11 +20,7 @@ struct TestForest {
     var r: [Derivation] = []
     while !source.isEmpty {
       let d = base.first(of: source)
-      r.append(
-        Derivation(
-          ruleName: "\(language.text(d.lhs)) ::= "
-            + "\(d.rhs.map { language.text($0) }.joined(separator: " "))",
-          rhsOrigins: Array(d.rhsOrigins)))
+      r.append(Derivation(base: d, language: language))
       base.removeFirst(from: &source)
     }
     return r
