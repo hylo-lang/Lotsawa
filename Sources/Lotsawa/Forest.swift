@@ -28,7 +28,9 @@ public struct Forest<StoredSymbol: SignedInteger & FixedWidthInteger> {
 
   public func derivations(of lhs: Symbol, over p: Range<SourcePosition>) -> DerivationSet
   {
-    var r = [chart.completions(of: lhs, over: p).indices]
+    let roots = chart.completions(of: lhs, over: p).indices
+    if roots.isEmpty { return [] }
+    var r = [roots]
     extend(&r)
     return r
   }

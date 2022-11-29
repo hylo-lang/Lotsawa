@@ -108,7 +108,7 @@ class ForestTests: XCTestCase {
   }
    */
 
-  func testAmbiguity() throws {
+  func testRawForestAmbiguity() throws {
     let g = try """
       B ::= B 'a' | 'a'
       X ::= B B B
@@ -135,8 +135,7 @@ class ForestTests: XCTestCase {
     )
   }
 
-
-  func testAmbiguity2() throws {
+  func testAmbiguity() throws {
     let g = try """
       B ::= B 'a' | 'a'
       X ::= B B B
@@ -146,8 +145,36 @@ class ForestTests: XCTestCase {
 
     XCTAssertNil(r.recognize("aaaa"))
     let f = r.forest
-    let d1 = f.derivations(of: "X", over: 0..<4)
-    XCTAssert(d1.map(\.ruleName).allSatisfy { $0 == "X ::= B B B" })
-    XCTAssertEqual(Set(d1.lazy.map(\.rhsOrigins)), [[0, 1, 2], [0, 1, 3], [0, 2, 3]])
+    let xs = f.derivations(of: "X", over: 0..<4)
+    XCTAssert(xs.map(\.ruleName).allSatisfy { $0 == "X ::= B B B" })
+    XCTAssertEqual(Set(xs.lazy.map(\.rhsOrigins)), [[0, 1, 2], [0, 1, 3], [0, 2, 3]])
+
+    let b01 = f.derivations(of: "B", over: 0..<1)
+    XCTAssertEqual(b01.count, 1)
+    XCTAssertEqual(b01.first!.ruleName, "B ::= 'a'")
+    XCTAssertEqual(b01.first!.rhsOrigins, [0])
+
+    let b12 = f.derivations(of: "B", over: 1..<2)
+    XCTAssertEqual(b12.count, 1)
+    XCTAssertEqual(b12.first!.ruleName, "B ::= 'a'")
+    XCTAssertEqual(b12.first!.rhsOrigins, [1])
+
+    let b23 = f.derivations(of: "B", over: 2..<3)
+    XCTAssertEqual(b23.count, 1)
+    XCTAssertEqual(b23.first!.ruleName, "B ::= 'a'")
+    XCTAssertEqual(b23.first!.rhsOrigins, [2])
+
+    let b02 = f.derivations(of: "B", over: 0..<2)
+    XCTAssertEqual(b02.count, 1)
+    XCTAssertEqual(b02.first!.ruleName, "B ::= B 'a'")
+    XCTAssertEqual(b02.first!.rhsOrigins, [0, 1])
+
+    let b13 = f.derivations(of: "B", over: 1..<3)
+    XCTAssertEqual(b13.count, 1)
+    XCTAssertEqual(b13.first!.ruleName, "B ::= B 'a'")
+    XCTAssertEqual(b13.first!.rhsOrigins, [1, 2])
+
+    XCTAssert(f.derivations(of: "'a'", over: 0..<1).isEmpty)
+    XCTAssert(f.derivations(of: "X", over: 0..<1).isEmpty)
   }
 }
