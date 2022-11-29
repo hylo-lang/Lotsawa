@@ -2,7 +2,7 @@
 public struct Chart
 {
   /// Storage for all chart entries
-  typealias Entries = Array<Entry>
+  public typealias Entries = Array<Entry>
 
   /// Identifier of an entry in the chart.
   typealias Position = Entries.Index
@@ -261,13 +261,13 @@ extension Chart {
   /// derivations of any Earley item, and the non-derivation information is small, and
   /// ambiguity in useful grammars is low, each such item is represented as one or more
   /// consecutively stored `Entry`s, each representing one predot symbol origin.
-  struct Entry: Comparable {
+  public struct Entry: Comparable {
     var item: Item
     /// The origin of the predot symbol for this entry, if any.
     var predotOrigin: UInt32
 
     /// Returns `true` iff `lhs` should precede `rhs` in a derivation set.
-    static func < (lhs: Self, rhs: Self) -> Bool {
+    public static func < (lhs: Self, rhs: Self) -> Bool {
       (lhs.item.key, lhs.predotOrigin) < (rhs.item.key, rhs.predotOrigin)
     }
   }
@@ -348,11 +348,11 @@ protocol DebuggableProductType: CustomReflectable, CustomStringConvertible {
 }
 
 extension DebuggableProductType {
-  var customMirror: Mirror {
+  public var customMirror: Mirror {
     .init(self, children: reflectedChildren.lazy.map {(label: $0.key, value: $0.value)})
   }
 
-  var description: String {
+  public var description: String {
     "{"
       + String(reflectedChildren.map { "\($0.key): \($0.value)" }
                  .joined(separator: ", "))

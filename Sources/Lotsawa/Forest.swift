@@ -1,11 +1,48 @@
-/**/
+/// A result of recognition from which parses can be extracted.
 public struct Forest<StoredSymbol: SignedInteger & FixedWidthInteger> {
-  let chart: Chart
-  let grammar: Grammar<StoredSymbol>
+  /// The information produced by the recognizer.
+  private let chart: Chart
 
-  public typealias DerivationSet = [Range<Int>]
+  /// The language being recognized.
+  private let grammar: Grammar<StoredSymbol>
 
-  func extend(_ p: inout DerivationSet) {
+  /// Creates an instance representing the parses stored in `chart` for the given `grammar`.
+  init(chart: Chart, grammar: Grammar<StoredSymbol>) {
+    self.chart = chart
+    self.grammar = grammar
+  }
+}
+
+extension Forest {
+  /// A subset of the parses of a single symbol over a range of source positions.
+  ///
+  /// The first element points to a series of completions of the symbol in the chart.  Each element
+  /// thereafter describes a series of potential predecessors of the *first* entry pointed to by the
+  /// previous element.  Thus the elements are in some sense stored in reverse. Predictions are
+  /// omitted.
+  ///
+  /// Notional derivation sets are sometimes (temporarily) described by their prefixes; see `extend`
+  /// for more details.
+  public typealias DerivationSet = [Range<Chart.Entries.Index>]
+
+  /// One parse of a single symbol over a range of source positions, each of whose constituent RHS
+  /// symbols may have multiple parses.
+  public struct Derivation {
+    /// The set of which this represpresents the first element
+    let path: DerivationSet
+
+    /// The set of parses in which path was found.
+    let domain: Forest
+
+    /// The rule described by this derivation.
+    public let rule: RuleID
+  }
+
+  /// Extends a derivation set prefix by appending elements describing predecessors until the
+  /// position of the first RHS symbol of the set's first derivation is represented.
+  ///
+  /// - Precondition: `!p.last.isEmpty`
+  private func extend(_ p: inout DerivationSet) {
     var e = chart.entries[p.last!.first!]
 
     while e.predotOrigin != e.item.origin {
@@ -15,6 +52,7 @@ public struct Forest<StoredSymbol: SignedInteger & FixedWidthInteger> {
     }
   }
 
+  /// Drops the first derivation from `p`, leaving it empty if there are no further derivations.
   public func removeFirst(from p: inout DerivationSet) {
     _ = p[p.index(before: p.endIndex)].popFirst()
     if !p.last!.isEmpty { return }
@@ -26,20 +64,16 @@ public struct Forest<StoredSymbol: SignedInteger & FixedWidthInteger> {
     extend(&p)
   }
 
-  public func derivations(of lhs: Symbol, over p: Range<SourcePosition>) -> DerivationSet {
-    let roots = chart.completions(of: lhs, over: p).indices
+  /// Returns the set representing all derivations of `lhs` over `locus`.
+  public func derivations(of lhs: Symbol, over locus: Range<SourcePosition>) -> DerivationSet {
+    let roots = chart.completions(of: lhs, over: locus).indices
     if roots.isEmpty { return [] }
     var r = [roots]
     extend(&r)
     return r
   }
 
-  public struct Derivation {
-    let path: DerivationSet
-    let domain: Forest
-    public let rule: RuleID
-  }
-
+  /// Returns the first derivation in `d`.
   public func first(of d: DerivationSet) -> Derivation {
     .init(
       path: d, domain: self,
@@ -47,19 +81,17 @@ public struct Forest<StoredSymbol: SignedInteger & FixedWidthInteger> {
   }
 }
 
-extension LazyMapCollection: Hashable, Equatable where Element: Hashable {
-  public func hash(into h: inout Hasher) {
-    for x in self { x.hash(into: &h) }
-  }
-  public static func == (lhs: Self, rhs: Self) -> Bool {
-    return lhs.elementsEqual(rhs)
-  }
-}
-
 extension Forest.Derivation {
+  /// The LHS symbol being derived.
   public var lhs: Symbol { domain.grammar.lhs(rule) }
+
+  /// The RHS symbols of the rule by which `lhs` was derived.
   public var rhs: Grammar<StoredSymbol>.Rule.RHS { domain.grammar.rhs(rule) }
-  public var rhsOrigins: LazyMapCollection<ReversedCollection<Forest.DerivationSet>, UInt32> {
+
+  /// The position in the source where each RHS symbol of this derivation starts.
+  public var rhsOrigins:
+    LazyMapCollection<ReversedCollection<Forest.DerivationSet>, SourcePosition>
+  {
     path.reversed().lazy.map { domain.chart.entries[$0.lowerBound].predotOrigin }
   }
 }
@@ -69,87 +101,3 @@ extension Forest.Derivation: CustomStringConvertible {
     "\(lhs.id) ::= \(rhs.map { String($0.id) }.joined(separator: " ")): \(Array(rhsOrigins))"
   }
 }
-
-/*
-struct ParseNode<StoredSymbol: SignedInteger & FixedWidthInteger> {
-  typealias Grammar = Lotsawa.Grammar<StoredSymbol>
-  let chart: Chart
-  let grammar: Grammar
-  let lhs: Symbol
-  let locus: Range<SourcePosition>
-
-  struct Derivations {
-    let subject: ParseNode
-
-    /// Indices of the chart Entries marking the parts of this derivation, from last (the completion
-    /// of the RHS) to first (the recognition of the first symbol of the RHS)
-    var path: DerivationSet = []
-
-    init(_ subject: ParseNode) {
-      rulePath.append(subject.chart.completions(of: subject.lhs, over: subject.locus).indices)
-      extend()
-    }
-  }
-
-  struct Derivation {
-    let forest: ParseForest
-
-    /// Indices of the chart Entries marking the parts of this derivation, from last (the completion
-    /// of the RHS) to first (the recognition of the first symbol of the RHS)
-    var rulePath: [Range<Chart.Position>]
-
-    init(firstIn forest: ParseForest) {
-      self.forest = forest
-
-      rulePath = []
-    }
-
-    mutating func formNext() -> Bool {
-      formNext(from: rulePath.count - 1)
-    }
-
-    mutating func formNext() ->
-  }
-}
-
-extension ParseForest {
-  struct DerivationIterator<Completions: BidirectionalCollection, Prefixes: Collection>
-    where Completions.Element == Chart.Entry, Prefixes.Element == Chart.Entry
-  {
-    let chart: Chart
-    var remainingCompletions: Completions.SubSequence
-    var remainingPrefixes: [Prefixes.SubSequence]
-    var offset: Int
-  }
-
-}
-
-extension ParseForest.DerivationIterator: IteratorProtocol {
-  func next() -> Derivation? {
-    if remainingCompletions.isEmpty { return nil }
-    let r = Derivation(
-      chart: chart,
-      completion: remainingCompletions.first!,
-      prefixes: remainingPrefixes.map { $0.first! })
-    offset += 1
-
-    remainingPrefixes.last!.popFirst()
-    if remainingPrefixes.last.isEmpty {
-
-    }
-
-    return r
-  }
-}
-
-extension ParseForest {
-  func derivations() -> some Collection<Derivation> {
-    let completions = chart.completions(of: top, over: locus)[...]
-
-    var r: [Derivation] = []
-
-    return r
-  }
-}
-
-*/
