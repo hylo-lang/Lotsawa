@@ -174,4 +174,8 @@ extension Recognizer {
   func earleySet(_ i: UInt32) -> Chart.EarleySet {
     return i < currentEarleme ? chart.earleySet(i) : chart.currentEarleySet
   }
+
+  public var forest: Forest<StoredSymbol> {
+    Forest(chart: chart, grammar: g)
+  }
 }
