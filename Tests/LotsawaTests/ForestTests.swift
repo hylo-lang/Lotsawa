@@ -118,12 +118,12 @@ class ForestTests: XCTestCase {
 
     XCTAssertNil(r.recognize("aaaa"))
     let f = r.base.forest
-    var d0 = f.derivations(g.symbols["X"]!, over: 0..<4)
+    var d0 = f.derivations(of: g.symbols["X"]!, over: 0..<4)
     var d1: [Forest<Symbol.ID>.Derivation] = []
 
     while !d0.isEmpty {
-      d1.append(f.first(d0))
-      f.removeFirst(&d0)
+      d1.append(f.first(of: d0))
+      f.removeFirst(from: &d0)
     }
     XCTAssertEqual(d1.map { g.symbolName[Int($0.lhs.id)] }, ["X", "X", "X"])
     XCTAssertEqual(
@@ -133,5 +133,21 @@ class ForestTests: XCTestCase {
       Set(d1.map(\.rhsOrigins).map(Array.init)),
       [[0, 1, 2], [0, 1, 3], [0, 2, 3]]
     )
+  }
+
+
+  func testAmbiguity2() throws {
+    let g = try """
+      B ::= B 'a' | 'a'
+      X ::= B B B
+      """
+      .asTestGrammar(recognizing: "X")
+    var r = TestRecognizer(g)
+
+    XCTAssertNil(r.recognize("aaaa"))
+    let f = r.forest
+    let d1 = f.derivations(of: "X", over: 0..<4)
+    XCTAssert(d1.map(\.ruleName).allSatisfy { $0 == "X ::= B B B" })
+    XCTAssertEqual(Set(d1.lazy.map(\.rhsOrigins)), [[0, 1, 2], [0, 1, 3], [0, 2, 3]])
   }
 }

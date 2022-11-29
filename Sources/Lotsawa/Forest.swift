@@ -15,7 +15,7 @@ public struct Forest<StoredSymbol: SignedInteger & FixedWidthInteger> {
     }
   }
 
-  public func removeFirst(_ p: inout DerivationSet) {
+  public func removeFirst(from p: inout DerivationSet) {
     _ = p[p.index(before: p.endIndex)].popFirst()
     if !p.last!.isEmpty { return }
     repeat {
@@ -26,7 +26,7 @@ public struct Forest<StoredSymbol: SignedInteger & FixedWidthInteger> {
     extend(&p)
   }
 
-  public func derivations(_ lhs: Symbol, over p: Range<SourcePosition>) -> DerivationSet
+  public func derivations(of lhs: Symbol, over p: Range<SourcePosition>) -> DerivationSet
   {
     var r = [chart.completions(of: lhs, over: p).indices]
     extend(&r)
@@ -39,7 +39,7 @@ public struct Forest<StoredSymbol: SignedInteger & FixedWidthInteger> {
     public let rule: RuleID
   }
 
-  public func first(_ d: DerivationSet) -> Derivation {
+  public func first(of d: DerivationSet) -> Derivation {
     .init(
       path: d, domain: self,
       rule: grammar.rule(containing: chart.entries[d.first!.lowerBound].item.dotPosition))
