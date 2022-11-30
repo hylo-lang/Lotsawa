@@ -27,6 +27,10 @@ struct TestForest {
   }
 }
 
+extension TestForest.Derivation: CustomStringConvertible {
+  var description: String { "\(ruleName)@\(rhsOrigins)" }
+}
+
 extension TestRecognizer {
   public var forest: TestForest {
     TestForest(base: base.forest, language: language)

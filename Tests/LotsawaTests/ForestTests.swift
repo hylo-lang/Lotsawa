@@ -8,8 +8,8 @@ extension TestForest {
     rhsOrigins expectedRHSOrigins: [SourcePosition],
     _ message: @autoclosure () -> String = "", file: StaticString = #filePath, line: UInt = #line
   ) throws {
-    let d = try derivations(of: String(expectedRule.split(separator: " ").first!), over: locus)
-      .checkedOnlyElement(message(), file: file, line: line)
+    let d0 = derivations(of: String(expectedRule.split(separator: " ").first!), over: locus)
+    let d = try d0.checkedOnlyElement(message(), file: file, line: line)
     XCTAssertEqual(
       d.ruleName, expectedRule, "ruleName mismatch" + message(),
       file: file, line: line)
@@ -67,7 +67,6 @@ class ForestTests: XCTestCase {
     try f.checkUniqueDerivation(ofLHS: "digit ::= '9'", over: 4..<5, rhsOrigins: [4])
 
     try f.checkUniqueDerivation(ofLHS: "multiplicative ::= '/'", over: 5..<6, rhsOrigins: [5])
-    try f.checkUniqueDerivation(ofLHS: "multiplicative ::= '/'", over: 5..<6, rhsOrigins: [5])
 
     try f.checkUniqueDerivation(ofLHS: "factor ::= number", over: 6..<7, rhsOrigins: [6])
     try f.checkUniqueDerivation(ofLHS: "number ::= digit", over: 6..<7, rhsOrigins: [6])
@@ -83,33 +82,8 @@ class ForestTests: XCTestCase {
     try f.checkUniqueDerivation(ofLHS: "digit ::= '2'", over: 8..<9, rhsOrigins: [8])
 
     try f.checkUniqueDerivation(ofLHS: "digit ::= '0'", over: 9..<10, rhsOrigins: [9])
-}
+  }
 
-    //  (product
-    //
-    //   (factor
-    //    "("
-    //
-    //    (sum
-    //
-    //     (sum
-    //      (product
-    //       (product (factor (number (digit "9"))) )
-    //       (multiplicative "/")
-    //       (factor (number (digit "3")))))
-    //
-    //     (additive "-")
-    //
-    //     (product
-    //      (factor
-    //       (number
-    //        (digit "2")
-    //        (number (digit "0")))))
-    //
-    //     ")"
-    //     ))))
-
-/*
   func testRightRecursiveArithmetic() throws {
     let g = try """
       sum ::= product additive sum | product
@@ -121,11 +95,122 @@ class ForestTests: XCTestCase {
       multiplicative ::= '*' | '/'
       """
       .asTestGrammar(recognizing: "sum")
-    var r = TestRecognizer(g)
+    var r = TestRecognizer(g) //    01234567890
     let unrecognized = r.recognize("42+(9/3-20)")
 
+    // This test somehow unchallenged by the Leo optimization.  Perhaps we need input like 1*2*3.
     XCTAssertNil(unrecognized, "\n\(r)")
+    let f = r.forest
+    try f.checkUniqueDerivation(
+      ofLHS: "sum ::= product additive sum", over: 0..<11, rhsOrigins: [0, 2, 3])
 
+    try f.checkUniqueDerivation(ofLHS: "product ::= factor", over: 0..<2, rhsOrigins: [0])
+    try f.checkUniqueDerivation(ofLHS: "factor ::= number", over: 0..<2, rhsOrigins: [0])
+    try f.checkUniqueDerivation(ofLHS: "number ::= digit number", over: 0..<2, rhsOrigins: [0, 1])
+
+    try f.checkUniqueDerivation(ofLHS: "digit ::= '4'", over: 0..<1, rhsOrigins: [0])
+
+    try f.checkUniqueDerivation(ofLHS: "number ::= digit", over: 1..<2, rhsOrigins: [1])
+    try f.checkUniqueDerivation(ofLHS: "digit ::= '2'", over: 1..<2, rhsOrigins: [1])
+
+    try f.checkUniqueDerivation(ofLHS: "additive ::= '+'", over: 2..<3, rhsOrigins: [2])
+
+    try f.checkUniqueDerivation(ofLHS: "product ::= factor", over: 3..<11, rhsOrigins: [3])
+    try f.checkUniqueDerivation(ofLHS: "factor ::= '(' sum ')'", over: 3..<11, rhsOrigins: [3, 4, 10])
+
+    try f.checkUniqueDerivation(
+      ofLHS: "sum ::= product additive sum", over: 4..<10, rhsOrigins: [4, 7, 8])
+
+    try f.checkUniqueDerivation(
+      ofLHS: "product ::= factor multiplicative product", over: 4..<7, rhsOrigins: [4, 5, 6])
+
+    try f.checkUniqueDerivation(ofLHS: "factor ::= number", over: 4..<5, rhsOrigins: [4])
+    try f.checkUniqueDerivation(ofLHS: "number ::= digit", over: 4..<5, rhsOrigins: [4])
+    try f.checkUniqueDerivation(ofLHS: "digit ::= '9'", over: 4..<5, rhsOrigins: [4])
+
+    try f.checkUniqueDerivation(ofLHS: "multiplicative ::= '/'", over: 5..<6, rhsOrigins: [5])
+
+    try f.checkUniqueDerivation(ofLHS: "product ::= factor", over: 6..<7, rhsOrigins: [6])
+    try f.checkUniqueDerivation(ofLHS: "factor ::= number", over: 6..<7, rhsOrigins: [6])
+    try f.checkUniqueDerivation(ofLHS: "number ::= digit", over: 6..<7, rhsOrigins: [6])
+    try f.checkUniqueDerivation(ofLHS: "digit ::= '3'", over: 6..<7, rhsOrigins: [6])
+
+    try f.checkUniqueDerivation(ofLHS: "additive ::= '-'", over: 7..<8, rhsOrigins: [7])
+
+    try f.checkUniqueDerivation(ofLHS: "sum ::= product", over: 8..<10, rhsOrigins: [8])
+    try f.checkUniqueDerivation(ofLHS: "product ::= factor", over: 8..<10, rhsOrigins: [8])
+    try f.checkUniqueDerivation(ofLHS: "factor ::= number", over: 8..<10, rhsOrigins: [8])
+    try f.checkUniqueDerivation(ofLHS: "number ::= digit number", over: 8..<10, rhsOrigins: [8, 9])
+
+    try f.checkUniqueDerivation(ofLHS: "digit ::= '2'", over: 8..<9, rhsOrigins: [8])
+
+    try f.checkUniqueDerivation(ofLHS: "number ::= digit", over: 9..<10, rhsOrigins: [9])
+    try f.checkUniqueDerivation(ofLHS: "digit ::= '0'", over: 9..<10, rhsOrigins: [9])
+  }
+
+  func testRightRecursion() throws {
+    let g = try """
+      A ::= 'a' A | 'a'
+      """
+      .asTestGrammar(recognizing: "A")
+    var r = TestRecognizer(g)
+
+    XCTAssertNil(r.recognize("aaaaa"))
+
+    let f = r.forest
+    try f.checkUniqueDerivation(ofLHS: "A ::= 'a' A", over: 0..<5, rhsOrigins: [0, 1])
+    try f.checkUniqueDerivation(ofLHS: "A ::= 'a' A", over: 1..<5, rhsOrigins: [1, 2])
+    try f.checkUniqueDerivation(ofLHS: "A ::= 'a' A", over: 2..<5, rhsOrigins: [2, 3])
+    try f.checkUniqueDerivation(ofLHS: "A ::= 'a' A", over: 3..<5, rhsOrigins: [3, 4])
+    try f.checkUniqueDerivation(ofLHS: "A ::= 'a'", over: 4..<5, rhsOrigins: [4])
+  }
+
+  func testRightRecursion2() throws {
+    let g = try """
+      A ::= 'x' B | 'x'
+      B ::= 'y' A
+      """
+      .asTestGrammar(recognizing: "A")
+    var r = TestRecognizer(g)
+
+    XCTAssertNil(r.recognize("xyxyxyx"))
+
+    let f = r.forest
+    try f.checkUniqueDerivation(ofLHS: "A ::= 'x' B", over: 0..<7, rhsOrigins: [0, 1])
+    try f.checkUniqueDerivation(ofLHS: "B ::= 'y' A", over: 1..<7, rhsOrigins: [1, 2])
+    try f.checkUniqueDerivation(ofLHS: "A ::= 'x' B", over: 2..<7, rhsOrigins: [2, 3])
+    try f.checkUniqueDerivation(ofLHS: "B ::= 'y' A", over: 3..<7, rhsOrigins: [3, 4])
+    try f.checkUniqueDerivation(ofLHS: "A ::= 'x' B", over: 4..<7, rhsOrigins: [4, 5])
+    try f.checkUniqueDerivation(ofLHS: "B ::= 'y' A", over: 5..<7, rhsOrigins: [5, 6])
+    try f.checkUniqueDerivation(ofLHS: "A ::= 'x'", over: 6..<7, rhsOrigins: [6])
+  }
+
+  func testRightRecursion3() throws {
+    let g = try """
+      A ::= 'x' B | 'x'
+      B ::= C
+      C ::= 'y' A
+      """
+      .asTestGrammar(recognizing: "A")
+    var r = TestRecognizer(g)
+
+    XCTAssertNil(r.recognize("xyxyxyx"))
+
+    print(r.base.chart)
+    let f = r.forest
+    try f.checkUniqueDerivation(ofLHS: "A ::= 'x' B", over: 0..<7, rhsOrigins: [0, 1])
+    try f.checkUniqueDerivation(ofLHS: "B ::= C", over: 1..<7, rhsOrigins: [1])
+    try f.checkUniqueDerivation(ofLHS: "C ::= 'y' A", over: 1..<7, rhsOrigins: [1, 2])
+    try f.checkUniqueDerivation(ofLHS: "A ::= 'x' B", over: 2..<7, rhsOrigins: [2, 3])
+    try f.checkUniqueDerivation(ofLHS: "B ::= C", over: 3..<7, rhsOrigins: [3])
+    try f.checkUniqueDerivation(ofLHS: "C ::= 'y' A", over: 3..<7, rhsOrigins: [3, 4])
+    try f.checkUniqueDerivation(ofLHS: "A ::= 'x' B", over: 4..<7, rhsOrigins: [4, 5])
+    try f.checkUniqueDerivation(ofLHS: "B ::= C", over: 5..<7, rhsOrigins: [5])
+    try f.checkUniqueDerivation(ofLHS: "C ::= 'y' A", over: 5..<7, rhsOrigins: [5, 6])
+    try f.checkUniqueDerivation(ofLHS: "A ::= 'x'", over: 6..<7, rhsOrigins: [6])
+  }
+
+  /*
   func testEmptyRules() throws {
     let g = try """
       A ::= _ | B
@@ -136,28 +221,6 @@ class ForestTests: XCTestCase {
     XCTAssertNil(r.recognize(""), "\n\(r)")
   }
 
-  func testRightRecursion() throws {
-    let g = try """
-      A ::= 'a' A | _
-      """
-      .asTestGrammar(recognizing: "A")
-    var r = TestRecognizer(g)
-
-    XCTAssertNil(r.recognize("aaaaaaa"))
-    XCTAssertNil(r.recognize(""), "\n\(r)")
-  }
-
-  func testRightRecursion2() throws {
-    let g = try """
-      A ::= 'a' A | 'a'
-      """
-      .asTestGrammar(recognizing: "A")
-    var r = TestRecognizer(g)
-
-    XCTAssertNil(r.recognize("aaaaaa"))
-    XCTAssertNil(r.recognize("a"))
-    XCTAssertNotNil(r.recognize(""), "\n\(r)")
-  }
    */
 
   func testRawForestAmbiguity() throws {
