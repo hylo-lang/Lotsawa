@@ -28,7 +28,7 @@ extension Chart {
 }
 
 extension Chart {
-  typealias EarleySet = Array<Entry>.SubSequence
+  public typealias EarleySet = Array<Entry>.SubSequence
 
   /// The item set under construction.
   var currentEarleySet: EarleySet {
@@ -41,7 +41,7 @@ extension Chart {
   }
 
   /// The set of partial parses ending at earleme `i`.
-  func earleySet(_ i: UInt32) -> EarleySet {
+  public func earleySet(_ i: UInt32) -> EarleySet {
     entries[setStart[Int(i)]..<setStart[Int(i) + 1]]
   }
 }

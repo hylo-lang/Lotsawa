@@ -92,6 +92,12 @@ class RecognizerTests: XCTestCase {
     var r = TestRecognizer(g)
 
     XCTAssertNil(r.recognize("aaaaaaa"))
+    let expectedSetSize = r.base.chart.earleySet(2).count
+    XCTAssert(
+      (3..<7).allSatisfy { r.base.chart.earleySet($0).count == expectedSetSize },
+      "Leo optimization failure\n\(r)"
+    )
+
     XCTAssertNil(r.recognize(""), "\n\(r)")
   }
 
@@ -103,6 +109,12 @@ class RecognizerTests: XCTestCase {
     var r = TestRecognizer(g)
 
     XCTAssertNil(r.recognize("aaaaaa"))
+    let expectedSetSize = r.base.chart.earleySet(2).count
+    XCTAssert(
+      (3..<7).allSatisfy { r.base.chart.earleySet($0).count == expectedSetSize },
+      "Leo optimization failure\n\(r)"
+    )
+
     XCTAssertNil(r.recognize("a"))
     XCTAssertNotNil(r.recognize(""), "\n\(r)")
   }

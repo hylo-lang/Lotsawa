@@ -54,7 +54,7 @@ extension Recognizer {
   /// the current earleme.
   mutating func predict(_ s: Symbol) {
     for r in rulesByLHS[s] {
-      if chart.insert(prediction(r)) {
+      if insert(prediction(r)) {
         predict(g.rhs(r).first!)
       }
     }
@@ -104,7 +104,7 @@ extension Recognizer {
   /// conclusions.
   private mutating func derive(_ x: Chart.Entry) {
     assert(!x.item.isLeo)
-    if !chart.insert(x) { return }
+    if !insert(x) { return }
 
     if let t = x.item.transitionSymbol {
       predict(t)
