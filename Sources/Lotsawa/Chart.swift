@@ -242,10 +242,9 @@ extension Chart {
     }
 
     /// If `self` is a Leo item, returns the Earley item it memoizes, assuming `g` is the grammar
-    /// being parsed.
+    /// being parsed; returns `nil` otherwise.
     func leoMemo<S>(in g: Grammar<S>) -> Item? {
       if isEarley { return nil }
-      // A possible optimization: store the postdot symbol in the predotOrigin field of Leo items.
       var r = self
       r.symbolID = Symbol.ID(truncatingIfNeeded: g.ruleStore[Int(dotPosition)])
       r.isEarley = true
