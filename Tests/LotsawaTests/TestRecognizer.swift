@@ -48,11 +48,8 @@ struct TestRecognizer: CustomStringConvertible {
           result.append("@\(language.text(currentItem.transitionSymbol!)) ")
         }
         result.append(language.dottedText(rawPosition[currentItem.dotPosition]))
-
-        if itemDerivations.first!.item.isEarley == true {
-          result.append(" (\(currentItem.origin))")
-          result.append(" \(itemDerivations.map { d in d.predotOrigin })")
-        }
+        result.append(" (\(currentItem.origin))")
+        result.append(" \(itemDerivations.map { d in d.predotOrigin })")
         result.append("\n")
         allDerivations = allDerivations[itemDerivations.endIndex...]
       }

@@ -3,6 +3,7 @@ import Lotsawa
 struct TestForest {
   let base: Forest<Symbol.ID>
   let language: TestGrammar
+  let recognizer: TestRecognizer
 
   struct Derivation {
     let base: Forest<Symbol.ID>.Derivation
@@ -33,6 +34,6 @@ extension TestForest.Derivation: CustomStringConvertible {
 
 extension TestRecognizer {
   public var forest: TestForest {
-    TestForest(base: base.forest, language: language)
+    TestForest(base: base.forest, language: language, recognizer: self)
   }
 }
