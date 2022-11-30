@@ -35,43 +35,6 @@ class RecognizerTests: XCTestCase {
     let unrecognized = r.recognize("42+(9/3-20)")
 
     XCTAssertNil(unrecognized, "\n\(r)")
-
-    // Intended parse tree:
-    //
-    // (sum
-    //
-    //  (sum
-    //   (product
-    //    (factor
-    //     (number
-    //      (digit "4")
-    //      (number (digit "2"))))))
-    //
-    //  (additive "+")
-    //
-    //  (product
-    //
-    //   (factor
-    //    "("
-    //
-    //    (sum
-    //
-    //     (sum
-    //      (product
-    //       (product (factor (number (digit "9"))) )
-    //       (multiplicative "/")
-    //       (factor (number (digit "3")))))
-    //
-    //     (additive "-")
-    //
-    //     (product
-    //      (factor
-    //       (number
-    //        (digit "2")
-    //        (number (digit "0")))))
-    //
-    //     ")"
-    //     ))))
   }
 
   func testEmptyRules() throws {

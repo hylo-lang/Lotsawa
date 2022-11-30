@@ -1,5 +1,5 @@
 import XCTest
-@testable import Lotsawa
+import Lotsawa
 
 extension TestForest {
   func checkUniqueDerivation(
