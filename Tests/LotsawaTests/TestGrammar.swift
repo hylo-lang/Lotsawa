@@ -81,9 +81,35 @@ extension TestGrammar: CustomStringConvertible {
     let r = raw.storedRule(r0)
 
     let rhsText = r.rhs.lazy.map { s in text(s) }
-    let predotCount = Int(p) - r.rhs.startIndex
-    return text(r.lhs) + " ::= " + rhsText.prefix(predotCount).joined(separator: " ") + "•"
-    + rhsText.dropFirst(predotCount).joined(separator: " ")
+    let predotRHSCount = Int(p) - r.rhs.startIndex
+    return text(r.lhs) + " ::= " + rhsText.prefix(predotRHSCount).joined(separator: " ") + "•"
+    + rhsText.dropFirst(predotRHSCount).joined(separator: " ")
+  }
+
+  /// Returns a human-readable representation of `dotInGrammar` as the position of the dot in a
+  /// dotted rule, with `predotPositions` enumerated at the position before the dot.
+  func derivationText<PredotPositions: Collection<SourcePosition>>(
+    origin: SourcePosition,
+    dotInGrammar: DefaultGrammar.Position,
+    dotInSource: SourcePosition?,
+    predotPositions: PredotPositions
+  ) -> String {
+    let r0 = raw.rule(containing: dotInGrammar)
+    let r = raw.storedRule(r0)
+
+    let rhsText = r.rhs.lazy.map { s in text(s) }
+    let predotRHSCount = Int(dotInGrammar) - r.rhs.startIndex
+    return "[\(origin) \(text(r.lhs))"
+      + (dotInSource == nil || Int(dotInGrammar) != r.rhs.endIndex
+           ? "\(dotInSource == nil ? "]" : "")\t::= " : " \(dotInSource!)]\t::= ")
+      + "[\(origin)\(predotRHSCount == 0 ? "" : " ")"
+      + rhsText.prefix(max(predotRHSCount - 1, 0)).joined(separator: " ")
+      + (
+        predotRHSCount < 2 || predotPositions.isEmpty ? " "
+          : " {\(predotPositions.lazy.map(String.init).joined(separator: " "))} ")
+      + rhsText.prefix(predotRHSCount).suffix(1).joined() // predot symbol
+      + (predotRHSCount == 0 || dotInSource == nil ? "•" : " \(dotInSource!)]\t•")
+      + rhsText.dropFirst(predotRHSCount).joined(separator: " ")
   }
 
   /// Returns the set of names of `s`'s elements.

@@ -44,12 +44,18 @@ struct TestRecognizer: CustomStringConvertible {
         let currentItem = allDerivations.first!.item
         let itemDerivations = allDerivations.prefix { x in x.item == currentItem }
 
+        result.append("\(itemDerivations.startIndex): ")
+
+        result.append(
+          language.derivationText(
+            origin: currentItem.origin,
+            dotInGrammar: rawPosition[currentItem.dotPosition],
+            dotInSource: currentItem.isLeo ? nil : earleme,
+            predotPositions: currentItem.isLeo ? [] : itemDerivations.map { d in d.predotOrigin }))
+
         if currentItem.isLeo {
-          result.append("@\(language.text(currentItem.transitionSymbol!)) ")
+          result.append("\(language.text(currentItem.transitionSymbol!))* ")
         }
-        result.append(language.dottedText(rawPosition[currentItem.dotPosition]))
-        result.append(" (\(currentItem.origin))")
-        result.append(" \(itemDerivations.map { d in d.predotOrigin })")
         result.append("\n")
         allDerivations = allDerivations[itemDerivations.endIndex...]
       }
