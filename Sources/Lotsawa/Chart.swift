@@ -337,10 +337,15 @@ extension Chart {
 extension Chart {
   /// Injects a Leo item memoizing `x` with transition symbol `t` before entries[i].item, returning
   /// true if it was not already present.
-  mutating func insertLeoMemo(of x: Item, at i: Int, triggeredBy t: Symbol ) -> Bool {
-    let leo = Chart.Item(memoizing: x, transitionSymbol: t)
-    if entries[i].item == leo { return false }
-    entries.insert(Entry(item: leo, predotOrigin: currentEarleme), at: i)
+  mutating func insertLeoMemo(of x: Entry, at i: Int, triggeredBy t: Symbol ) -> Bool {
+    let leo = Chart.Item(memoizing: x.item, transitionSymbol: t)
+    if entries[i].item == leo {
+      assert(
+        entries[i].item == leo && entries[i].predotOrigin == x.predotOrigin,
+        "unexpected Leo item clash \(entries[i]) vs. \(x)")
+      return false
+    }
+    entries.insert(Entry(item: leo, predotOrigin: x.predotOrigin), at: i)
     return true
   }
 }

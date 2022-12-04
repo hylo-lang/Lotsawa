@@ -134,7 +134,10 @@ extension Recognizer {
            && (endOfItem == chart.currentEarleySet.endIndex
                || chart.currentEarleySet[endOfItem].item.transitionSymbol != t)
       {
-        let memo = leoPredecessor(x) ?? x.advanced(in: g)
+        let memo = Chart.Entry(
+          item: leoPredecessor(x) ?? x.advanced(in: g),
+          predotOrigin: chart.currentEarleme)
+
         let inserted = chart.insertLeoMemo(of: memo, at: i, triggeredBy: t)
         i = endOfItem + (inserted ? 1 : 0)
       }
