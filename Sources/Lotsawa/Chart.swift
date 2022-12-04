@@ -246,7 +246,7 @@ extension Chart {
     func leoMemo<S>(in g: Grammar<S>) -> Item? {
       if isEarley { return nil }
       var r = self
-      r.symbolID = Symbol.ID(truncatingIfNeeded: g.ruleStore[Int(dotPosition)])
+      r.symbolID = Symbol.ID(g.ruleStore[Int(dotPosition)])
       r.isEarley = true
       assert(r.isCompletion)
       return r
