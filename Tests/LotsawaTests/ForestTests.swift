@@ -165,7 +165,22 @@ class ForestTests: XCTestCase {
     try f.checkUniqueDerivation(ofLHS: "A ::= 'a'", over: 4..<5, rhsOrigins: [4])
   }
 
-  func testRightRecursion2() throws {
+  func testRightRecursion0() throws {
+    let g = try """
+      A ::= 'w' 'x' B | 'w'
+      B ::= C
+      C ::= 'y' 'z' A
+      //C ::= 'y' 'z' 'w' 'x' 'y' 'z' 'w'
+      """
+      .asTestGrammar(recognizing: "A")
+    var r = TestRecognizer(g)
+    
+    XCTAssertNil(r.recognize("wxyzwxyzw"))
+    
+    print(r)
+  }
+  
+    func testRightRecursion2() throws {
     let g = try """
       A ::= 'x' B | 'x'
       B ::= 'y' A
@@ -175,6 +190,7 @@ class ForestTests: XCTestCase {
 
     XCTAssertNil(r.recognize("xyxyxyx"))
 
+    print(r)
     let f = r.forest
     try f.checkUniqueDerivation(ofLHS: "A ::= 'x' B", over: 0..<7, rhsOrigins: [0, 1])
     try f.checkUniqueDerivation(ofLHS: "B ::= 'y' A", over: 1..<7, rhsOrigins: [1, 2])
