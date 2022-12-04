@@ -71,30 +71,30 @@ extension Recognizer {
   /// Respond to the discovery of `s` starting at `origin` and ending in the current earleme.
   public mutating func discover(_ s: Symbol, startingAt origin: SourcePosition) {
     // The set containing potential predecessor derivations to be paired with the one for s.
-    let predecessors = chart.transitionItems(on: s, inEarleySet: origin)
+    let predecessors = chart.transitionEntries(on: s, inEarleySet: origin)
 
     if let head = predecessors.first,
-       let d = head.leoMemo(in: g)
+       let d = head.item.leoMemo(in: g)
     {
-      derive(.init(item: d, predotOrigin: head.origin))
+      derive(.init(item: d, predotOrigin: head.predotOrigin))
     }
     else {
       assert(
-        predecessors.allSatisfy(\.isEarley),
+        predecessors.allSatisfy(\.item.isEarley),
         "Leo item is not first in predecessors.")
 
       for p in predecessors {
-        derive(.init(item: p.advanced(in: g), predotOrigin: origin))
+        derive(.init(item: p.item.advanced(in: g), predotOrigin: origin))
       }
     }
   }
 
-  func leoPredecessor(_ x: Chart.Item) -> Chart.Item? {
+  func leoPredecessor(_ x: Chart.Item) -> Chart.Entry? {
     assert(g.recognized(at: x.dotPosition) == nil, "unexpectedly complete item")
     let s = g.recognized(at: x.dotPosition + 1)!
 
-    let predecessors = chart.transitionItems(on: s, inEarleySet: x.origin)
-    if let head = predecessors.first, head.isLeo {
+    let predecessors = chart.transitionEntries(on: s, inEarleySet: x.origin)
+    if let head = predecessors.first, head.item.isLeo {
       return head
     }
     return nil
@@ -134,9 +134,8 @@ extension Recognizer {
            && (endOfItem == chart.currentEarleySet.endIndex
                || chart.currentEarleySet[endOfItem].item.transitionSymbol != t)
       {
-        let memo = Chart.Entry(
-          item: leoPredecessor(x) ?? x.advanced(in: g),
-          predotOrigin: chart.currentEarleme)
+        let memo = leoPredecessor(x)
+          ?? Chart.Entry(item: x.advanced(in: g), predotOrigin: chart.currentEarleme)
 
         let inserted = chart.insertLeoMemo(of: memo, at: i, triggeredBy: t)
         i = endOfItem + (inserted ? 1 : 0)

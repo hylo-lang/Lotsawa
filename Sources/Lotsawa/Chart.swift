@@ -281,15 +281,21 @@ extension Chart {
     return next?.item != e.item && currentEarleySet[..<i].last?.item != e.item
   }
 
-  /// Returns the items in Earley set `i` whose use is triggered by the recognition of `s`.
-  func transitionItems(on s: Symbol, inEarleySet i: UInt32) -> some BidirectionalCollection<Item>
+  /// Returns the entries in Earley set `i` whose use is triggered by the recognition of `s`.
+  func transitionEntries(on s: Symbol, inEarleySet i: UInt32) -> some BidirectionalCollection<Entry>
   {
     let ithSet = i == currentEarleme ? currentEarleySet : earleySet(i)
     let k = Item.transitionKey(s)
 
     let j = ithSet.partitionPoint { d in d.item.transitionKey >= k }
-    let items = ithSet[j...].lazy.map(\.item).droppingAdjacentDuplicates()
-    return items.lazy.prefix(while: { x in x.symbolID == s.id })
+    let items = ithSet[j...]
+    return items.lazy.prefix(while: { x in x.item.symbolID == s.id })
+  }
+
+  /// Returns the items in Earley set `i` whose use is triggered by the recognition of `s`.
+  func transitionItems(on s: Symbol, inEarleySet i: UInt32) -> some BidirectionalCollection<Item>
+  {
+    transitionEntries(on: s, inEarleySet: i).lazy.map(\.item).droppingAdjacentDuplicates()
   }
 
   /// Returns the entries that complete a recognition of `lhs` covering `extent`.
