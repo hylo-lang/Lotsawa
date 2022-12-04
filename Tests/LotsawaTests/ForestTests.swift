@@ -212,7 +212,6 @@ class ForestTests: XCTestCase {
 
     XCTAssertNil(r.recognize("xyxyxyx"))
 
-    print(r.base.chart)
     let f = r.forest
     try f.checkUniqueDerivation(ofLHS: "A ::= 'x' B", over: 0..<7, rhsOrigins: [0, 1])
     try f.checkUniqueDerivation(ofLHS: "B ::= C", over: 1..<7, rhsOrigins: [1])
