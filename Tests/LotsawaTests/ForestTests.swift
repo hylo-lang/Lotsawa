@@ -170,7 +170,7 @@ class ForestTests: XCTestCase {
       A ::= 'w' 'x' B | 'w'
       B ::= C
       C ::= 'y' 'z' A
-      //C ::= 'y' 'z' 'w' 'x' 'y' 'z' 'w'
+      C ::= 'y' 'z' 'w' 'x' 'y' 'z' 'w'
       """
       .asTestGrammar(recognizing: "A")
     var r = TestRecognizer(g)
