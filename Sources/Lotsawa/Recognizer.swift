@@ -114,13 +114,12 @@ extension Recognizer {
     }
   }
 
-  /// Replaces appropriate Earley items with Leo items indicated for the current set.
+  /// Creates the Leo items indicated for the current set.
   ///
   /// - Precondition: the current set is otherwise complete.
   mutating func createLeoItems() {
-    let endOfSet = chart.currentEarleySet.endIndex
     var i = chart.currentEarleySet.startIndex
-    while i != endOfSet {
+    while i != chart.currentEarleySet.endIndex {
       let x = chart.currentEarleySet[i].item
       guard let t: Symbol = x.transitionSymbol
       else { break } // items with no transition Symbol are completions, at the end of the set.
@@ -130,16 +129,14 @@ extension Recognizer {
         $0.item == x
       }.endIndex
 
-      // If the position is at the end and the transition symbol was unique in this set
-      if leoPositions.contains(x.dotPosition) && (
-           endOfItem == endOfSet || chart.currentEarleySet[endOfItem].item.transitionSymbol != t)
+      // If the dot is in a Leo position and the transition symbol was unique in this set
+      if leoPositions.contains(x.dotPosition)
+           && (endOfItem == chart.currentEarleySet.endIndex
+               || chart.currentEarleySet[endOfItem].item.transitionSymbol != t)
       {
-        // Replace derivations with Leo derivations
-        let memoized = leoPredecessor(x) ?? x.advanced(in: g)
-        while i != endOfItem {
-          chart.replaceItem(at: i, withLeoMemoOf: memoized, transitionSymbol: t)
-          i += 1
-        }
+        let memo = leoPredecessor(x) ?? x.advanced(in: g)
+        let inserted = chart.insertLeoMemo(of: memo, at: i, triggeredBy: t)
+        i = endOfItem + (inserted ? 1 : 0)
       }
       else {
         // Else skip over everything with this transition symbol

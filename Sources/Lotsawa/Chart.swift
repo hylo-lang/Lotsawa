@@ -335,8 +335,13 @@ extension Chart {
 }
 
 extension Chart {
-  mutating func replaceItem(at i: Int, withLeoMemoOf x: Item, transitionSymbol t: Symbol ) {
-    entries[i].item = Chart.Item(memoizing: x, transitionSymbol: t)
+  /// Injects a Leo item memoizing `x` with transition symbol `t` before entries[i].item, returning
+  /// true if it was not already present.
+  mutating func insertLeoMemo(of x: Item, at i: Int, triggeredBy t: Symbol ) -> Bool {
+    let leo = Chart.Item(memoizing: x, transitionSymbol: t)
+    if entries[i].item == leo { return false }
+    entries.insert(Entry(item: leo, predotOrigin: 0), at: i)
+    return true
   }
 }
 
