@@ -340,7 +340,7 @@ extension Chart {
   mutating func insertLeoMemo(of x: Item, at i: Int, triggeredBy t: Symbol ) -> Bool {
     let leo = Chart.Item(memoizing: x, transitionSymbol: t)
     if entries[i].item == leo { return false }
-    entries.insert(Entry(item: leo, predotOrigin: 0), at: i)
+    entries.insert(Entry(item: leo, predotOrigin: currentEarleme), at: i)
     return true
   }
 }

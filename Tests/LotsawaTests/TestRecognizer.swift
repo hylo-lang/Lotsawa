@@ -51,7 +51,7 @@ struct TestRecognizer: CustomStringConvertible {
             origin: currentItem.origin,
             dotInGrammar: rawPosition[currentItem.dotPosition],
             dotInSource: currentItem.isLeo ? nil : earleme,
-            predotPositions: currentItem.isLeo ? [] : itemDerivations.map { d in d.predotOrigin }))
+            predotPositions: itemDerivations.map { d in d.predotOrigin }))
 
         if currentItem.isLeo {
           result.append("\(language.text(currentItem.transitionSymbol!))* ")
