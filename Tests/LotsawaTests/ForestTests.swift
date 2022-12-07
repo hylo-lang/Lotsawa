@@ -178,8 +178,9 @@ class ForestTests: XCTestCase {
     var r = TestRecognizer(g)
     
     XCTAssertNil(r.recognize("wxyzwxyzw"))
-    
-    print(r)
+    /* WIP reconstructing derivations in the presence of Leo optimization
+
+     */
   }
   
   func testRightRecursion2() throws {
@@ -192,7 +193,6 @@ class ForestTests: XCTestCase {
 
     XCTAssertNil(r.recognize("xyxyxyx"))
 
-    print(r)
     /* WIP reconstructing derivations in the presence of Leo optimization
     let f = r.forest
     try f.checkUniqueDerivation(ofLHS: "A ::= 'x' B", over: 0..<7, rhsOrigins: [0, 1])
