@@ -109,8 +109,6 @@ extension Forest.Derivation {
 
   /// The position in the source where each RHS symbol of this derivation starts.
   public var rhsOrigins: some BidirectionalCollection<SourcePosition> {
-//    LazyMapCollection<ReversedCollection<Forest.DerivationSet.Storage>, SourcePosition>
-//  {
     path.reversed().lazy.map { domain.chart.entries[$0.lowerBound].predotOrigin }
   }
 }
