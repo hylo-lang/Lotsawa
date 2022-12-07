@@ -255,18 +255,13 @@ class ForestTests: XCTestCase {
     XCTAssertNil(r.recognize("aaaa"))
     let f = r.base.forest
     var d0 = f.derivations(of: g.symbols["X"]!, over: 0..<4)
-    var d1: [Forest<Symbol.ID>.Derivation] = []
 
-    while let d = d0.first {
-      d1.append(d)
-      d0.removeFirst()
-    }
-    XCTAssertEqual(d1.map { g.symbolName[Int($0.lhs.id)] }, ["X", "X", "X"])
+    XCTAssertEqual(d0.map { g.symbolName[Int($0.lhs.id)] }, ["X", "X", "X"])
     XCTAssertEqual(
-      d1.map { $0.rhs.map { g.symbolName[Int($0.id)] } },
+      d0.map { $0.rhs.map { g.symbolName[Int($0.id)] } },
       [["B", "B", "B"], ["B", "B", "B"], ["B", "B", "B"]])
     XCTAssertEqual(
-      Set(d1.map(\.rhsOrigins).map(Array.init)),
+      Set(d0.map(\.rhsOrigins).map(Array.init)),
       [[0, 1, 2], [0, 1, 3], [0, 2, 3]]
     )
   }

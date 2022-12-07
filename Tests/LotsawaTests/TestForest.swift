@@ -17,13 +17,9 @@ struct TestForest {
   }
 
   func derivations(of lhsName: String, over locus: Range<SourcePosition>) -> [Derivation] {
-    var source = base.derivations(of: language.symbols[lhsName]!, over: locus)
-    var r: [Derivation] = []
-    while let d = source.first {
-      r.append(Derivation(base: d, language: language))
-      source.removeFirst()
+    base.derivations(of: language.symbols[lhsName]!, over: locus).map {
+      Derivation(base: $0, language: language)
     }
-    return r
   }
 }
 
