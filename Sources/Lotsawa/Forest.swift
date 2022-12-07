@@ -100,6 +100,30 @@ extension Forest.DerivationSet {
   }
 }
 
+extension Forest.DerivationSet: Collection {
+  public struct Index: Comparable {
+    fileprivate var remainder: Storage
+    public static func < (l: Self, r: Self) -> Bool {
+      !l.remainder.isEmpty && (
+          r.remainder.isEmpty
+            || l.remainder.lexicographicallyPrecedes(r.remainder) { $0.lowerBound < $1.lowerBound })
+    }
+  }
+  public var startIndex: Index { Index(remainder: self.storage) }
+  public var endIndex: Index { Index(remainder: []) }
+  public func formIndex(after x: inout Index) {
+    domain.removeFirst(from: &x.remainder)
+  }
+  public func index(after x: Index) -> Index {
+    var y = x
+    formIndex(after: &y)
+    return y
+  }
+  public subscript(p: Index) -> Forest.Derivation {
+    domain.first(of: p.remainder)
+  }
+}
+
 extension Forest.Derivation {
   /// The LHS symbol being derived.
   public var lhs: Symbol { domain.grammar.lhs(rule) }
