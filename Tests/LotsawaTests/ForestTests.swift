@@ -257,9 +257,9 @@ class ForestTests: XCTestCase {
     var d0 = f.derivations(of: g.symbols["X"]!, over: 0..<4)
     var d1: [Forest<Symbol.ID>.Derivation] = []
 
-    while !d0.isEmpty {
-      d1.append(f.first(of: d0))
-      f.removeFirst(from: &d0)
+    while let d = d0.first {
+      d1.append(d)
+      d0.removeFirst()
     }
     XCTAssertEqual(d1.map { g.symbolName[Int($0.lhs.id)] }, ["X", "X", "X"])
     XCTAssertEqual(

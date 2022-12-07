@@ -15,21 +15,32 @@ public struct Forest<StoredSymbol: SignedInteger & FixedWidthInteger> {
 
 extension Forest {
   /// A subset of the parses of a single symbol over a range of source positions.
-  ///
-  /// The first element points to a series of completions of the symbol in the chart.  Each element
-  /// thereafter describes a series of potential predecessors of the *first* entry pointed to by the
-  /// previous element.  Thus the elements are in some sense stored in reverse. Predictions are
-  /// omitted.
-  ///
-  /// Notional derivation sets are sometimes (temporarily) described by their prefixes; see `extend`
-  /// for more details.
-  public typealias DerivationSet = [Range<Chart.Entries.Index>]
+  public struct DerivationSet {
+    /// The internal representation of a DerivationSet independent of Chart or Grammar.
+    ///
+    /// The first element points to a series of completions of the symbol in the chart.  Each element
+    /// thereafter describes a series of potential predecessors of the *first* entry pointed to by the
+    /// previous element.  Thus the elements are in some sense stored in reverse. Predictions are
+    /// omitted.
+    ///
+    /// Notional derivation sets are sometimes (temporarily) described by their prefixes; see `extend`
+    /// for more details.
+    typealias Storage = [Range<Chart.Entries.Index>]
+
+    init(storage: Storage, domain: Forest) {
+      self.storage = storage
+      self.domain = domain
+    }
+
+    private var storage: Storage
+    private var domain: Forest
+  }
 
   /// One parse of a single symbol over a range of source positions, each of whose constituent RHS
   /// symbols may have multiple parses.
   public struct Derivation {
     /// The set of which this represpresents the first element
-    let path: DerivationSet
+    let path: DerivationSet.Storage
 
     /// The set of parses in which path was found.
     let domain: Forest
@@ -42,7 +53,7 @@ extension Forest {
   /// position of the first RHS symbol of the set's first derivation is represented.
   ///
   /// - Precondition: `!p.last.isEmpty`
-  private func extend(_ p: inout DerivationSet) {
+  private func extend(_ p: inout DerivationSet.Storage) {
     var e = chart.entries[p.last!.first!]
 
     while e.predotOrigin != e.item.origin {
@@ -53,7 +64,7 @@ extension Forest {
   }
 
   /// Drops the first derivation from `p`, leaving it empty if there are no further derivations.
-  public func removeFirst(from p: inout DerivationSet) {
+  func removeFirst(from p: inout DerivationSet.Storage) {
     _ = p[p.index(before: p.endIndex)].popFirst()
     if !p.last!.isEmpty { return }
     repeat {
@@ -67,17 +78,25 @@ extension Forest {
   /// Returns the set representing all derivations of `lhs` over `locus`.
   public func derivations(of lhs: Symbol, over locus: Range<SourcePosition>) -> DerivationSet {
     let roots = chart.completions(of: lhs, over: locus).indices
-    if roots.isEmpty { return [] }
+    if roots.isEmpty { return DerivationSet(storage: [], domain: self) }
     var r = [roots]
     extend(&r)
-    return r
+    return DerivationSet(storage: r, domain: self)
   }
 
   /// Returns the first derivation in `d`.
-  public func first(of d: DerivationSet) -> Derivation {
+  func first(of d: DerivationSet.Storage) -> Derivation {
     .init(
       path: d, domain: self,
       rule: grammar.rule(containing: chart.entries[d.first!.lowerBound].item.dotPosition))
+  }
+}
+
+extension Forest.DerivationSet {
+  public var isEmpty: Bool { storage.isEmpty }
+  public var first: Forest.Derivation? { isEmpty ? nil : domain.first(of: storage) }
+  public mutating func removeFirst() {
+    domain.removeFirst(from: &storage)
   }
 }
 
@@ -89,9 +108,9 @@ extension Forest.Derivation {
   public var rhs: Grammar<StoredSymbol>.Rule.RHS { domain.grammar.rhs(rule) }
 
   /// The position in the source where each RHS symbol of this derivation starts.
-  public var rhsOrigins:
-    LazyMapCollection<ReversedCollection<Forest.DerivationSet>, SourcePosition>
-  {
+  public var rhsOrigins: some BidirectionalCollection<SourcePosition> {
+//    LazyMapCollection<ReversedCollection<Forest.DerivationSet.Storage>, SourcePosition>
+//  {
     path.reversed().lazy.map { domain.chart.entries[$0.lowerBound].predotOrigin }
   }
 }
