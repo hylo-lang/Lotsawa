@@ -6,16 +6,16 @@
 - A **completion** is an Earley item with the dot at the extreme right of its rule's RHS
 - A **penultimate** is an Earley item whose dot is just before the last symbol of its rule's RHS.
 
-- An Earley item D in Earley set I is a **predecessor of** another Earley item E in Earley set J
-  iff: D and E have the same origin and rule, E's dot is one position further along in the rule's
-  RHS than D's dot, and there exists a completion C for D's postdot symbol with origin I in set J.
+- An Earley item D in Earley set I is a **mainstem of** another Earley item E in Earley set J iff: D
+  and E have the same origin and rule, E's dot is one position further along in the rule's RHS than
+  D's dot, and there exists a **tributary** completion C for D's postdot symbol with origin I in set
+  J.
 
 - A **derivation path** is a sequence of Earley items, starting with a prediction, where each item
-  is the predecessor of the next item in the path, ending with a penultimate D.  
+  is the mainstem of the next item in the path, ending with a penultimate D.
   
-  This sequence is called a **derivation path of**:
-  - its items' LHS symbol and 
-  - any completion E whose predecessor is D
+  This sequence is called a **derivation path of** its items' LHS symbol and of any completion E
+  whose mainstem is D, whether stored or omitted from the chart.
 
 - The recognizer works by **discovering** Earley items; the first time each item in an Earley set is
   discovered, it is added to that set.
@@ -24,7 +24,7 @@
     origin I and LHS X (or a discovered token X covering I-J), with another item in set I, which is
     either:
 
-    - a predecessor of E having postdot symbol X
+    - a mainstem of E having postdot symbol X
     - a Leo item L with transition symbol X, memoizing E. In this case L is called a **Leo source** of
       E, and E is called a **Leo product** of L.
     
@@ -35,16 +35,64 @@
   
 - Given a Leo item L in set I with transition symbol T
 
-  - L has a (unique) related Earley item M in set I, with postdot symbol T, called the **penultimate
-    of** L.
+  - L has a related Earley item M, called the **penultimate of** L, the unique Earley item in set I
+    with postdot symbol T.
   - L is called the **Leo item of** M.
   - The sole **predot origin of** L is that of M's Leo predecessor, if any, or else it is I.
-  - The presence of L causes any completions with predecessor M to be omitted from the chart. 
+  - The presence of L causes any completions with mainstem M to be omitted from the chart. 
   - M is  the tail of all derivation paths for completions omitted due to L.
 
 ## Parse Trees and Derivation Paths
 
-The set of parse trees for a completion (stored or omitted) is its set of derivation paths
+- Given a (stored or omitted) completion C with LHS X with origin I in earleme K,
+
+  - **Trees(X, I, K)** is the set of all parse trees for X over [I, K) (defined below)
+  
+  - Given a derivation path P=D₀...Dⱼ of C
+  
+    - Given Dᵤ, an element of P
+
+      - **start(Dᵤ)** is defined to be the earleme of Dᵤ
+      - **end(Dᵤ)** is defined to be the earleme of Dᵤ₊₁ if it exists, and K otherwise.
+      - **Subtrees(Dᵤ)** is a set of parse trees for Dᵤ's postdot symbol Y.
+        - if Y is a terminal, {Y, start(Dᵤ), end(Dᵤ)}
+        - otherwise, **Trees(Y, start(Dᵤ), end(Dᵤ))**
+
+    - **ChildTreeTuples(P, K)** is the cross-product of the sets Subtrees(Dᵤ) for u in 0...j
+    - **DTrees(P, K)** is defined to be the set of trees having root {X, I, K} and children given by
+      an element of ChildTreeTuples
+
+  - **Trees(X, I, K)** is the union of the (disjoint) sets DTrees(P, K) for every derivation path P
+    of C
+  
+Given a derivation path P=D₀...Dⱼ of a symbol X recognized over earlemes [I, K)
+
+- P represents a subset of parse trees for X over [I, K), **Trees(P, K)**.
+
+
+
+The set of all parse trees for X over [I, K), **Trees(X, I, K)** is the union of the (disjoint) sets
+  Trees(P, K) for all such P.
+
+Given a derivation path P = :
+- *Trees(P, K)* is defined as the set of trees produced by 
+
+  the 
+  - Each element Dᵤ represents a set R of parse subtrees for Dᵤ's postdot symbol Y over earlemes [U, V)
+ where V is:
+    - the earleme of Dᵤ₊₁ if any
+    - K otherwise.
+    
+  - if the postdot symbol Y of Dᵤ is a terminal, R is just {Y}
+  - Otherwise, it is the set of trees formed by the 
+  
+
+corresponds to a distinct
+set of parse trees for that symbol over I, J.
+
+Each element E of D corresponds to a set of parse trees for E's postdot symbol
+
+Each element
 
 Given a 
 
