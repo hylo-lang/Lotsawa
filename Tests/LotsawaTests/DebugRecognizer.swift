@@ -1,15 +1,15 @@
 @testable import Lotsawa
 
 /// A Recognizer wrapper engineered for convenient testing
-struct TestRecognizer: CustomStringConvertible {
+struct DebugRecognizer: CustomStringConvertible {
   typealias Base = Recognizer<Symbol.ID>
 
   var base: Base
-  let language: TestGrammar
+  let language: DebugGrammar
   let rawPosition: DiscreteMap<DefaultGrammar.Position, DefaultGrammar.Position>
 
   /// Creates an instance that recognizes `language`.
-  init(_ language: TestGrammar) {
+  init(_ language: DebugGrammar) {
     self.language = language
     let p = PreprocessedGrammar(language.raw)
     base = Recognizer(p)

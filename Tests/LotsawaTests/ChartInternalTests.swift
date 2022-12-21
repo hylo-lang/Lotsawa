@@ -95,7 +95,7 @@ class ChartInternalTests: XCTestCase {
       multiplicative ::= '*' | '/'
       """
       .asTestGrammar(recognizing: "sum")
-    var r = TestRecognizer(g)
+    var r = DebugRecognizer(g)
     let unrecognized = r.recognize("1+2")
     XCTAssertNil(unrecognized, "\n\(r)")
 

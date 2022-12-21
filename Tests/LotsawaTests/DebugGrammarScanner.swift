@@ -5,7 +5,7 @@ import CitronLexerModule
 /// and https://www.unicode.org/reports/tr44/#BC_Values_Table).
 let comment = #"(?://\P{Bidi_Class=B}*)"#
 
-let testGrammarScanner = Scanner<TestGrammarParser.CitronTokenCode>(
+let testGrammarScanner = Scanner<DebugGrammarParser.CitronTokenCode>(
   literalStrings: [
     "::=": .IS_DEFINED_AS,
     "_": .UNDERSCORE,
@@ -22,9 +22,9 @@ let testGrammarScanner = Scanner<TestGrammarParser.CitronTokenCode>(
   ]
 )
 
-extension TestGrammar.AST {
+extension DebugGrammar.AST {
   struct Token: Hashable, CustomStringConvertible {
-    typealias ID = TestGrammarParser.CitronTokenCode
+    typealias ID = DebugGrammarParser.CitronTokenCode
 
     init(_ id: ID, _ content: Substring, at position: SourceRegion) {
       self.id = id

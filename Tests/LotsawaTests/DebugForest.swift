@@ -1,13 +1,13 @@
 import Lotsawa
 
-struct TestForest {
+struct DebugForest {
   let base: Forest<Symbol.ID>
-  let language: TestGrammar
-  let recognizer: TestRecognizer
+  let language: DebugGrammar
+  let recognizer: DebugRecognizer
 
   struct Derivation {
     let base: Forest<Symbol.ID>.Derivation
-    let language: TestGrammar
+    let language: DebugGrammar
 
     var ruleName: String {
       "\(language.text(base.lhs)) ::= \(base.rhs.map { language.text($0) }.joined(separator: " "))"
@@ -23,12 +23,12 @@ struct TestForest {
   }
 }
 
-extension TestForest.Derivation: CustomStringConvertible {
+extension DebugForest.Derivation: CustomStringConvertible {
   var description: String { "\(ruleName)@\(rhsOrigins)" }
 }
 
-extension TestRecognizer {
-  public var forest: TestForest {
-    TestForest(base: base.forest, language: language, recognizer: self)
+extension DebugRecognizer {
+  public var forest: DebugForest {
+    DebugForest(base: base.forest, language: language, recognizer: self)
   }
 }

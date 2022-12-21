@@ -1,7 +1,7 @@
 import XCTest
 import Lotsawa
 
-extension TestForest {
+extension DebugForest {
   func checkUniqueDerivation(
     ofLHS expectedRule: String,
     over locus: Range<SourcePosition>,
@@ -31,7 +31,7 @@ class ForestTests: XCTestCase {
       multiplicative ::= '*' | '/'
       """
       .asTestGrammar(recognizing: "sum")
-    var r = TestRecognizer(g) //    01234567890
+    var r = DebugRecognizer(g) //    01234567890
     let unrecognized = r.recognize("42+(9/3-20)")
     XCTAssertNil(unrecognized)
 
@@ -95,7 +95,7 @@ class ForestTests: XCTestCase {
       multiplicative ::= '*' | '/'
       """
       .asTestGrammar(recognizing: "sum")
-    var r = TestRecognizer(g) //    01234567890
+    var r = DebugRecognizer(g) //    01234567890
     let unrecognized = r.recognize("42+(9/3-20)")
 
     // This test somehow unchallenged by the Leo optimization.  Perhaps we need input like 1*2*3.
@@ -153,7 +153,7 @@ class ForestTests: XCTestCase {
       A ::= 'a' A | 'a'
       """
       .asTestGrammar(recognizing: "A")
-    var r = TestRecognizer(g)
+    var r = DebugRecognizer(g)
 
     XCTAssertNil(r.recognize("aaaaa"))
     XCTFail("\n\(r)")
@@ -175,7 +175,7 @@ class ForestTests: XCTestCase {
       C ::= 'y' 'z' A
       """
       .asTestGrammar(recognizing: "A")
-    var r = TestRecognizer(g)
+    var r = DebugRecognizer(g)
     
     XCTAssertNil(r.recognize("wxyzwxyzw"))
     XCTFail("\n\(r)")
@@ -192,7 +192,7 @@ class ForestTests: XCTestCase {
       C ::= 'y' 'z' 'w' 'x' 'y' 'z' 'w'
       """
       .asTestGrammar(recognizing: "A")
-    var r = TestRecognizer(g)
+    var r = DebugRecognizer(g)
 
     XCTAssertNil(r.recognize("wxyzwxyzw"))
     XCTFail("\n\(r)")
@@ -208,7 +208,7 @@ class ForestTests: XCTestCase {
       B ::= 'y' 'z' A
       """
       .asTestGrammar(recognizing: "A")
-    var r = TestRecognizer(g)
+    var r = DebugRecognizer(g)
 
     XCTAssertNil(r.recognize("wxyzwxyzw"))
     XCTFail("\n\(r)")
@@ -228,7 +228,7 @@ class ForestTests: XCTestCase {
       B ::= 'y' A
       """
       .asTestGrammar(recognizing: "A")
-    var r = TestRecognizer(g)
+    var r = DebugRecognizer(g)
 
     XCTAssertNil(r.recognize("xyxyxyx"))
     XCTFail("\n\(r)")
@@ -252,7 +252,7 @@ class ForestTests: XCTestCase {
       C ::= 'y' A
       """
       .asTestGrammar(recognizing: "A")
-    var r = TestRecognizer(g)
+    var r = DebugRecognizer(g)
 
     XCTAssertNil(r.recognize("xyxyxyx"))
     XCTFail("\n\(r)")
@@ -279,7 +279,7 @@ class ForestTests: XCTestCase {
       B ::= A
       """
       .asTestGrammar(recognizing: "A")
-    var r = TestRecognizer(g)
+    var r = DebugRecognizer(g)
     XCTAssertNil(r.recognize(""), "\n\(r)")
   }
 
@@ -291,7 +291,7 @@ class ForestTests: XCTestCase {
       X ::= B B B
       """
       .asTestGrammar(recognizing: "X")
-    var r = TestRecognizer(g)
+    var r = DebugRecognizer(g)
 
     XCTAssertNil(r.recognize("aaaa"))
     let f = r.base.forest
@@ -313,7 +313,7 @@ class ForestTests: XCTestCase {
       X ::= B B B
       """
       .asTestGrammar(recognizing: "X")
-    var r = TestRecognizer(g)
+    var r = DebugRecognizer(g)
 
     XCTAssertNil(r.recognize("aaaa"))
     let f = r.forest

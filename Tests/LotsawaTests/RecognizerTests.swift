@@ -14,7 +14,7 @@ class RecognizerTests: XCTestCase {
       multiplicative ::= '*' | '/'
       """
       .asTestGrammar(recognizing: "sum")
-    var r = TestRecognizer(g)
+    var r = DebugRecognizer(g)
     let unrecognized = r.recognize("42+(9/3-20)")
 
     XCTAssertNil(unrecognized, "\n\(r)")
@@ -31,7 +31,7 @@ class RecognizerTests: XCTestCase {
       multiplicative ::= '*' | '/'
       """
       .asTestGrammar(recognizing: "sum")
-    var r = TestRecognizer(g)
+    var r = DebugRecognizer(g)
     let unrecognized = r.recognize("42+(9/3-20)")
 
     XCTAssertNil(unrecognized, "\n\(r)")
@@ -43,7 +43,7 @@ class RecognizerTests: XCTestCase {
       B ::= A
       """
       .asTestGrammar(recognizing: "A")
-    var r = TestRecognizer(g)
+    var r = DebugRecognizer(g)
     XCTAssertNil(r.recognize(""), "\n\(r)")
   }
 
@@ -52,7 +52,7 @@ class RecognizerTests: XCTestCase {
       A ::= 'a' A | _
       """
       .asTestGrammar(recognizing: "A")
-    var r = TestRecognizer(g)
+    var r = DebugRecognizer(g)
 
     XCTAssertNil(r.recognize("aaaaaaa"))
     let expectedSetSize = r.base.chart.earleySet(2).count
@@ -69,7 +69,7 @@ class RecognizerTests: XCTestCase {
       A ::= 'a' A | 'a'
       """
       .asTestGrammar(recognizing: "A")
-    var r = TestRecognizer(g)
+    var r = DebugRecognizer(g)
 
     XCTAssertNil(r.recognize("aaaaaa"))
     let expectedSetSize = r.base.chart.earleySet(2).count
@@ -88,7 +88,7 @@ class RecognizerTests: XCTestCase {
       X ::= B B B
       """
       .asTestGrammar(recognizing: "X")
-    var r = TestRecognizer(g)
+    var r = DebugRecognizer(g)
 
     XCTAssertNil(r.recognize("aaaa"))
   }

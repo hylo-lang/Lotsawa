@@ -1,4 +1,4 @@
-%class_name TestGrammarParser
+%class_name DebugGrammarParser
 
 %preface {
   import CitronParserModule
@@ -6,7 +6,7 @@
 
   extension _CitronParserUnexpectedTokenError : CustomDebugStringConvertible {
     public var debugDescription: String {
-      if let t = token as? TestGrammar.AST.Token {
+      if let t = token as? DebugGrammar.AST.Token {
         return "\n\(t.position): error: unexpected token (\(t), tokenCode: \(tokenCode))"
       }
       return "error: unexpected token (\(token), tokenCode: \(tokenCode))"
@@ -16,15 +16,15 @@
 
 %default_nonterminal_type Void
 
-%nonterminal_type grammar {TestGrammar.AST.RuleList}
-%nonterminal_type rule_list {TestGrammar.AST.RuleList}
-%nonterminal_type rule {TestGrammar.AST.Rule}
-%nonterminal_type alternative_list {[TestGrammar.AST.RHS]}
-%nonterminal_type rhs {TestGrammar.AST.RHS}
-%nonterminal_type rhs_element {[TestGrammar.AST.Token]}
+%nonterminal_type grammar {DebugGrammar.AST.RuleList}
+%nonterminal_type rule_list {DebugGrammar.AST.RuleList}
+%nonterminal_type rule {DebugGrammar.AST.Rule}
+%nonterminal_type alternative_list {[DebugGrammar.AST.RHS]}
+%nonterminal_type rhs {DebugGrammar.AST.RHS}
+%nonterminal_type rhs_element {[DebugGrammar.AST.Token]}
 
 %start_symbol grammar
-%token_type {TestGrammar.AST.Token}
+%token_type {DebugGrammar.AST.Token}
 
 %token ILLEGAL_CHARACTER.
 

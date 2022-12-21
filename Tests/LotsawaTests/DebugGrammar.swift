@@ -2,9 +2,9 @@ import Lotsawa
 
 /// A `DefaultGrammar` wrapper engineered for convenient testing.
 ///
-/// `TestGrammar` can be constructed from a BNF string and it has a human-readable string
+/// `DebugGrammar` can be constructed from a BNF string and it has a human-readable string
 /// representation.
-struct TestGrammar {
+struct DebugGrammar {
   /// Representation produced by Citron parser from the string.
   enum AST {
     typealias RuleList = [Rule]
@@ -22,7 +22,7 @@ struct TestGrammar {
   var symbols: [String: Symbol] = [:]
 }
 
-extension TestGrammar {
+extension DebugGrammar {
   /// Creates an instance by parsing `bnf`, or throws an error if `bnf` can't be parsed.
   init(
     recognizing startSymbol: String, per bnf: String,
@@ -32,7 +32,7 @@ extension TestGrammar {
     symbolName = [startSymbol]
     let tokens = testGrammarScanner.tokens(
       in: bnf, fromFile: file, unrecognizedToken: .ILLEGAL_CHARACTER)
-    let parser = TestGrammarParser()
+    let parser = DebugGrammarParser()
     for (id, text, position) in tokens {
       try parser.consume(token: AST.Token(id, text, at: position), code: id)
     }
@@ -58,15 +58,15 @@ extension TestGrammar {
 }
 
 extension String {
-  /// Returns the result of parsing `self` as a `TestGrammar`, or throws if `self` can't be parsed.
+  /// Returns the result of parsing `self` as a `DebugGrammar`, or throws if `self` can't be parsed.
   func asTestGrammar(
     recognizing startSymbol: String, file: String = #filePath, line: Int = #line
-  ) throws -> TestGrammar {
-    try TestGrammar(recognizing: startSymbol, per: self, file: file, line: line)
+  ) throws -> DebugGrammar {
+    try DebugGrammar(recognizing: startSymbol, per: self, file: file, line: line)
   }
 }
 
-extension TestGrammar: CustomStringConvertible {
+extension DebugGrammar: CustomStringConvertible {
   /// Returns the human-readable name for `s`.
   func text(_ s: Symbol) -> String { symbolName[Int(s.id)] }
 
