@@ -18,10 +18,10 @@ extension Forest {
   public struct DerivationSet {
     /// The internal representation of a DerivationSet independent of Chart or Grammar.
     ///
-    /// The first element points to a series of completions of the symbol in the chart.  Each element
-    /// thereafter describes a series of potential predecessors of the *first* entry pointed to by the
-    /// previous element.  Thus the elements are in some sense stored in reverse. Predictions are
-    /// omitted.
+    /// The first element points to a series of completions of the symbol in the chart.  Each
+    /// element thereafter describes a series of potential predecessors of the *first* entry pointed
+    /// to by the previous element.  Thus the elements are in some sense stored in
+    /// reverse. Predictions are omitted.
     ///
     /// Notional derivation sets are sometimes (temporarily) described by their prefixes; see `extend`
     /// for more details.
