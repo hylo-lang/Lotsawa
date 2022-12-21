@@ -2,15 +2,14 @@
 
 /// A Chart wrapper engineered for convenient testing and diagnostics
 struct DebugChart {
-  let base: Chart
+  var base: Chart
   let language: DebugGrammar
   let rawPosition: DiscreteMap<DefaultGrammar.Position, DefaultGrammar.Position>
 }
 
-
 extension DebugChart: CustomStringConvertible {
   var description: String {
-    var result: [String] = []
+    var result = ""
     for earleme in (0 ... base.currentEarleme) {
 
       result.append("---------- \(earleme) ----------\n")
@@ -38,6 +37,6 @@ extension DebugChart: CustomStringConvertible {
         allDerivations = allDerivations[itemDerivations.endIndex...]
       }
     }
-    return result.joined()
+    return result
   }
 }
