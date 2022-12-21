@@ -148,7 +148,7 @@ class ForestTests: XCTestCase {
     try f.checkUniqueDerivation(ofLHS: "digit ::= '0'", over: 9..<10, rhsOrigins: [9])
   }
 
-  func testRightRecursion() throws {
+  func testRightRecursion00() throws {
     let g = try """
       A ::= 'a' A | 'a'
       """
@@ -156,6 +156,7 @@ class ForestTests: XCTestCase {
     var r = TestRecognizer(g)
 
     XCTAssertNil(r.recognize("aaaaa"))
+    XCTFail("\n\(r)")
 
     /* WIP reconstructing derivations in the presence of Leo optimization
     let f = r.forest
@@ -167,7 +168,23 @@ class ForestTests: XCTestCase {
      */
   }
 
-  func testRightRecursion0() throws {
+  func testRightRecursion10() throws {
+    let g = try """
+      A ::= 'w' 'x' B | 'w'
+      B ::= C
+      C ::= 'y' 'z' A
+      """
+      .asTestGrammar(recognizing: "A")
+    var r = TestRecognizer(g)
+    
+    XCTAssertNil(r.recognize("wxyzwxyzw"))
+    XCTFail("\n\(r)")
+    /* WIP reconstructing derivations in the presence of Leo optimization
+
+     */
+  }
+  
+  func testRightRecursion15() throws {
     let g = try """
       A ::= 'w' 'x' B | 'w'
       B ::= C
@@ -176,14 +193,36 @@ class ForestTests: XCTestCase {
       """
       .asTestGrammar(recognizing: "A")
     var r = TestRecognizer(g)
-    
+
     XCTAssertNil(r.recognize("wxyzwxyzw"))
+    XCTFail("\n\(r)")
     /* WIP reconstructing derivations in the presence of Leo optimization
 
      */
   }
-  
-  func testRightRecursion2() throws {
+
+  func testRightRecursion20() throws {
+    let g = try """
+      A ::= 'w' 'x' B | 'w'
+      B ::= 'y' 'z' 'w' 'x' 'y' 'z' 'w'
+      B ::= 'y' 'z' A
+      """
+      .asTestGrammar(recognizing: "A")
+    var r = TestRecognizer(g)
+
+    XCTAssertNil(r.recognize("wxyzwxyzw"))
+    XCTFail("\n\(r)")
+    /*
+    let f = r.forest
+    try f.checkUniqueDerivation(ofLHS: "A ::= 'w' 'x' B", over: 0..<9, rhsOrigins: [0, 1, 2])
+    let d0 = f.derivations(of: "B", over: 2..<9)
+    XCTAssertEqual(d0.count, 2, "\(r)")
+     WIP reconstructing derivations in the presence of Leo optimization
+
+     */
+  }
+
+  func testRightRecursion30() throws {
     let g = try """
       A ::= 'x' B | 'x'
       B ::= 'y' A
@@ -192,6 +231,7 @@ class ForestTests: XCTestCase {
     var r = TestRecognizer(g)
 
     XCTAssertNil(r.recognize("xyxyxyx"))
+    XCTFail("\n\(r)")
 
     /* WIP reconstructing derivations in the presence of Leo optimization
     let f = r.forest
@@ -205,7 +245,7 @@ class ForestTests: XCTestCase {
      */
   }
 
-  func testRightRecursion3() throws {
+  func testRightRecursion40() throws {
     let g = try """
       A ::= 'x' B | 'x'
       B ::= C
@@ -215,6 +255,7 @@ class ForestTests: XCTestCase {
     var r = TestRecognizer(g)
 
     XCTAssertNil(r.recognize("xyxyxyx"))
+    XCTFail("\n\(r)")
 
     /* WIP reconstructing derivations in the presence of Leo optimization
     let f = r.forest
@@ -254,7 +295,7 @@ class ForestTests: XCTestCase {
 
     XCTAssertNil(r.recognize("aaaa"))
     let f = r.base.forest
-    var d0 = f.derivations(of: g.symbols["X"]!, over: 0..<4)
+    let d0 = f.derivations(of: g.symbols["X"]!, over: 0..<4)
 
     XCTAssertEqual(d0.map { g.symbolName[Int($0.lhs.id)] }, ["X", "X", "X"])
     XCTAssertEqual(
