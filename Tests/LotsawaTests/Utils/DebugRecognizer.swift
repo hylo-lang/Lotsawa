@@ -33,34 +33,11 @@ struct DebugRecognizer: CustomStringConvertible {
     return base.hasCompleteParse() ? nil : input.suffix(0)
   }
 
+  var chart: DebugChart {
+    return DebugChart(base: base.chart, language: language, rawPosition: rawPosition)
+  }
+
   var description: String {
-    var result: [String] = []
-    for earleme in (0 ... base.currentEarleme) {
-
-      result.append("---------- \(earleme) ----------\n")
-
-      var allDerivations = base.earleySet(earleme)
-
-      while !allDerivations.isEmpty {
-        let currentItem = allDerivations.first!.item
-        let itemDerivations = allDerivations.prefix { x in x.item == currentItem }
-
-        result.append("\(itemDerivations.startIndex): ")
-
-        result.append(
-          language.derivationText(
-            origin: currentItem.origin,
-            dotInGrammar: rawPosition[currentItem.dotPosition],
-            dotInSource: currentItem.isLeo ? nil : earleme,
-            predotPositions: itemDerivations.map { d in d.predotOrigin }))
-
-        if currentItem.isLeo {
-          result.append("\(language.text(currentItem.transitionSymbol!))* ")
-        }
-        result.append("\n")
-        allDerivations = allDerivations[itemDerivations.endIndex...]
-      }
-    }
-    return result.joined()
+    chart.description
   }
 }
