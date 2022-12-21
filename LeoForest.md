@@ -28,7 +28,7 @@
     - a Leo item L with transition symbol X, memoizing E. In this case L is called a **Leo source** of
       E, and E is called a **Leo product** of L.
     
-  - These origins I become part of E's set of **predot origins**.
+  - Each such origin I is an element in E's set of **predot origins**.
   
 - Given a penultimate M in set J with origin I, its **Leo predecessor**, if any, is the Leo item in
   set I whose transition symbol is E's LHS.
@@ -40,61 +40,15 @@
   - L is called the **Leo item of** M.
   - The sole **predot origin of** L is that of M's Leo predecessor, if any, or else it is I.
   - The presence of L causes any completions with mainstem M to be omitted from the chart. 
-  - M is  the tail of all derivation paths for completions omitted due to L.
-
-## Parse Trees and Derivation Paths
-
-- Given a (stored or omitted) completion C with LHS X with origin I in earleme K,
-
-  - **Trees(X, I, K)** is the set of all parse trees for X over [I, K) (defined below)
+  - M is the tail of all derivation paths for completions omitted due to L.
   
-  - Given a derivation path P=D₀...Dⱼ of C
-  
-    - Given Dᵤ, an element of P
+## Exploring the Forest
 
-      - **start(Dᵤ)** is defined to be the earleme of Dᵤ
-      - **end(Dᵤ)** is defined to be the earleme of Dᵤ₊₁ if it exists, and K otherwise.
-      - **Subtrees(Dᵤ)** is a set of parse trees for Dᵤ's postdot symbol Y.
-        - if Y is a terminal, {Y, start(Dᵤ), end(Dᵤ)}
-        - otherwise, **Trees(Y, start(Dᵤ), end(Dᵤ))**
+- An exploration is a triple (chart: Chart, C: completion, P: Set of derivation paths
 
-    - **ChildTreeTuples(P, K)** is the cross-product of the sets Subtrees(Dᵤ) for u in 0...j
-    - **DTrees(P, K)** is defined to be the set of trees having root {X, I, K} and children given by
-      an element of ChildTreeTuples
+- The start symbol's completion is always present in the chart.
 
-  - **Trees(X, I, K)** is the union of the (disjoint) sets DTrees(P, K) for every derivation path P
-    of C
-  
-Given a derivation path P=D₀...Dⱼ of a symbol X recognized over earlemes [I, K)
-
-- P represents a subset of parse trees for X over [I, K), **Trees(P, K)**.
-
-
-
-The set of all parse trees for X over [I, K), **Trees(X, I, K)** is the union of the (disjoint) sets
-  Trees(P, K) for all such P.
-
-Given a derivation path P = :
-- *Trees(P, K)* is defined as the set of trees produced by 
-
-  the 
-  - Each element Dᵤ represents a set R of parse subtrees for Dᵤ's postdot symbol Y over earlemes [U, V)
- where V is:
-    - the earleme of Dᵤ₊₁ if any
-    - K otherwise.
-    
-  - if the postdot symbol Y of Dᵤ is a terminal, R is just {Y}
-  - Otherwise, it is the set of trees formed by the 
-  
-
-corresponds to a distinct
-set of parse trees for that symbol over I, J.
-
-Each element E of D corresponds to a set of parse trees for E's postdot symbol
-
-Each element
-
-Given a 
+- A completion's derivation paths can all be 
 
 - When D is an Earley item
   - its postdot symbol is the LHS of C's rule and the predot symbol of E
@@ -112,3 +66,29 @@ Given a
 -
 - Every Leo item in a set I has a **tail**.  The tail is the item that, were it not for the presence
   of the Leo item, would be combined with a recognition of the Leo item's transition symbol to produce
+
+
+## Parse Trees and Derivation Paths
+
+- Given a (stored or omitted) completion C with LHS X with origin I in earleme K,
+
+  - **Trees(X, I, K)** is the set of all parse trees for X over [I, K) (defined recursively below)
+  
+  - Given a derivation path P=D₀...Dⱼ of C
+  
+    - Given Dᵤ, an element of P
+
+      - **start(Dᵤ)** is defined to be the earleme of Dᵤ
+      - **end(Dᵤ)** is defined to be the earleme of Dᵤ₊₁ if it exists, and K otherwise.
+      - **Subtrees(Dᵤ)** is a set of parse trees for Dᵤ's postdot symbol Y.
+        - if Y is a terminal, {Y, start(Dᵤ), end(Dᵤ)}
+        - otherwise, **Trees(Y, start(Dᵤ), end(Dᵤ))**
+
+    - **ChildTreeTuples(P, K)** is the cross-product of the sets Subtrees(Dᵤ) for u in 0...j
+    - **DTrees(P, K)** is defined to be the set of trees having root {X, I, K} and children given by
+      an element of ChildTreeTuples(P, K)
+
+  - **Trees(X, I, K)** is defined to be the union of the (disjoint) sets DTrees(P, K) for every
+    derivation path P of C
+  
+
