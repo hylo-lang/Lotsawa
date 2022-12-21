@@ -76,7 +76,7 @@ extension Recognizer {
     if let head = predecessors.first,
        let d = head.item.leoMemo(in: g)
     {
-      derive(.init(item: d, predotOrigin: head.predotOrigin))
+      derive(.init(item: d, predotOrigin: origin))
     }
     else {
       assert(
