@@ -3,21 +3,6 @@ import XCTest
 
 struct UnexpectedlyEmpty: Error {}
 
-extension Collection {
-  func checkedOnlyElement(
-    _ message: @autoclosure () -> String = "",
-    file: StaticString = #filePath, line: UInt = #line) throws -> Element
-  {
-    XCTAssert(
-      !self.isEmpty, message() + " Expected exactly one element in \(Array(self))",
-      file: file, line: line)
-
-    if self.isEmpty { throw UnexpectedlyEmpty() }
-    XCTAssert(self.dropFirst().isEmpty, message(), file: file, line: line)
-    return self.first!
-  }
-}
-
 class ChartInternalTests: XCTestCase {
   func testItemOperations() throws {
     let g = try """
@@ -132,5 +117,8 @@ class ChartInternalTests: XCTestCase {
     XCTAssertEqual(g.raw.rule(containing: top0.item.dotPosition), topRuleID)
 
     // Could explore more, but it's time to create a better abstraction.
+
+    // suppress "unused" warnings.
+    _ = (number, digit, multiplicative)
   }
 }

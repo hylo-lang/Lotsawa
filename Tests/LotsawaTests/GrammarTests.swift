@@ -2,10 +2,6 @@ import Lotsawa
 
 import XCTest
 
-extension Symbol {
-  init<I: BinaryInteger>(_ id: I) { self = Symbol(id: ID(id)) }
-}
-
 class GrammarTests: XCTestCase {
   func testEmpty() {
     let g = DefaultGrammar(recognizing: Symbol(0))

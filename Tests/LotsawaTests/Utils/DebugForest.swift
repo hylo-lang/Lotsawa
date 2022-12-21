@@ -1,4 +1,5 @@
 import Lotsawa
+import XCTest
 
 struct DebugForest {
   let base: Forest<Symbol.ID>
@@ -30,5 +31,23 @@ extension DebugForest.Derivation: CustomStringConvertible {
 extension DebugRecognizer {
   public var forest: DebugForest {
     DebugForest(base: base.forest, language: language, recognizer: self)
+  }
+}
+
+extension DebugForest {
+  func checkUniqueDerivation(
+    ofLHS expectedRule: String,
+    over locus: Range<SourcePosition>,
+    rhsOrigins expectedRHSOrigins: [SourcePosition],
+    _ message: @autoclosure () -> String = "", file: StaticString = #filePath, line: UInt = #line
+  ) throws {
+    let d0 = derivations(of: String(expectedRule.split(separator: " ").first!), over: locus)
+    let d = try d0.checkedOnlyElement(message() + "\n\(recognizer)", file: file, line: line)
+    XCTAssertEqual(
+      d.ruleName, expectedRule, "ruleName mismatch" + message() + "\n\(recognizer)",
+      file: file, line: line)
+    XCTAssertEqual(
+      d.rhsOrigins, expectedRHSOrigins, "rhsOrigin mismatch" + message() + "\n\(recognizer)",
+      file: file, line: line)
   }
 }
