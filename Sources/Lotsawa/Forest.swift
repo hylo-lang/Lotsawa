@@ -60,6 +60,9 @@ extension Forest {
       let x = chart.prefixes(of: e, in: grammar).indices
       p.append(x)
       e = chart.entries[x.first!]
+      // Resilience against incomplete charts due to Leo optimization
+      // guard let i = x.first else { break }
+      // e = chart.entries[i]
     }
   }
 
