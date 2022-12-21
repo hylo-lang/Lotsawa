@@ -1,5 +1,5 @@
 /// Storage for incremental recognition results and the core representation of a parse forest.
-public struct Chart
+public struct Chart: Hashable
 {
   /// Storage for all chart entries
   public typealias Entries = Array<Entry>
@@ -48,7 +48,7 @@ extension Chart {
 
 extension Chart {
   /// An Earley or Leo item.
-  struct Item: Comparable {
+  struct Item: Comparable, Hashable {
     /// The raw storage.
     ///
     /// It is arranged to avoid 64-bit alignment, since this will be combined into an `Entry`.
@@ -101,6 +101,8 @@ extension Chart {
       UInt64(storage.isCompletion_symbol_isEarley_originHi) << 32
         | UInt64(storage.originLow_dotPosition)
     }
+
+    func hash(into h: inout Hasher) { key.hash(into: &h) }
 
     /// Lookup key for the start of the Leo-Earley sequence expecting a given symbol.
     ///
@@ -260,7 +262,7 @@ extension Chart {
   /// derivations of any Earley item, and the non-derivation information is small, and
   /// ambiguity in useful grammars is low, each such item is represented as one or more
   /// consecutively stored `Entry`s, each representing one predot symbol origin.
-  public struct Entry: Comparable {
+  public struct Entry: Comparable, Hashable {
     var item: Item
     /// The origin of the predot symbol for this entry, if any.
     var predotOrigin: UInt32
