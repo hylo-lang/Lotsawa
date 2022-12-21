@@ -16,8 +16,9 @@ struct TestRecognizer: CustomStringConvertible {
     rawPosition = p.rawPosition
   }
 
-  /// Recognize the given input string and return `nil`, or if recognition fails, return the suffix
-  /// of input that starts *after* the character on which recognition failed.
+  /// Recognize the given input string, treating each Character as a separate token, and return
+  /// `nil`, or if recognition fails, return the suffix of input that starts *after* the character
+  /// on which recognition failed.
   mutating func recognize(_ input: String) -> Substring? {
     base.initialize()
     if !base.finishEarleme() { return input[...] }
