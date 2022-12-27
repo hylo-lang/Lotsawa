@@ -93,3 +93,34 @@ extension BidirectionalCollection {
     return try self[dropLast(while: predicate).endIndex...]
   }
 }
+
+extension Collection where Element: Comparable {
+
+  /// Returns `true` iff the elements are in ascending order.
+  func isSorted() -> Bool {
+    return zip(self, self.dropFirst()).allSatisfy { $0 < $1 }
+  }
+
+  /// Returns an array containing the elements of `self` and `other` in ascending order.
+  ///
+  /// The result is equivalent to that of `(Array(self) + other).sorted()`.
+  ///
+  /// - Complexity: O(count + other.count)
+  ///
+  /// - Precondition: `self.isSorted() && other.isSorted()`
+  func merged<C: Collection>(with other: C) -> [Element]
+    where C.Element == Element
+  {
+    var r: [Element] = []
+    r.reserveCapacity(count + other.count)
+
+    var c0 = self[...]
+    var c1 = other[...]
+    while !c0.isEmpty && !c1.isEmpty {
+      r.append(c0.first! < c1.first! ? c0.popFirst()! : c1.popFirst()!)
+    }
+    r.append(contentsOf: c0)
+    r.append(contentsOf: c1)
+    return r
+  }
+}

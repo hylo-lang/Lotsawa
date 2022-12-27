@@ -11,6 +11,13 @@ public struct Forest<StoredSymbol: SignedInteger & FixedWidthInteger> {
     self.chart = chart
     self.grammar = grammar
   }
+
+  struct LeoCompletionKey: Hashable {
+    let locus: Range<SourcePosition>
+    let lhs: Symbol
+  }
+
+  private var leoCompletions: [LeoCompletionKey: [Chart.Entry]] = [:]
 }
 
 extension Forest {
@@ -92,9 +99,13 @@ extension Forest {
 
   /// Returns the set representing all derivations of `lhs` over `locus`.
   public func derivations(of lhs: Symbol, over locus: Range<SourcePosition>) -> DerivationSet {
+
+    let completions = chart.completions(of: lhs, over: locus)
+    let leos = leoCompletions[.init(locus: locus, lhs: lhs), default: []]
+
     var roots = DerivationSet.Storage(
-      completions: Array(chart.completions(of: lhs, over: locus))[...],
-      mainstems: [])
+      completions: completions.merged(with: leos)[...], mainstems: []
+    )
 
     if !roots.completions.isEmpty { extend(&roots) }
     return DerivationSet(storage: roots, domain: self)
