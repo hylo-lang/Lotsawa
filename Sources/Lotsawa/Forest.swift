@@ -25,7 +25,10 @@ extension Forest {
     ///
     /// Notional derivation sets are sometimes (temporarily) described by their prefixes; see `extend`
     /// for more details.
-    typealias Storage = [Range<Chart.Entries.Index>]
+    struct Storage {
+      var completions: Array<Chart.Entry>.SubSequence
+      var mainstems: [Range<Chart.Entries.Index>]
+    }
 
     init(storage: Storage, domain: Forest) {
       self.storage = storage
@@ -54,50 +57,62 @@ extension Forest {
   ///
   /// - Precondition: `!p.last.isEmpty`
   private func extend(_ p: inout DerivationSet.Storage) {
-    var e = chart.entries[p.last!.first!]
+    var e = p.mainstems.isEmpty
+      ? p.completions.first!
+      : chart.entries[p.mainstems.last!.first!]
 
     while e.predotOrigin != e.item.origin {
       let x = chart.mainstemDerivations(of: e, in: grammar).indices
-      p.append(x)
+      p.mainstems.append(x)
       e = chart.entries[x.first!]
-      // Resilience against incomplete charts due to Leo optimization
-      // guard let i = x.first else { break }
-      // e = chart.entries[i]
     }
   }
 
   /// Drops the first derivation from `p`, leaving it empty if there are no further derivations.
   func removeFirst(from p: inout DerivationSet.Storage) {
-    _ = p[p.index(before: p.endIndex)].popFirst()
-    if !p.last!.isEmpty { return }
-    repeat {
-      p.removeLast()
-      if p.isEmpty { return }
-      _ = p[p.index(before: p.endIndex)].popFirst()
-    } while p.last!.isEmpty
-    extend(&p)
+    func step() -> Bool {
+      if p.mainstems.isEmpty {
+        _ = p.completions.popFirst()
+        return false
+      }
+      return mutate(&p.mainstems[p.mainstems.index(before: p.mainstems.endIndex)]) {
+        _ = $0.popFirst()
+        return $0.isEmpty
+      }
+    }
+
+    while step() {
+      p.mainstems.removeLast()
+    }
+
+    if !p.completions.isEmpty {
+      extend(&p)
+    }
   }
 
   /// Returns the set representing all derivations of `lhs` over `locus`.
   public func derivations(of lhs: Symbol, over locus: Range<SourcePosition>) -> DerivationSet {
-    let roots = chart.completions(of: lhs, over: locus).indices
-    if roots.isEmpty { return DerivationSet(storage: [], domain: self) }
-    var r = [roots]
-    extend(&r)
-    return DerivationSet(storage: r, domain: self)
+    var roots = DerivationSet.Storage(
+      completions: Array(chart.completions(of: lhs, over: locus))[...],
+      mainstems: [])
+
+    if !roots.completions.isEmpty { extend(&roots) }
+    return DerivationSet(storage: roots, domain: self)
   }
 
   /// Returns the first derivation in `d`.
   func first(of d: DerivationSet.Storage) -> Derivation {
     .init(
       path: d, domain: self,
-      rule: grammar.rule(containing: chart.entries[d.first!.lowerBound].item.dotPosition))
+      rule: grammar.rule(containing: d.completions.first!.item.dotPosition))
   }
 }
 
 extension Forest.DerivationSet {
-  public var isEmpty: Bool { storage.isEmpty }
-  public var first: Forest.Derivation? { isEmpty ? nil : domain.first(of: storage) }
+  public var isEmpty: Bool { storage.completions.isEmpty }
+  public var first: Forest.Derivation? {
+    isEmpty ? nil : domain.first(of: storage)
+  }
   public mutating func removeFirst() {
     domain.removeFirst(from: &storage)
   }
@@ -105,23 +120,39 @@ extension Forest.DerivationSet {
 
 extension Forest.DerivationSet: Collection {
   public struct Index: Comparable {
+    var offset: Int
+
     fileprivate var remainder: Storage
     public static func < (l: Self, r: Self) -> Bool {
-      !l.remainder.isEmpty && (
-          r.remainder.isEmpty
-            || l.remainder.lexicographicallyPrecedes(r.remainder) { $0.lowerBound < $1.lowerBound })
+      UInt(bitPattern: l.offset) < UInt(bitPattern: r.offset)
+    }
+
+    public static func == (l: Self, r: Self) -> Bool {
+      l.offset == r.offset
+    }
+
+    init(remainder: Storage) {
+      self.remainder = remainder
+      offset = remainder.completions.isEmpty ? -1 : 0
     }
   }
+
   public var startIndex: Index { Index(remainder: self.storage) }
-  public var endIndex: Index { Index(remainder: []) }
+  public var endIndex: Index {
+    Index(remainder: .init(completions: [], mainstems: []))
+  }
+
   public func formIndex(after x: inout Index) {
     domain.removeFirst(from: &x.remainder)
+    x.offset = x.remainder.completions.isEmpty ? -1 : x.offset + 1
   }
+
   public func index(after x: Index) -> Index {
     var y = x
     formIndex(after: &y)
     return y
   }
+
   public subscript(p: Index) -> Forest.Derivation {
     domain.first(of: p.remainder)
   }
@@ -136,7 +167,13 @@ extension Forest.Derivation {
 
   /// The position in the source where each RHS symbol of this derivation starts.
   public var rhsOrigins: some BidirectionalCollection<SourcePosition> {
-    path.reversed().lazy.map { domain.chart.entries[$0.lowerBound].predotOrigin }
+    var r: [SourcePosition] = []
+    r.reserveCapacity(path.mainstems.count + 1)
+    r.append(
+      contentsOf:
+        path.mainstems.reversed().lazy.map { domain.chart.entries[$0.lowerBound].predotOrigin })
+    r.append(path.completions.first!.predotOrigin)
+    return r
   }
 }
 
