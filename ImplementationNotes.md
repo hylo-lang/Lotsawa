@@ -86,9 +86,9 @@ participate in multiple pairings.
 Let's call these pairs **derivations**.  A derivation of an item X has two parts:
 - **predot item:** a completed item in the same earleme as X describing the
   parse(s) of X's predot symbol.
-- **prefix item:** an incomplete item in the predot item's start earleme
+- **mainstem item:** an incomplete item in the predot item's start earleme
   describing the parses of the RHS symbols *before* X's predot symbol. The
-  postdot symbol of any prefix item of X is always X's predot symbol.
+  postdot symbol of any mainstem item of X is always X's predot symbol.
 
 ## Derivation set representation
 

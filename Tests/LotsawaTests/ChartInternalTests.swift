@@ -24,7 +24,7 @@ class ChartInternalTests: XCTestCase {
     XCTAssertFalse(i1.isLeo)
     XCTAssertEqual(i1.origin, 42)
     XCTAssertFalse(i1.isCompletion)
-    XCTAssertEqual(i1.prefix(in: g.raw), i0)
+    XCTAssertEqual(i1.mainstem(in: g.raw), i0)
     XCTAssertNil(i0.lhs)
     XCTAssertEqual(g.symbolName[Int(i1.transitionSymbol!.id)], "C")
 
@@ -34,7 +34,7 @@ class ChartInternalTests: XCTestCase {
     XCTAssertFalse(i2.isLeo)
     XCTAssertEqual(i2.origin, 42)
     XCTAssertFalse(i2.isCompletion)
-    XCTAssertEqual(i2.prefix(in: g.raw), i1)
+    XCTAssertEqual(i2.mainstem(in: g.raw), i1)
     XCTAssertNil(i0.lhs)
     XCTAssertEqual(g.symbolName[Int(i2.transitionSymbol!.id)], "D")
 
@@ -44,7 +44,7 @@ class ChartInternalTests: XCTestCase {
     XCTAssertFalse(i3.isLeo)
     XCTAssertEqual(i3.origin, 42)
     XCTAssertFalse(i3.isCompletion)
-    XCTAssertEqual(i3.prefix(in: g.raw), i2)
+    XCTAssertEqual(i3.mainstem(in: g.raw), i2)
     XCTAssertNil(i0.lhs)
     XCTAssertEqual(g.symbolName[Int(i3.transitionSymbol!.id)], "E")
 
@@ -54,7 +54,7 @@ class ChartInternalTests: XCTestCase {
     XCTAssertFalse(i4.isLeo)
     XCTAssertEqual(i4.origin, 42)
     XCTAssert(i4.isCompletion)
-    XCTAssertEqual(i4.prefix(in: g.raw), i3)
+    XCTAssertEqual(i4.mainstem(in: g.raw), i3)
     XCTAssertNil(i4.transitionSymbol)
     XCTAssertEqual(g.symbolName[Int(i4.lhs!.id)], "A")
 
@@ -105,15 +105,15 @@ class ChartInternalTests: XCTestCase {
       .checkedOnlyElement()
     XCTAssert(rhsProduct.item.isCompletion)
 
-    let top2 = try chart.prefixes(of: top3, in: g.raw).checkedOnlyElement()
+    let top2 = try chart.mainstems(of: top3, in: g.raw).checkedOnlyElement()
     XCTAssertEqual(g.raw.rule(containing: top2.item.dotPosition), topRuleID)
 
     XCTAssertEqual(top2.item.transitionSymbol, product)
 
-    let top1 = try chart.prefixes(of: top2, in: g.raw).checkedOnlyElement()
+    let top1 = try chart.mainstems(of: top2, in: g.raw).checkedOnlyElement()
     XCTAssertEqual(g.raw.rule(containing: top1.item.dotPosition), topRuleID)
 
-    let top0 = try chart.prefixes(of: top1, in: g.raw).checkedOnlyElement()
+    let top0 = try chart.mainstems(of: top1, in: g.raw).checkedOnlyElement()
     XCTAssertEqual(g.raw.rule(containing: top0.item.dotPosition), topRuleID)
 
     // Could explore more, but it's time to create a better abstraction.

@@ -226,7 +226,7 @@ extension Chart {
     /// Returns `self` with the dot moved back over one symbol.
     ///
     /// - Precondition: `self` is a non-prediction Earley item.
-    func prefix<S>(in g: Grammar<S>) -> Item {
+    func mainstem<S>(in g: Grammar<S>) -> Item {
       assert(isEarley)
 
       var r = self
@@ -326,10 +326,10 @@ extension Chart {
   /// where the recognized grammar is `g`.
   ///
   /// - Complexity: O(N) where N is the length of the result.
-  func prefixes<S>(of x: Entry, in g: Grammar<S>) -> Entries.SubSequence
+  func mainstems<S>(of x: Entry, in g: Grammar<S>) -> Entries.SubSequence
   {
     let endSet = earleySet(x.predotOrigin)
-    let p = x.item.prefix(in: g)
+    let p = x.item.mainstem(in: g)
     let j = endSet.partitionPoint { d in d.item >= p }
     return endSet[j...].prefix(while: { y in y.item == p })
   }
@@ -378,10 +378,10 @@ extension DebuggableProductType {
 }
 
 extension Chart.Item: DebuggableProductType {
-  enum Kind { case completion, prefix, leo }
+  enum Kind { case completion, mainstem, leo }
   var reflectedChildren: KeyValuePairs<String, Any> {
     [
-      "type": (isCompletion ? .completion : isLeo ? .leo : .prefix) as Kind,
+      "type": (isCompletion ? .completion : isLeo ? .leo : .mainstem) as Kind,
       "symbolID": (transitionSymbol ?? lhs)!.id,
       "origin": origin,
       "dotPosition": dotPosition
