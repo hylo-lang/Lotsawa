@@ -138,9 +138,9 @@ class ForestTests: XCTestCase {
     var r = DebugRecognizer(g)
 
     XCTAssertNil(r.recognize("aaaaa"))
-    XCTFail("\n\(r)")
 
     /* WIP reconstructing derivations in the presence of Leo optimization
+    XCTFail("\n\(r)")
     let f = r.forest
     try f.checkUniqueDerivation(ofLHS: "A ::= 'a' A", over: 0..<5, rhsOrigins: [0, 1])
     try f.checkUniqueDerivation(ofLHS: "A ::= 'a' A", over: 1..<5, rhsOrigins: [1, 2])
@@ -160,8 +160,8 @@ class ForestTests: XCTestCase {
     var r = DebugRecognizer(g)
     
     XCTAssertNil(r.recognize("wxyzwxyzw"))
-    XCTFail("\n\(r)")
     /* WIP reconstructing derivations in the presence of Leo optimization
+    XCTFail("\n\(r)")
 
      */
   }
@@ -177,8 +177,8 @@ class ForestTests: XCTestCase {
     var r = DebugRecognizer(g)
 
     XCTAssertNil(r.recognize("wxyzwxyzw"))
-    XCTFail("\n\(r)")
     /* WIP reconstructing derivations in the presence of Leo optimization
+    XCTFail("\n\(r)")
 
      */
   }
@@ -193,8 +193,8 @@ class ForestTests: XCTestCase {
     var r = DebugRecognizer(g)
 
     XCTAssertNil(r.recognize("wxyzwxyzw"))
-    XCTFail("\n\(r)")
     /*
+    XCTFail("\n\(r)")
     let f = r.forest
     try f.checkUniqueDerivation(ofLHS: "A ::= 'w' 'x' B", over: 0..<9, rhsOrigins: [0, 1, 2])
     let d0 = f.derivations(of: "B", over: 2..<9)
@@ -213,9 +213,9 @@ class ForestTests: XCTestCase {
     var r = DebugRecognizer(g)
 
     XCTAssertNil(r.recognize("xyxyxyx"))
-    XCTFail("\n\(r)")
 
     /* WIP reconstructing derivations in the presence of Leo optimization
+    XCTFail("\n\(r)")
     let f = r.forest
     try f.checkUniqueDerivation(ofLHS: "A ::= 'x' B", over: 0..<7, rhsOrigins: [0, 1])
     try f.checkUniqueDerivation(ofLHS: "B ::= 'y' A", over: 1..<7, rhsOrigins: [1, 2])
@@ -237,9 +237,9 @@ class ForestTests: XCTestCase {
     var r = DebugRecognizer(g)
 
     XCTAssertNil(r.recognize("xyxyxyx"))
-    XCTFail("\n\(r)")
 
     /* WIP reconstructing derivations in the presence of Leo optimization
+    XCTFail("\n\(r)")
     let f = r.forest
     try f.checkUniqueDerivation(ofLHS: "A ::= 'x' B", over: 0..<7, rhsOrigins: [0, 1])
     try f.checkUniqueDerivation(ofLHS: "B ::= C", over: 1..<7, rhsOrigins: [1])
