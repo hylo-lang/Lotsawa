@@ -112,10 +112,57 @@ extension Forest {
     }
   }
 
-  /// Returns the set representing all derivations of `lhs` over `locus`.
-  public func derivations(of lhs: Symbol, over locus: Range<SourcePosition>) -> DerivationSet {
+  public mutating func requireCompletion(
+    _ c: Chart.Entry, inEarleme i: SourcePosition
+  ) -> Bool {
+    assert(c.item.isCompletion, "requiring non-completion \(c)")
+    let setI = chart.earleySet(i)
+    let p = setI.partitionPoint { $0 >= c }
+    /// Derivation already in the chart?  We're done
+    if setI[p...].first == c { return true }
 
+    // Item already in the chart? Return true eventually.
+    let r0 = setI[p...].first?.item == c.item || setI[..<p].last?.item == c.item
+
+    return mutate(
+      &leoCompletions[.init(locus: c.item.origin..<i, lhs: c.item.lhs!), default: []]
+    ) { leoSet in
+      let q = leoSet.partitionPoint { $0 >= c }
+      // Derivation already in the leoSet?  We're done
+      if leoSet[q...].first == c { return true }
+
+      // Item already in the leoSet? Return true eventually
+      let r1 = leoSet[q...].first?.item == c.item || leoSet[..<q].last?.item == c.item
+      leoSet.insert(c, at: q)
+      return r1
+    } || r0
+  }
+
+  public mutating func collectLeoCompletions(
+    causing top: Chart.Entry, endingAt endEarleme: SourcePosition
+  ) {
+    assert(top.item.isCompletion, "collecting leo completions on non-completion \(top)")
+    guard let lim0Index = top.mainstemIndex, chart.entries[lim0Index].item.isLeo else { return }
+    var workingLIMIndex = lim0Index
+    while true {
+      let workingBase = chart.entries[workingLIMIndex + 1].item
+      let newCompletion = Chart.Entry(
+        item: workingBase.advanced(in: grammar), mainstemIndex: workingLIMIndex)
+      if requireCompletion(newCompletion, inEarleme: endEarleme) { break }
+      guard let previousLIMIndex = chart.entries[workingLIMIndex].mainstemIndex else { break }
+      workingLIMIndex = previousLIMIndex
+    }
+  }
+
+  /// Returns the set representing all derivations of `lhs` over `locus`.
+  public mutating func derivations(of lhs: Symbol, over locus: Range<SourcePosition>)
+    -> DerivationSet
+  {
     let completions = chart.completions(of: lhs, over: locus)
+    for top in completions {
+      collectLeoCompletions(causing: top, endingAt: locus.upperBound)
+    }
+
     let leos = leoCompletions[.init(locus: locus, lhs: lhs), default: []]
 
     var roots = DerivationSet.Storage(

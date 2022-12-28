@@ -461,3 +461,15 @@ extension Chart.Entry: DebuggableProductType {
     item.reflectedChildren + [("mainstemIndex", mainstemIndex as Any)]
   }
 }
+
+extension Chart {
+  /// Returns the sequence of entries awaiting advancement on symbol `s` if that sequence begins
+  /// with a Leo item, and nil otherwise.
+  func leoDerivations(awaiting s: Symbol, at i: SourcePosition)
+    -> Optional<some BidirectionalCollection<Entry>>
+  {
+
+    let predecessors = transitionEntries(on: s, inEarleySet: i)
+    return predecessors.first.map { $0.item.isLeo ? predecessors : nil } ?? nil
+  }
+}

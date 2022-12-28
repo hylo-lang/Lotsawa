@@ -17,7 +17,7 @@ class ForestTests: XCTestCase {
     let unrecognized = r.recognize("42+(9/3-20)")
     XCTAssertNil(unrecognized)
 
-    let f = r.forest
+    var f = r.forest
     try f.checkUniqueDerivation(
       ofLHS: "sum ::= sum additive product", over: 0..<11, rhsOrigins: [0, 2, 3])
 
@@ -82,7 +82,7 @@ class ForestTests: XCTestCase {
 
     // This test somehow unchallenged by the Leo optimization.  Perhaps we need input like 1*2*3.
     XCTAssertNil(unrecognized, "\n\(r)")
-    let f = r.forest
+    var f = r.forest
     try f.checkUniqueDerivation(
       ofLHS: "sum ::= product additive sum", over: 0..<11, rhsOrigins: [0, 2, 3])
 
@@ -158,14 +158,14 @@ class ForestTests: XCTestCase {
       """
       .asTestGrammar(recognizing: "A")
     var r = DebugRecognizer(g)
-    
+
     XCTAssertNil(r.recognize("wxyzwxyzw"))
     /* WIP reconstructing derivations in the presence of Leo optimization
     XCTFail("\n\(r)")
 
      */
   }
-  
+
   func testRightRecursion15() throws {
     let g = try """
       A ::= 'w' 'x' B | 'w'
@@ -276,7 +276,7 @@ class ForestTests: XCTestCase {
     var r = DebugRecognizer(g)
 
     XCTAssertNil(r.recognize("aaaa"))
-    let f = r.base.forest
+    var f = r.base.forest
     let d0 = f.derivations(of: g.symbols["X"]!, over: 0..<4)
 
     XCTAssertEqual(d0.map { g.symbolName[Int($0.lhs.id)] }, ["X", "X", "X"])
@@ -298,7 +298,7 @@ class ForestTests: XCTestCase {
     var r = DebugRecognizer(g)
 
     XCTAssertNil(r.recognize("aaaa"))
-    let f = r.forest
+    var f = r.forest
     let xs = f.derivations(of: "X", over: 0..<4)
     XCTAssert(xs.map(\.ruleName).allSatisfy { $0 == "X ::= B B B" })
     XCTAssertEqual(Set(xs.lazy.map(\.rhsOrigins)), [[0, 1, 2], [0, 1, 3], [0, 2, 3]])

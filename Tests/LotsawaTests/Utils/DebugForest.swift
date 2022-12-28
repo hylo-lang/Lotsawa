@@ -2,7 +2,7 @@ import Lotsawa
 import XCTest
 
 struct DebugForest {
-  let base: Forest<Symbol.ID>
+  var base: Forest<Symbol.ID>
   let language: DebugGrammar
   let recognizer: DebugRecognizer
 
@@ -17,7 +17,7 @@ struct DebugForest {
     var rhsOrigins: [SourcePosition] { Array(base.rhsOrigins) }
   }
 
-  func derivations(of lhsName: String, over locus: Range<SourcePosition>) -> [Derivation] {
+  mutating func derivations(of lhsName: String, over locus: Range<SourcePosition>) -> [Derivation] {
     base.derivations(of: language.symbols[lhsName]!, over: locus).map {
       Derivation(base: $0, language: language)
     }
@@ -35,7 +35,7 @@ extension DebugRecognizer {
 }
 
 extension DebugForest {
-  func checkUniqueDerivation(
+  mutating func checkUniqueDerivation(
     ofLHS expectedRule: String,
     over locus: Range<SourcePosition>,
     rhsOrigins expectedRHSOrigins: [SourcePosition],
