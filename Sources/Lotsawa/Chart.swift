@@ -326,7 +326,7 @@ extension Chart {
   /// where the recognized grammar is `g`.
   ///
   /// - Complexity: O(N) where N is the length of the result.
-  func mainstems<S>(of x: Entry, in g: Grammar<S>) -> Entries.SubSequence
+  func mainstemDerivations<S>(of x: Entry, in g: Grammar<S>) -> Entries.SubSequence
   {
     let endSet = earleySet(x.predotOrigin)
     let p = x.item.mainstem(in: g)

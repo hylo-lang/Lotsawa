@@ -105,15 +105,15 @@ class ChartInternalTests: XCTestCase {
       .checkedOnlyElement()
     XCTAssert(rhsProduct.item.isCompletion)
 
-    let top2 = try chart.mainstems(of: top3, in: g.raw).checkedOnlyElement()
+    let top2 = try chart.mainstemDerivations(of: top3, in: g.raw).checkedOnlyElement()
     XCTAssertEqual(g.raw.rule(containing: top2.item.dotPosition), topRuleID)
 
     XCTAssertEqual(top2.item.transitionSymbol, product)
 
-    let top1 = try chart.mainstems(of: top2, in: g.raw).checkedOnlyElement()
+    let top1 = try chart.mainstemDerivations(of: top2, in: g.raw).checkedOnlyElement()
     XCTAssertEqual(g.raw.rule(containing: top1.item.dotPosition), topRuleID)
 
-    let top0 = try chart.mainstems(of: top1, in: g.raw).checkedOnlyElement()
+    let top0 = try chart.mainstemDerivations(of: top1, in: g.raw).checkedOnlyElement()
     XCTAssertEqual(g.raw.rule(containing: top0.item.dotPosition), topRuleID)
 
     // Could explore more, but it's time to create a better abstraction.

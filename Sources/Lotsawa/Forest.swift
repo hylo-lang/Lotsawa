@@ -57,7 +57,7 @@ extension Forest {
     var e = chart.entries[p.last!.first!]
 
     while e.predotOrigin != e.item.origin {
-      let x = chart.mainstems(of: e, in: grammar).indices
+      let x = chart.mainstemDerivations(of: e, in: grammar).indices
       p.append(x)
       e = chart.entries[x.first!]
       // Resilience against incomplete charts due to Leo optimization
