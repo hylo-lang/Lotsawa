@@ -84,9 +84,9 @@ combined to reach a given state. Regardless of ambiguity, a given state can
 participate in multiple pairings.
 
 Let's call these pairs **derivations**.  A derivation of an item X has two parts:
-- **predot item:** a completed item in the same earleme as X describing the
+- **tributary item:** a completed item in the same earleme as X describing the
   parse(s) of X's predot symbol.
-- **mainstem item:** an incomplete item in the predot item's start earleme
+- **mainstem item:** an incomplete item in the tributary item's start earleme
   describing the parses of the RHS symbols *before* X's predot symbol. The
   postdot symbol of any mainstem item of X is always X's predot symbol.
 
@@ -153,7 +153,7 @@ We can:
 
 ## Dealing with Leo items
 
-The DRP eliminated by Leo's optimization is always a chain of predot items.
+The DRP eliminated by Leo's optimization is always a chain of tributary items.
 
 ### Representation and lookup
 
