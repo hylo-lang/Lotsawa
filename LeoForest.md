@@ -30,7 +30,7 @@
     
   - Each such origin I is an element in E's set of **predot origins**.
   
-- Given a penultimate M in set J with origin I, its **Leo predecessor**, if any, is the Leo item in
+- Given a penultimate M in set J with origin I, its **Leo mainstem**, if any, is the Leo item in
   set I whose transition symbol is E's LHS.
   
 - Given a Leo item L in set I with transition symbol T
@@ -38,7 +38,7 @@
   - L has a related Earley item M, called the **penultimate of** L, the unique Earley item in set I
     with postdot symbol T.
   - L is called the **Leo item of** M.
-  - The sole **predot origin of** L is that of M's Leo predecessor, if any, or else it is I.
+  - The sole **predot origin of** L is that of M's Leo mainstem, if any, or else it is I.
   - The presence of L causes any completions with mainstem M to be omitted from the chart. 
   - M is the tail of all derivation paths for completions omitted due to L.
   

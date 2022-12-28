@@ -70,20 +70,20 @@ extension Recognizer {
 
   /// Respond to the discovery of `s` starting at `origin` and ending in the current earleme.
   public mutating func discover(_ s: Symbol, startingAt origin: SourcePosition) {
-    // The set containing potential predecessor derivations to be paired with the one for s.
-    let predecessors = chart.transitionEntries(on: s, inEarleySet: origin)
+    // The set containing potential mainstem derivations to be paired with the one for s.
+    let mainstems = chart.transitionEntries(on: s, inEarleySet: origin)
 
-    if let head = predecessors.first,
+    if let head = mainstems.first,
        let d = head.item.leoMemo(in: g)
     {
       derive(.init(item: d, predotOrigin: origin))
     }
     else {
       assert(
-        predecessors.allSatisfy(\.item.isEarley),
-        "Leo item is not first in predecessors.")
+        mainstems.allSatisfy(\.item.isEarley),
+        "Leo item is not first in mainstems.")
 
-      for p in predecessors {
+      for p in mainstems {
         derive(.init(item: p.item.advanced(in: g), predotOrigin: origin))
       }
     }
@@ -93,8 +93,8 @@ extension Recognizer {
     assert(g.recognized(at: x.dotPosition) == nil, "unexpectedly complete item")
     let s = g.recognized(at: x.dotPosition + 1)!
 
-    let predecessors = chart.transitionEntries(on: s, inEarleySet: x.origin)
-    if let head = predecessors.first, head.item.isLeo {
+    let mainstems = chart.transitionEntries(on: s, inEarleySet: x.origin)
+    if let head = mainstems.first, head.item.isLeo {
       return head
     }
     return nil

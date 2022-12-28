@@ -19,7 +19,7 @@ extension Forest {
     /// The internal representation of a DerivationSet independent of Chart or Grammar.
     ///
     /// The first element points to a series of completions of the symbol in the chart.  Each
-    /// element thereafter describes a series of potential predecessors of the *first* entry pointed
+    /// element thereafter describes a series of potential mainstems of the *first* entry pointed
     /// to by the previous element.  Thus the elements are in some sense stored in
     /// reverse. Predictions are omitted.
     ///
@@ -49,7 +49,7 @@ extension Forest {
     public let rule: RuleID
   }
 
-  /// Extends a derivation set prefix by appending elements describing predecessors until the
+  /// Extends a derivation set prefix by appending elements describing mainstems until the
   /// position of the first RHS symbol of the set's first derivation is represented.
   ///
   /// - Precondition: `!p.last.isEmpty`
