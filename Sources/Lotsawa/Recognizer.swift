@@ -96,7 +96,11 @@ extension Recognizer {
     }
   }
 
-  func leoPredecessorIndex(_ x: Chart.ItemID) -> Chart.Entries.Index? {
+  /// Returns the position of the mainstem of the Leo item that would preempt the completion of the
+  /// penult Earley item `x`, or `nil` if there is no such mainstem.
+  ///
+  /// - Precondition: `x` is a penult: all but the last symbol of its RHS have been recognized.
+  func leoMainstemIndex(_ x: Chart.ItemID) -> Chart.Entries.Index? {
     assert(g.recognized(at: x.dotPosition) == nil, "unexpectedly complete item")
     let s = g.recognized(at: x.dotPosition + 1)!
 
@@ -143,7 +147,7 @@ extension Recognizer {
       {
         let l: Chart.Entry
 
-        if let p = leoPredecessorIndex(x) {
+        if let p = leoMainstemIndex(x) {
           l = .init(
             item: .init(
               memoizingItemIndex: chart.entries[p].memoizedPenultIndex!, transitionSymbol: t),
