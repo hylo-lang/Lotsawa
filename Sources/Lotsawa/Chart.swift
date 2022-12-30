@@ -259,17 +259,6 @@ extension Chart {
       assert(r.isCompletion == false)
       return r
     }
-
-    /// If `self` is a Leo item, returns the Earley item it memoizes, assuming `g` is the grammar
-    /// being parsed; returns `nil` otherwise.
-    func leoMemo<S>(in g: Grammar<S>) -> ItemID? {
-      if isEarley { return nil }
-      var r = self
-      r.symbolID = Symbol.ID(g.ruleStore[Int(dotPosition)])
-      r.isEarley = true
-      assert(r.isCompletion)
-      return r
-    }
   }
 
   /// A Leo or Earley item bundled with a single mainstem cause.
