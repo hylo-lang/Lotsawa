@@ -102,7 +102,7 @@ extension Chart.ItemID {
 
   /// The transition symbol if `self` is not a completion; otherwise the bitwise inverse of the
   /// LHS symbol.
-  fileprivate var symbolID: Symbol.ID {
+  var symbolKey: Symbol.ID {
     get {
       .init(
         truncatingIfNeeded: Int32(bitPattern: storage.isCompletion_symbol_isEarley_originHi) >> 17)
@@ -120,12 +120,12 @@ extension Chart.ItemID {
   /// The symbol that triggers the use of `self`, or `nil` if no such symbol exists (i.e. self is
   /// a completion).
   var transitionSymbol: Symbol? {
-    isCompletion ? nil : Symbol(id: symbolID)
+    isCompletion ? nil : Symbol(id: symbolKey)
   }
 
   /// The LHS symbol of `self`'s rule, or nil if `self` is not a completion.
   var lhs: Symbol? {
-    isCompletion ? Symbol(id: ~symbolID) : nil
+    isCompletion ? Symbol(id: ~symbolKey) : nil
   }
 
   /// True iff `self` is a Leo transitional item.
@@ -181,12 +181,12 @@ extension Chart.ItemID {
 
     // Sign-extends small LHS symbol representations to 16 bits; leaves RHS symbol values alone.
     let s = Int16(g.ruleStore[Int(r.dotPosition)])
-    r.symbolID = s
+    r.symbolKey = s
 
     assert(r.isEarley)
     assert(r.origin == self.origin)
     assert(r.dotPosition == self.dotPosition + 1)
-    assert(r.symbolID == s)
+    assert(r.symbolKey == s)
     assert(r.isCompletion == (s < 0))
     return r
   }
@@ -200,13 +200,13 @@ extension Chart.ItemID {
     var r = self
 
     r.storage.originLow_dotPosition -= 1
-    r.symbolID = g.postdot(at: r.dotPosition)!.id
+    r.symbolKey = g.postdot(at: r.dotPosition)!.id
     r.isCompletion = false
 
     assert(r.isEarley)
     assert(r.origin == self.origin)
     assert(r.dotPosition == self.dotPosition - 1)
-    assert(r.symbolID == g.predot(at: dotPosition)!.id)
+    assert(r.symbolKey == g.predot(at: dotPosition)!.id)
     assert(r.isCompletion == false)
     return r
   }

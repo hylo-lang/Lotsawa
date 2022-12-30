@@ -108,7 +108,7 @@ extension Chart {
 
     let j = ithSet.partitionPoint { d in d.transitionKey >= k }
     let items = ithSet[j...]
-    return items.prefix(while: { x in x.symbolID == s.id })
+    return items.prefix(while: { x in x.symbolKey == s.id })
   }
 
   /// Returns the items in Earley set `i` whose use is triggered by the recognition of `s`.
