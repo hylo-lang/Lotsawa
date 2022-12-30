@@ -5,15 +5,10 @@ extension Collection {
     _ message: @autoclosure () -> String = "",
     file: StaticString = #filePath, line: UInt = #line) throws -> Element
   {
-    XCTAssert(
-      !self.isEmpty, message() + " Expected exactly one element in \(Array(self))",
-      file: file, line: line)
-
+    XCTAssert(!self.isEmpty, "Unexpectedly empty " + message(), file: file, line: line)
     if self.isEmpty { throw UnexpectedlyEmpty() }
     XCTAssert(
-      self.dropFirst().isEmpty, message() + " Non-unique \(Array(self))",
-      file: file, line: line)
-
+      self.dropFirst().isEmpty, "Non-unique \(Array(self)) " + message(), file: file, line: line)
     return self.first!
   }
 }

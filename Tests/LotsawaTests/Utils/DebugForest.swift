@@ -44,10 +44,10 @@ extension DebugForest {
     let d0 = derivations(of: String(expectedRule.split(separator: " ").first!), over: locus)
     let d = try d0.checkedOnlyElement(message() + "\n\(recognizer)", file: file, line: line)
     XCTAssertEqual(
-      d.ruleName, expectedRule, "ruleName mismatch" + message() + "\n\(recognizer)",
+      d.ruleName, expectedRule, "ruleName mismatch " + message() + "\n\(recognizer)",
       file: file, line: line)
     XCTAssertEqual(
-      d.rhsOrigins, expectedRHSOrigins, "rhsOrigin mismatch" + message() + "\n\(recognizer)",
+      d.rhsOrigins, expectedRHSOrigins, "rhsOrigin mismatch " + message() + "\n\(recognizer)",
       file: file, line: line)
   }
 }
