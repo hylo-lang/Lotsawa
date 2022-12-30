@@ -209,15 +209,21 @@ class ForestTests: XCTestCase {
     var r = DebugRecognizer(g)
 
     XCTAssertNil(r.recognize("wxyzwxyzw"))
-    /*
-    XCTFail("\n\(r)")
-    let f = r.forest
+    var f = r.forest
     try f.checkUniqueDerivation(ofLHS: "A ::= 'w' 'x' B", over: 0..<9, rhsOrigins: [0, 1, 2])
-    let d0 = f.derivations(of: "B", over: 2..<9)
-    XCTAssertEqual(d0.count, 2, "\(r)")
-     WIP reconstructing derivations in the presence of Leo optimization
+    let bDerivations = f.derivations(of: "B", over: 2..<9)
+    XCTAssertEqual(bDerivations.count, 2)
+    XCTAssert(
+      bDerivations.contains { $0.ruleName ==  "B ::= 'y' 'z' A" && $0.rhsOrigins == [2, 3, 4] },
+      "expected derivation not found in \(bDerivations)")
+    XCTAssert(
+      bDerivations.contains {
+        $0.ruleName ==  "B ::= 'y' 'z' 'w' 'x' 'y' 'z' 'w'" && $0.rhsOrigins.elementsEqual(2...8) },
+      "expected derivation not found in \(bDerivations)")
 
-     */
+    try f.checkUniqueDerivation(ofLHS: "A ::= 'w' 'x' B", over: 4..<9, rhsOrigins: [4, 5, 6])
+    try f.checkUniqueDerivation(ofLHS: "B ::= 'y' 'z' A", over: 6..<9, rhsOrigins: [6, 7, 8])
+    try f.checkUniqueDerivation(ofLHS: "A ::= 'w'", over: 8..<9, rhsOrigins: [8])
   }
 
   func testRightRecursion30() throws {
@@ -230,9 +236,7 @@ class ForestTests: XCTestCase {
 
     XCTAssertNil(r.recognize("xyxyxyx"))
 
-    /* WIP reconstructing derivations in the presence of Leo optimization
-    XCTFail("\n\(r)")
-    let f = r.forest
+    var f = r.forest
     try f.checkUniqueDerivation(ofLHS: "A ::= 'x' B", over: 0..<7, rhsOrigins: [0, 1])
     try f.checkUniqueDerivation(ofLHS: "B ::= 'y' A", over: 1..<7, rhsOrigins: [1, 2])
     try f.checkUniqueDerivation(ofLHS: "A ::= 'x' B", over: 2..<7, rhsOrigins: [2, 3])
@@ -240,7 +244,6 @@ class ForestTests: XCTestCase {
     try f.checkUniqueDerivation(ofLHS: "A ::= 'x' B", over: 4..<7, rhsOrigins: [4, 5])
     try f.checkUniqueDerivation(ofLHS: "B ::= 'y' A", over: 5..<7, rhsOrigins: [5, 6])
     try f.checkUniqueDerivation(ofLHS: "A ::= 'x'", over: 6..<7, rhsOrigins: [6])
-     */
   }
 
   func testRightRecursion40() throws {
@@ -253,10 +256,7 @@ class ForestTests: XCTestCase {
     var r = DebugRecognizer(g)
 
     XCTAssertNil(r.recognize("xyxyxyx"))
-
-    /* WIP reconstructing derivations in the presence of Leo optimization
-    XCTFail("\n\(r)")
-    let f = r.forest
+    var f = r.forest
     try f.checkUniqueDerivation(ofLHS: "A ::= 'x' B", over: 0..<7, rhsOrigins: [0, 1])
     try f.checkUniqueDerivation(ofLHS: "B ::= C", over: 1..<7, rhsOrigins: [1])
     try f.checkUniqueDerivation(ofLHS: "C ::= 'y' A", over: 1..<7, rhsOrigins: [1, 2])
@@ -267,7 +267,6 @@ class ForestTests: XCTestCase {
     try f.checkUniqueDerivation(ofLHS: "B ::= C", over: 5..<7, rhsOrigins: [5])
     try f.checkUniqueDerivation(ofLHS: "C ::= 'y' A", over: 5..<7, rhsOrigins: [5, 6])
     try f.checkUniqueDerivation(ofLHS: "A ::= 'x'", over: 6..<7, rhsOrigins: [6])
-     */
   }
 
   /*
