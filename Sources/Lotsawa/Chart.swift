@@ -273,6 +273,7 @@ extension Chart {
   }
 
   /// A Leo or Earley item bundled with a single mainstem cause.
+  @dynamicMemberLookup
   public struct Entry: Comparable, Hashable {
     var item: ItemID
 
@@ -297,6 +298,10 @@ extension Chart {
     /// Returns `true` iff `lhs` should precede `rhs` in a derivation set.
     public static func < (lhs: Self, rhs: Self) -> Bool {
       (lhs.item.key, lhs.mainstemIndexStorage) < (rhs.item.key, rhs.mainstemIndexStorage)
+    }
+
+    subscript<Target>(dynamicMember m: KeyPath<ItemID, Target>) -> Target {
+      item[keyPath: m]
     }
   }
 
