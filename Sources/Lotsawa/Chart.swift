@@ -297,7 +297,7 @@ extension Chart {
 
     /// Returns `true` iff `lhs` should precede `rhs` in a derivation set.
     public static func < (lhs: Self, rhs: Self) -> Bool {
-      (lhs.item.key, lhs.mainstemIndexStorage) < (rhs.item.key, rhs.mainstemIndexStorage)
+      (lhs.key, lhs.mainstemIndexStorage) < (rhs.key, rhs.mainstemIndexStorage)
     }
 
     subscript<Target>(dynamicMember m: KeyPath<ItemID, Target>) -> Target {
@@ -327,9 +327,9 @@ extension Chart {
     let ithSet = i == currentEarleme ? currentEarleySet : earleySet(i)
     let k = ItemID.transitionKey(s)
 
-    let j = ithSet.partitionPoint { d in d.item.transitionKey >= k }
+    let j = ithSet.partitionPoint { d in d.transitionKey >= k }
     let items = ithSet[j...]
-    return items.prefix(while: { x in x.item.symbolID == s.id })
+    return items.prefix(while: { x in x.symbolID == s.id })
   }
 
   /// Returns the items in Earley set `i` whose use is triggered by the recognition of `s`.
@@ -346,9 +346,9 @@ extension Chart {
     let ithSet = earleySet(extent.upperBound)
     let k = ItemID.completionKey(lhs, origin: extent.lowerBound)
 
-    let j = ithSet.partitionPoint { d in d.item.key >= k }
+    let j = ithSet.partitionPoint { d in d.key >= k }
     let r0 = ithSet[j...]
-    let r = r0.prefix(while: { x in x.item.lhs == lhs && x.item.origin == extent.lowerBound })
+    let r = r0.prefix(while: { x in x.lhs == lhs && x.origin == extent.lowerBound })
     return r
   }
 
@@ -386,7 +386,7 @@ extension Chart {
   /// Injects a Leo item memoizing `x` with transition symbol `t` before entries[i].item, returning
   /// true if it was not already present.
   mutating func insertLeo(_ leo: Entry, at i: Int) -> Bool {
-    assert(leo.item.isLeo)
+    assert(leo.isLeo)
     if entries[i].item == leo.item {
       // FIXME: can we prove we never arrive here?  Should be possible.
       assert(
@@ -475,6 +475,6 @@ extension Chart {
   {
 
     let predecessors = transitionEntries(on: s, inEarleySet: i)
-    return predecessors.first.map { $0.item.isLeo ? predecessors : nil } ?? nil
+    return predecessors.first.map { $0.isLeo ? predecessors : nil } ?? nil
   }
 }

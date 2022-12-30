@@ -93,8 +93,8 @@ class ChartInternalTests: XCTestCase {
 
     let chart = r.base.chart
     let top3 = try chart.completions(of: sum, over: 0..<3).checkedOnlyElement()
-    XCTAssert(top3.item.isCompletion)
-    let topRuleID = g.raw.rule(containing: top3.item.dotPosition)
+    XCTAssert(top3.isCompletion)
+    let topRuleID = g.raw.rule(containing: top3.dotPosition)
     let topRule = g.raw.storedRule(topRuleID)
     XCTAssertEqual(topRule.lhs, sum)
     XCTAssertEqual(Array(topRule.rhs), [sum, additive, product])
@@ -104,20 +104,20 @@ class ChartInternalTests: XCTestCase {
 
     let rhsProduct = try chart.completions(of: product, over: 2..<3)
       .checkedOnlyElement()
-    XCTAssert(rhsProduct.item.isCompletion)
+    XCTAssert(rhsProduct.isCompletion)
 
     let top2 = try chart.earleyMainstem(of: top3).checkedOnlyElement()
-    XCTAssertEqual(g.raw.rule(containing: top2.item.dotPosition), topRuleID)
+    XCTAssertEqual(g.raw.rule(containing: top2.dotPosition), topRuleID)
 
-    XCTAssertEqual(top2.item.transitionSymbol, product)
+    XCTAssertEqual(top2.transitionSymbol, product)
 
     let top1 = try chart.earleyMainstem(of: top2).checkedOnlyElement()
 
-    XCTAssertEqual(g.raw.rule(containing: top1.item.dotPosition), topRuleID)
+    XCTAssertEqual(g.raw.rule(containing: top1.dotPosition), topRuleID)
 
     let top0 = try chart.earleyMainstem(of: top1).checkedOnlyElement()
 
-    XCTAssertEqual(g.raw.rule(containing: top0.item.dotPosition), topRuleID)
+    XCTAssertEqual(g.raw.rule(containing: top0.dotPosition), topRuleID)
 
     // Could explore more, but it's time to create a better abstraction.
 

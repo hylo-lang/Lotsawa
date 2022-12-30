@@ -115,7 +115,7 @@ extension Forest {
   public mutating func requireCompletion(
     _ c: Chart.Entry, inEarleme i: SourcePosition
   ) -> Bool {
-    assert(c.item.isCompletion, "requiring non-completion \(c)")
+    assert(c.isCompletion, "requiring non-completion \(c)")
     let setI = chart.earleySet(i)
     let p = setI.partitionPoint { $0 >= c }
     /// Derivation already in the chart?  We're done
@@ -125,7 +125,7 @@ extension Forest {
     let r0 = setI[p...].first?.item == c.item || setI[..<p].last?.item == c.item
 
     return mutate(
-      &leoCompletions[.init(locus: c.item.origin..<i, lhs: c.item.lhs!), default: []]
+      &leoCompletions[.init(locus: c.origin..<i, lhs: c.lhs!), default: []]
     ) { leoSet in
       let q = leoSet.partitionPoint { $0 >= c }
       // Derivation already in the leoSet?  We're done
@@ -141,8 +141,8 @@ extension Forest {
   public mutating func collectLeoCompletions(
     causing top: Chart.Entry, endingAt endEarleme: SourcePosition
   ) {
-    assert(top.item.isCompletion, "collecting leo completions on non-completion \(top)")
-    guard let lim0Index = top.mainstemIndex, chart.entries[lim0Index].item.isLeo else { return }
+    assert(top.isCompletion, "collecting leo completions on non-completion \(top)")
+    guard let lim0Index = top.mainstemIndex, chart.entries[lim0Index].isLeo else { return }
     var workingLIMIndex = lim0Index
     while true {
       let workingBaseIndex = workingLIMIndex + 1
@@ -164,7 +164,7 @@ extension Forest {
       collectLeoCompletions(causing: top, endingAt: locus.upperBound)
     }
     let storedCompletionsWithEarleyMainstem
-      = storedCompletions.lazy.filter { [chart] in chart.entries[$0.mainstemIndex!].item.isEarley }
+      = storedCompletions.lazy.filter { [chart] in chart.entries[$0.mainstemIndex!].isEarley }
 
     let leos = leoCompletions[.init(locus: locus, lhs: lhs), default: []]
 
@@ -180,7 +180,7 @@ extension Forest {
   func first(of d: DerivationSet.Storage) -> Derivation {
     .init(
       path: d, domain: self,
-      rule: grammar.rule(containing: d.completions.first!.item.dotPosition))
+      rule: grammar.rule(containing: d.completions.first!.dotPosition))
   }
 }
 

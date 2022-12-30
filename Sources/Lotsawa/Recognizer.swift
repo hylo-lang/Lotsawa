@@ -63,7 +63,7 @@ extension Recognizer {
 
   mutating func insert(_ newEntry: Chart.Entry) -> Bool {
     if !chart.insert(newEntry) { return false }
-    if leoPositions.contains(newEntry.item.dotPosition) {
+    if leoPositions.contains(newEntry.dotPosition) {
       self.leoCandidateFound = true
     }
     return true
@@ -75,14 +75,14 @@ extension Recognizer {
     let mainstems = chart.transitionEntries(on: s, inEarleySet: origin)
 
     if let head = mainstems.first,
-       let p = head.item.memoizedPenultIndex
+       let p = head.memoizedPenultIndex
     {
       derive(
         .init(item: chart.entries[p].item.advanced(in: g), mainstemIndex: mainstems.startIndex))
     }
     else {
       assert(
-        mainstems.allSatisfy(\.item.isEarley),
+        mainstems.allSatisfy(\.isEarley),
         "Leo item is not first in mainstems.")
 
       let transitionItemIndices
@@ -101,7 +101,7 @@ extension Recognizer {
     let s = g.recognized(at: x.dotPosition + 1)!
 
     let mainstems = chart.transitionEntries(on: s, inEarleySet: x.origin)
-    if let head = mainstems.first, head.item.isLeo {
+    if let head = mainstems.first, head.isLeo {
       return mainstems.startIndex
     }
     return nil
@@ -110,14 +110,14 @@ extension Recognizer {
   /// Ensures that `x` is represented in the current derivation set, and draws any consequent
   /// conclusions.
   private mutating func derive(_ x: Chart.Entry) {
-    assert(!x.item.isLeo)
+    assert(!x.isLeo)
     if !insert(x) { return }
 
-    if let t = x.item.transitionSymbol {
+    if let t = x.transitionSymbol {
       predict(t)
     }
     else { // it's complete
-      discover(g.recognized(at: x.item.dotPosition)!, startingAt: x.item.origin)
+      discover(g.recognized(at: x.dotPosition)!, startingAt: x.origin)
     }
   }
 
@@ -139,14 +139,14 @@ extension Recognizer {
       // If the dot is in a Leo position and the transition symbol was unique in this set
       if leoPositions.contains(x.dotPosition)
            && (endOfItem == chart.currentEarleySet.endIndex
-               || chart.currentEarleySet[endOfItem].item.transitionSymbol != t)
+               || chart.currentEarleySet[endOfItem].transitionSymbol != t)
       {
         let l: Chart.Entry
 
         if let p = leoPredecessorIndex(x) {
           l = .init(
             item: .init(
-              memoizingItemIndex: chart.entries[p].item.memoizedPenultIndex!, transitionSymbol: t),
+              memoizingItemIndex: chart.entries[p].memoizedPenultIndex!, transitionSymbol: t),
             mainstemIndex: p)
         }
         else {
@@ -161,7 +161,7 @@ extension Recognizer {
       else {
         // Else skip over everything with this transition symbol
         i = chart.currentEarleySet[endOfItem...].prefix {
-          $0.item.transitionSymbol == t
+          $0.transitionSymbol == t
         }.endIndex
       }
     }

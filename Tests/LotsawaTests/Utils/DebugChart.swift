@@ -20,19 +20,19 @@ extension DebugChart: CustomStringConvertible {
       while let head = remainingDerivations.first {
         let itemDerivations = remainingDerivations.prefix { x in x.item == head.item }
         result += "\(itemDerivations.startIndex): "
-        if !head.item.isLeo {
-          result.append("<\(head.item.origin)> ")
+        if !head.isLeo {
+          result.append("<\(head.origin)> ")
         }
         if head.mainstemIndex != nil {
           result.append(
             "{\(itemDerivations.map { String($0.mainstemIndex!) }.joined(separator: ", "))} ")
         }
 
-        if head.item.isLeo {
-          result += "L(\(head.item.memoizedPenultIndex!)) •\(head.item.transitionSymbol!)"
+        if head.isLeo {
+          result += "L(\(head.memoizedPenultIndex!)) •\(head.transitionSymbol!)"
         }
         else  {
-          result += language.dottedText(head.item.dotPosition)
+          result += language.dottedText(head.dotPosition)
         }
         result += "\n"
         remainingDerivations.removeFirst(itemDerivations.count)
