@@ -139,15 +139,12 @@ class ForestTests: XCTestCase {
 
     XCTAssertNil(r.recognize("aaaaa"))
 
-    /* WIP reconstructing derivations in the presence of Leo optimization
-    XCTFail("\n\(r)")
-    let f = r.forest
+    var f = r.forest
     try f.checkUniqueDerivation(ofLHS: "A ::= 'a' A", over: 0..<5, rhsOrigins: [0, 1])
     try f.checkUniqueDerivation(ofLHS: "A ::= 'a' A", over: 1..<5, rhsOrigins: [1, 2])
     try f.checkUniqueDerivation(ofLHS: "A ::= 'a' A", over: 2..<5, rhsOrigins: [2, 3])
     try f.checkUniqueDerivation(ofLHS: "A ::= 'a' A", over: 3..<5, rhsOrigins: [3, 4])
     try f.checkUniqueDerivation(ofLHS: "A ::= 'a'", over: 4..<5, rhsOrigins: [4])
-     */
   }
 
   func testRightRecursion10() throws {

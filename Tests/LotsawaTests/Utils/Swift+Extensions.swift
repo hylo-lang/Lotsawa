@@ -10,7 +10,10 @@ extension Collection {
       file: file, line: line)
 
     if self.isEmpty { throw UnexpectedlyEmpty() }
-    XCTAssert(self.dropFirst().isEmpty, message(), file: file, line: line)
+    XCTAssert(
+      self.dropFirst().isEmpty, message() + " Non-unique \(Array(self))",
+      file: file, line: line)
+
     return self.first!
   }
 }

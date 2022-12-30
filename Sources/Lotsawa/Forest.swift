@@ -145,9 +145,10 @@ extension Forest {
     guard let lim0Index = top.mainstemIndex, chart.entries[lim0Index].item.isLeo else { return }
     var workingLIMIndex = lim0Index
     while true {
-      let workingBase = chart.entries[workingLIMIndex + 1].item
+      let workingBaseIndex = workingLIMIndex + 1
+      let workingBase = chart.entries[workingBaseIndex].item
       let newCompletion = Chart.Entry(
-        item: workingBase.advanced(in: grammar), mainstemIndex: workingLIMIndex)
+        item: workingBase.advanced(in: grammar), mainstemIndex: workingBaseIndex)
       if requireCompletion(newCompletion, inEarleme: endEarleme) { break }
       guard let previousLIMIndex = chart.entries[workingLIMIndex].mainstemIndex else { break }
       workingLIMIndex = previousLIMIndex
@@ -158,15 +159,17 @@ extension Forest {
   public mutating func derivations(of lhs: Symbol, over locus: Range<SourcePosition>)
     -> DerivationSet
   {
-    let completions = chart.completions(of: lhs, over: locus)
-    for top in completions {
+    let storedCompletions = chart.completions(of: lhs, over: locus)
+    for top in storedCompletions {
       collectLeoCompletions(causing: top, endingAt: locus.upperBound)
     }
+    let storedCompletionsWithEarleyMainstem
+      = storedCompletions.lazy.filter { [chart] in chart.entries[$0.mainstemIndex!].item.isEarley }
 
     let leos = leoCompletions[.init(locus: locus, lhs: lhs), default: []]
 
     var roots = DerivationSet.Storage(
-      completions: completions.merged(with: leos)[...], tails: []
+      completions: storedCompletionsWithEarleyMainstem.merged(with: leos)[...], tails: []
     )
 
     if !roots.completions.isEmpty { extend(&roots) }
