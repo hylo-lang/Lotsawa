@@ -269,19 +269,6 @@ class ForestTests: XCTestCase {
     try f.checkUniqueDerivation(ofLHS: "A ::= 'x'", over: 6..<7, rhsOrigins: [6])
   }
 
-  /*
-  func testEmptyRules() throws {
-    let g = try """
-      A ::= _ | B
-      B ::= A
-      """
-      .asTestGrammar(recognizing: "A")
-    var r = DebugRecognizer(g)
-    XCTAssertNil(r.recognize(""), "\n\(r)")
-  }
-
-   */
-
   func testRawForestAmbiguity() throws {
     let g = try """
       B ::= B 'a' | 'a'
