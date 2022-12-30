@@ -10,7 +10,7 @@ class ChartInternalTests: XCTestCase {
       """
       .asTestGrammar(recognizing: "A")
 
-    let i0 = Chart.Item(predicting: g.raw.ruleIDs.first!, in: g.raw, at: 42)
+    let i0 = Chart.ItemID(predicting: g.raw.ruleIDs.first!, in: g.raw, at: 42)
     XCTAssert(i0.isEarley)
     XCTAssertFalse(i0.isLeo)
     XCTAssertEqual(i0.origin, 42)

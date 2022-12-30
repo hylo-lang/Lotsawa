@@ -52,7 +52,7 @@ extension Chart {
 
 extension Chart {
   /// An Earley or Leo item.
-  struct Item: Comparable, Hashable {
+  struct ItemID: Comparable, Hashable {
     /// The raw storage.
     ///
     /// It is arranged to avoid 64-bit alignment, since this will be combined into an `Entry`.
@@ -220,7 +220,7 @@ extension Chart {
     /// Returns `self` with the dot advanced over one symbol.
     ///
     /// - Precondition: `self` is an incomplete Earley item,
-    func advanced<S>(in g: Grammar<S>) -> Item {
+    func advanced<S>(in g: Grammar<S>) -> ItemID {
       assert(isEarley)
       assert(!isCompletion)
 
@@ -243,7 +243,7 @@ extension Chart {
     /// Returns `self` with the dot moved back over one symbol.
     ///
     /// - Precondition: `self` is a non-prediction Earley item.
-    func mainstem<S>(in g: Grammar<S>) -> Item {
+    func mainstem<S>(in g: Grammar<S>) -> ItemID {
       assert(isEarley)
 
       var r = self
@@ -262,7 +262,7 @@ extension Chart {
 
     /// If `self` is a Leo item, returns the Earley item it memoizes, assuming `g` is the grammar
     /// being parsed; returns `nil` otherwise.
-    func leoMemo<S>(in g: Grammar<S>) -> Item? {
+    func leoMemo<S>(in g: Grammar<S>) -> ItemID? {
       if isEarley { return nil }
       var r = self
       r.symbolID = Symbol.ID(g.ruleStore[Int(dotPosition)])
@@ -274,7 +274,7 @@ extension Chart {
 
   /// A Leo or Earley item bundled with a single mainstem cause.
   public struct Entry: Comparable, Hashable {
-    var item: Item
+    var item: ItemID
 
     /// The chart position where derivations of this entry's mainstem start, if any.
     var mainstemIndex: Entries.Index? {
@@ -285,7 +285,7 @@ extension Chart {
     /// Creates an instance with the given properties
     ///
     /// - Precondition: `0 <= mainstemIndex && mainstemIndex <= UInt.max`
-    init(item: Item, mainstemIndex: Entries.Index?) {
+    init(item: ItemID, mainstemIndex: Entries.Index?) {
       self.item = item
       self.mainstemIndexStorage = 0 // About to be overridden
       self.mainstemIndex = mainstemIndex
@@ -320,7 +320,7 @@ extension Chart {
   func transitionEntries(on s: Symbol, inEarleySet i: UInt32) -> Entries.SubSequence
   {
     let ithSet = i == currentEarleme ? currentEarleySet : earleySet(i)
-    let k = Item.transitionKey(s)
+    let k = ItemID.transitionKey(s)
 
     let j = ithSet.partitionPoint { d in d.item.transitionKey >= k }
     let items = ithSet[j...]
@@ -328,7 +328,7 @@ extension Chart {
   }
 
   /// Returns the items in Earley set `i` whose use is triggered by the recognition of `s`.
-  func transitionItems(on s: Symbol, inEarleySet i: UInt32) -> some BidirectionalCollection<Item>
+  func transitionItems(on s: Symbol, inEarleySet i: UInt32) -> some BidirectionalCollection<ItemID>
   {
     transitionEntries(on: s, inEarleySet: i).lazy.map(\.item).droppingAdjacentDuplicates()
   }
@@ -339,7 +339,7 @@ extension Chart {
   func completions(of lhs: Symbol, over extent: Range<SourcePosition>) -> Entries.SubSequence
   {
     let ithSet = earleySet(extent.upperBound)
-    let k = Item.completionKey(lhs, origin: extent.lowerBound)
+    let k = ItemID.completionKey(lhs, origin: extent.lowerBound)
 
     let j = ithSet.partitionPoint { d in d.item.key >= k }
     let r0 = ithSet[j...]
@@ -348,7 +348,7 @@ extension Chart {
   }
 
   /// Given an item `x`, found in earley set `i`, returns the chart positions of its mainstem items.
-  func mainstemIndices(of x: Item, inEarleySet i: UInt32)
+  func mainstemIndices(of x: ItemID, inEarleySet i: UInt32)
     -> some BidirectionalCollection<Entries.Index>
   {
     let ithSet = earleySet(i)
@@ -428,7 +428,7 @@ extension DebuggableProductType {
   }
 }
 
-extension Chart.Item: DebuggableProductType {
+extension Chart.ItemID: DebuggableProductType {
   enum Kind { case completion, mainstem, leo }
   var reflectedChildren: KeyValuePairs<String, Any> {
     [

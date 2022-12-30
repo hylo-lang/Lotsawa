@@ -96,7 +96,7 @@ extension Recognizer {
     }
   }
 
-  func leoPredecessorIndex(_ x: Chart.Item) -> Chart.Entries.Index? {
+  func leoPredecessorIndex(_ x: Chart.ItemID) -> Chart.Entries.Index? {
     assert(g.recognized(at: x.dotPosition) == nil, "unexpectedly complete item")
     let s = g.recognized(at: x.dotPosition + 1)!
 
