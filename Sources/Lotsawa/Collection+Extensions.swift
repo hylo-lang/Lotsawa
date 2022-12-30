@@ -3,16 +3,6 @@ extension Collection {
   func at(_ i: Index) -> Element? {
     i == endIndex ? nil : self[i]
   }
-
-  /// Returns a lazy view of `self` omitting elements that are equivalent to their right-hand
-  /// neighbor.
-  func droppingAdjacentDuplicates(equivalence: @escaping (Element, Element)->Bool)
-    -> some Collection<Element>
-  {
-    indices.lazy.filter { i in
-      index(after: i) == endIndex || !equivalence(self[i], self[index(after: i)])
-    }.map { i in self[i] }
-  }
 }
 
 extension Collection where Element: Equatable {
@@ -27,13 +17,13 @@ extension Collection where Element: Equatable {
 }
 
 extension BidirectionalCollection {
-  /// Returns a lazy view of `self` omitting elements that are equivalent to their right-hand
-  /// neighbor.
-  func droppingAdjacentDuplicates(equivalence: @escaping (Element, Element)->Bool)
+  /// Returns a lazy view of `self` omitting elements that are equivalent to their left-hand
+  /// neighbor per the equivalence relation `equivalence`.
+  func keepingFirstOfAdjacentDuplicates(equivalence: @escaping (Element, Element)->Bool)
     -> some BidirectionalCollection<Element>
   {
     indices.lazy.filter { i in
-      index(after: i) == endIndex || !equivalence(self[i], self[index(after: i)])
+      i == startIndex || !equivalence(self[index(before: i)], self[i])
     }.map { i in self[i] }
   }
 }

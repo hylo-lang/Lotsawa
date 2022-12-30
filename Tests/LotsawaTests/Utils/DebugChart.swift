@@ -28,7 +28,7 @@ extension DebugChart: CustomStringConvertible {
             origin: currentItem.origin,
             dotInGrammar: rawPosition[currentItem.dotPosition],
             dotInSource: currentItem.isLeo ? nil : earleme,
-            predotPositions: itemDerivations.map { d in d.predotOrigin }))
+            mainstemIndices: itemDerivations.first!.mainstemIndex == nil ? [] : itemDerivations.map { d in d.mainstemIndex! }))
 
         if currentItem.isLeo {
           result.append("\(language.text(currentItem.transitionSymbol!))* ")

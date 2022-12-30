@@ -41,8 +41,12 @@ extension Chart {
   }
 
   /// The set of partial parses ending at earleme `i`.
-  public func earleySet(_ i: UInt32) -> EarleySet {
+  public func earleySet(_ i: SourcePosition) -> EarleySet {
     entries[setStart[Int(i)]..<setStart[Int(i) + 1]]
+  }
+
+  public func earleme(ofEntryIndex j: Entries.Index) -> SourcePosition {
+    SourcePosition(setStart.partitionPoint { start in start > j } - 1)
   }
 }
 
@@ -255,27 +259,43 @@ extension Chart {
     }
   }
 
-  /// Either a Leo Item, or a partial Earley item representing derivations with a given predot
-  /// origin.
-  ///
-  /// Because a set of predot symbol origins is sufficient to efficiently reconstruct all
-  /// derivations of any Earley item, and the non-derivation information is small, and
-  /// ambiguity in useful grammars is low, each such item is represented as one or more
-  /// consecutively stored `Entry`s, each representing one predot symbol origin.
+  /// A Leo or Earley item bundled with a single mainstem cause.
   public struct Entry: Comparable, Hashable {
     var item: Item
-    /// The origin of the predot symbol for this entry, if any.
-    var predotOrigin: UInt32
+
+    /// The chart position where derivations of this entry's mainstem start, if any.
+    var mainstemIndex: Entries.Index? {
+      get { mainstemIndexStorage == ~0 ? nil : .init(mainstemIndexStorage) }
+      set { mainstemIndexStorage = newValue == nil ? ~0 : .init(newValue!) }
+    }
+
+    /// Creates an instance with the given properties
+    ///
+    /// - Precondition: `0 <= mainstemIndex && mainstemIndex <= UInt.max`
+    init(item: Item, mainstemIndex: Entries.Index?) {
+      self.item = item
+      self.mainstemIndexStorage = 0 // About to be overridden
+      self.mainstemIndex = mainstemIndex
+    }
+
+    /// Storage for the chart position where derivations of this entry's mainstem start.
+    var mainstemIndexStorage: UInt32
 
     /// Returns `true` iff `lhs` should precede `rhs` in a derivation set.
     public static func < (lhs: Self, rhs: Self) -> Bool {
-      (lhs.item.key, lhs.predotOrigin) < (rhs.item.key, rhs.predotOrigin)
+      (lhs.item.key, lhs.mainstemIndexStorage) < (rhs.item.key, rhs.mainstemIndexStorage)
     }
+  }
+
+  private func isItemIndexStart(_ i: Entries.Index) -> Bool {
+    let s = earleySet(earleme(ofEntryIndex: i))
+    return i == s.startIndex || s[s.index(before: i)].item != s[i].item
   }
 
   /// Inserts `e` into the current Earley set, returning `true` iff `e.item` was not already present.
   @discardableResult
   mutating func insert(_ e: Entry) -> Bool {
+    assert(e.mainstemIndex == nil || isItemIndexStart(e.mainstemIndex!))
     let i = currentEarleySet.partitionPoint { y in y >= e }
     let next = entries.at(i)
     if next == e { return false }
@@ -284,14 +304,14 @@ extension Chart {
   }
 
   /// Returns the entries in Earley set `i` whose use is triggered by the recognition of `s`.
-  func transitionEntries(on s: Symbol, inEarleySet i: UInt32) -> some BidirectionalCollection<Entry>
+  func transitionEntries(on s: Symbol, inEarleySet i: UInt32) -> Entries.SubSequence
   {
     let ithSet = i == currentEarleme ? currentEarleySet : earleySet(i)
     let k = Item.transitionKey(s)
 
     let j = ithSet.partitionPoint { d in d.item.transitionKey >= k }
     let items = ithSet[j...]
-    return items.lazy.prefix(while: { x in x.item.symbolID == s.id })
+    return items.prefix(while: { x in x.item.symbolID == s.id })
   }
 
   /// Returns the items in Earley set `i` whose use is triggered by the recognition of `s`.
@@ -314,24 +334,39 @@ extension Chart {
     return r
   }
 
-  /// Returns the predotOrigins of entries of Earley set `i` whose item is `x`
-  func predotOrigins(of x: Item, inEarleySet i: UInt32) -> some BidirectionalCollection<UInt32> {
+  /// Given an item `x`, found in earley set `i`, returns the chart positions of its mainstem items.
+  func mainstemIndices(of x: Item, inEarleySet i: UInt32)
+    -> some BidirectionalCollection<Entries.Index>
+  {
     let ithSet = earleySet(i)
-    let key = Entry(item: x, predotOrigin: 0)
-    let j = ithSet.partitionPoint { d in d >= key }
-    return ithSet[j...].lazy.prefix(while: { y in y.item == x }).map(\.predotOrigin)
+    let j = ithSet.partitionPoint { d in d.item >= x }
+    return ithSet[j...].lazy.prefix(while: { y in y.item == x }).map(\.mainstemIndex!)
   }
 
-  /// Returns the entries representing one fewer recognized RHS symbols than `x` covering
-  /// where the recognized grammar is `g`.
+  /// Returns the earleme of x's mainstem along with the mainstem item itself, or nil if x has no
+  /// mainstem.
+  ///
+  /// When x's mainstem is a Leo item, the tributary of the mainstem (the penult whose completion is
+  /// preempted by the Leo item) is appended to derivations.
   ///
   /// - Complexity: O(N) where N is the length of the result.
-  func mainstemDerivations<S>(of x: Entry, in g: Grammar<S>) -> Entries.SubSequence
+  func mainstem(of x: Entry) -> (earleme: SourcePosition, derivations: Entries.SubSequence)?
   {
-    let endSet = earleySet(x.predotOrigin)
-    let p = x.item.mainstem(in: g)
-    let j = endSet.partitionPoint { d in d.item >= p }
-    return endSet[j...].prefix(while: { y in y.item == p })
+    guard let mainstemIndex = x.mainstemIndex else { return nil }
+
+    // The earleme after the mainstem's
+    let successorEarleme = setStart.partitionPoint { $0 > mainstemIndex }
+    // The subset of the mainstem's Earley set starting with the mainstem itself.
+    let candidates = entries[mainstemIndex..<setStart[successorEarleme]]
+    // The actual mainstem item ID
+    let mainstem = candidates.first!.item
+    // The set in which to look for a series of derivations of the same item.  If the mainstem is a
+    // Leo item, we want the series that follows it; otherwise the series starts with the mainstem.
+    let earleyCandidates = mainstem.isLeo ? candidates.dropFirst() : candidates
+    let matchItem = earleyCandidates.first!.item
+    let matchEnd = earleyCandidates.dropFirst().prefix { $0.item == matchItem }.endIndex
+    return (
+      earleme: .init(successorEarleme - 1), derivations: entries[mainstemIndex..<matchEnd])
   }
 
   /// Completes the current earleme and moves on to the next one, returning `true` unless no
@@ -345,15 +380,17 @@ extension Chart {
 extension Chart {
   /// Injects a Leo item memoizing `x` with transition symbol `t` before entries[i].item, returning
   /// true if it was not already present.
-  mutating func insertLeoMemo(of x: Entry, at i: Int, triggeredBy t: Symbol ) -> Bool {
-    let leo = Chart.Item(memoizing: x.item, transitionSymbol: t)
-    if entries[i].item == leo {
+  mutating func insertLeo(_ leo: Entry, at i: Int) -> Bool {
+    assert(leo.item.isLeo)
+    if entries[i].item == leo.item {
+      // FIXME: can we prove we never arrive here?  Should be possible.
       assert(
-        entries[i].item == leo && entries[i].predotOrigin == x.predotOrigin,
-        "unexpected Leo item clash \(entries[i]) vs. \(x)")
+        entries[i].mainstemIndex == leo.mainstemIndex,
+        "Leo item \(leo.item)"
+          + " multiple mainstems \(leo.mainstemIndex!), \(entries[i].mainstemIndex!))")
       return false
     }
-    entries.insert(Entry(item: leo, predotOrigin: x.predotOrigin), at: i)
+    entries.insert(leo, at: i)
     return true
   }
 }
@@ -364,6 +401,20 @@ protocol DebuggableProductType: CustomReflectable, CustomStringConvertible {
   var reflectedChildren: ReflectedChildren { get }
 }
 
+private protocol OptionalProtocol {
+  var valueString: String { get }
+}
+
+extension Optional: OptionalProtocol {
+  var valueString: String {
+    self == nil ? "nil" : "\(self!)"
+  }
+}
+
+func valueString<T>(_ x: T) -> String {
+  (x as? any OptionalProtocol)?.valueString ?? "\(x)"
+}
+
 extension DebuggableProductType {
   public var customMirror: Mirror {
     .init(self, children: reflectedChildren.lazy.map {(label: $0.key, value: $0.value)})
@@ -371,7 +422,7 @@ extension DebuggableProductType {
 
   public var description: String {
     "{"
-      + String(reflectedChildren.map { "\($0.key): \($0.value)" }
+      + String(reflectedChildren.map { "\($0.key): \(valueString($0.value))" }
                  .joined(separator: ", "))
       + "}"
   }
@@ -398,7 +449,7 @@ extension Chart: CustomStringConvertible {
         r += "// \(s.startIndex)\n"
         _ = s.popFirst()
       }
-      r += "\(entries[i])\n"
+      r += "\(i): \(entries[i])\n"
     }
     r += "\n]"
     return r
@@ -407,6 +458,6 @@ extension Chart: CustomStringConvertible {
 
 extension Chart.Entry: DebuggableProductType {
   var reflectedChildren: [(key: String, value: Any)] {
-    item.reflectedChildren + [("predotOrigin", predotOrigin)]
+    item.reflectedChildren + [("mainstemIndex", mainstemIndex as Any)]
   }
 }

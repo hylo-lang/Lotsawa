@@ -47,7 +47,8 @@ extension Recognizer {
 
   /// Returns the chart entry that predicts the start of `r`.
   private func prediction(_ r: RuleID) -> Chart.Entry {
-    .init(item: .init(predicting: r, in: g, at: currentEarleme), predotOrigin: 0)
+    // FIXME: overflow here on 32-bit systems
+    .init(item: .init(predicting: r, in: g, at: currentEarleme), mainstemIndex: .init(UInt32.max))
   }
 
   /// Seed the current item set with rules implied by the predicted recognition of `s` starting at
@@ -76,26 +77,36 @@ extension Recognizer {
     if let head = mainstems.first,
        let d = head.item.leoMemo(in: g)
     {
-      derive(.init(item: d, predotOrigin: origin))
+
+      let m = mainstems.startIndex
+        // FIXME: This adjustment is suspect.  It works sometimes but surely not always.
+        + (head.mainstemIndex == nil ? 1 : 0)
+
+      derive(.init(item: d, mainstemIndex: m))
     }
     else {
       assert(
         mainstems.allSatisfy(\.item.isEarley),
         "Leo item is not first in mainstems.")
 
-      for p in mainstems {
-        derive(.init(item: p.item.advanced(in: g), predotOrigin: origin))
+      let transitionItemIndices
+        = mainstems.indices.keepingFirstOfAdjacentDuplicates { [chart=chart] in
+          chart.entries[$0].item == chart.entries[$1].item
+        }
+
+      for i in transitionItemIndices {
+        derive(.init(item: chart.entries[i].item.advanced(in: g), mainstemIndex: i))
       }
     }
   }
 
-  func leoPredecessor(_ x: Chart.Item) -> Chart.Entry? {
+  func leoPredecessorIndex(_ x: Chart.Item) -> Chart.Entries.Index? {
     assert(g.recognized(at: x.dotPosition) == nil, "unexpectedly complete item")
     let s = g.recognized(at: x.dotPosition + 1)!
 
     let mainstems = chart.transitionEntries(on: s, inEarleySet: x.origin)
     if let head = mainstems.first, head.item.isLeo {
-      return head
+      return mainstems.startIndex
     }
     return nil
   }
@@ -134,10 +145,18 @@ extension Recognizer {
            && (endOfItem == chart.currentEarleySet.endIndex
                || chart.currentEarleySet[endOfItem].item.transitionSymbol != t)
       {
-        let memo = leoPredecessor(x)
-          ?? Chart.Entry(item: x.advanced(in: g), predotOrigin: chart.currentEarleme)
+        let l: Chart.Entry
 
-        let inserted = chart.insertLeoMemo(of: memo, at: i, triggeredBy: t)
+        if let p = leoPredecessorIndex(x) {
+          l = .init(
+            item: .init(memoizing: chart.entries[p].item, transitionSymbol: t), mainstemIndex: p)
+        }
+        else {
+          l = .init(
+            item: .init(memoizing: x.advanced(in: g), transitionSymbol: t), mainstemIndex: nil)
+        }
+
+        let inserted = chart.insertLeo(l, at: i)
         i = endOfItem + (inserted ? 1 : 0)
       }
       else {

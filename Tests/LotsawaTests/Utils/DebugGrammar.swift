@@ -87,12 +87,12 @@ extension DebugGrammar: CustomStringConvertible {
   }
 
   /// Returns a human-readable representation of `dotInGrammar` as the position of the dot in a
-  /// dotted rule, with `predotPositions` enumerated at the position before the dot.
-  func derivationText<PredotPositions: Collection<SourcePosition>>(
+  /// dotted rule, with `mainstemIndices` enumerated at the position before the dot.
+  func derivationText<MainstemIndices: Collection<Chart.Entries.Index>>(
     origin: SourcePosition,
     dotInGrammar: DefaultGrammar.Position,
     dotInSource: SourcePosition?,
-    predotPositions: PredotPositions
+    mainstemIndices: MainstemIndices
   ) -> String {
     let r0 = raw.rule(containing: dotInGrammar)
     let r = raw.storedRule(r0)
@@ -105,8 +105,8 @@ extension DebugGrammar: CustomStringConvertible {
       + "[\(origin)\(predotRHSCount == 0 ? "" : " ")"
       + rhsText.prefix(max(predotRHSCount - 1, 0)).joined(separator: " ")
       + (
-        predotRHSCount < 2 || predotPositions.isEmpty ? " "
-          : " {\(predotPositions.lazy.map(String.init).joined(separator: " "))} ")
+        mainstemIndices.isEmpty ? " "
+          : " {\(mainstemIndices.lazy.map(String.init).joined(separator: " "))} ")
       + rhsText.prefix(predotRHSCount).suffix(1).joined() // predot symbol
       + (predotRHSCount == 0 || dotInSource == nil ? "•" : " \(dotInSource!)]\t•")
       + rhsText.dropFirst(predotRHSCount).joined(separator: " ")

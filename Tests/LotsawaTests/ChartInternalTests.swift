@@ -99,21 +99,31 @@ class ChartInternalTests: XCTestCase {
     XCTAssertEqual(topRule.lhs, sum)
     XCTAssertEqual(Array(topRule.rhs), [sum, additive, product])
 
-    let pd3 = chart.predotOrigins(of: top3.item, inEarleySet: 3)
-    XCTAssertEqual(Array(pd3), [2])
+    let mainstem = try chart.mainstemIndices(of: top3.item, inEarleySet: 3).checkedOnlyElement()
+    XCTAssertEqual(chart.earleme(ofEntryIndex: mainstem), 2)
+
     let rhsProduct = try chart.completions(of: product, over: 2..<3)
       .checkedOnlyElement()
     XCTAssert(rhsProduct.item.isCompletion)
 
-    let top2 = try chart.mainstemDerivations(of: top3, in: g.raw).checkedOnlyElement()
+    let top2_ = chart.mainstem(of: top3)
+    XCTAssertNotNil(top2_)
+    guard let top2 = try top2_?.derivations.checkedOnlyElement() else { return }
+
     XCTAssertEqual(g.raw.rule(containing: top2.item.dotPosition), topRuleID)
 
     XCTAssertEqual(top2.item.transitionSymbol, product)
 
-    let top1 = try chart.mainstemDerivations(of: top2, in: g.raw).checkedOnlyElement()
+    let top1_ = chart.mainstem(of: top2)
+    XCTAssertNotNil(top1_)
+    guard let top1 = try top1_?.derivations.checkedOnlyElement() else { return }
+
     XCTAssertEqual(g.raw.rule(containing: top1.item.dotPosition), topRuleID)
 
-    let top0 = try chart.mainstemDerivations(of: top1, in: g.raw).checkedOnlyElement()
+    let top0_ = chart.mainstem(of: top1)
+    XCTAssertNotNil(top0_)
+    guard let top0 = try top0_?.derivations.checkedOnlyElement() else { return }
+
     XCTAssertEqual(g.raw.rule(containing: top0.item.dotPosition), topRuleID)
 
     // Could explore more, but it's time to create a better abstraction.

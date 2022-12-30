@@ -25,16 +25,29 @@ extension Forest {
   public struct DerivationSet {
     /// The internal representation of a DerivationSet independent of Chart or Grammar.
     ///
-    /// The first element points to a series of completions of the symbol in the chart.  Each
-    /// element thereafter describes a series of potential mainstems of the *first* entry pointed
-    /// to by the previous element.  Thus the elements are in some sense stored in
-    /// reverse. Predictions are omitted.
+    /// A notional multi-“digit” counter describing the derivation set.  Each time the counter is
+    /// advanced, the first derivation is effectively removed from the set.
     ///
-    /// Notional derivation sets are sometimes (temporarily) described by their prefixes; see `extend`
-    /// for more details.
+    /// `completions` stores the remaining values for the most significant digit of the counter,
+    /// with the current value of that digit being `completions.first`.
+    ///
+    /// Each *element* of `tails` corresponds to another digit, in least-to-most-significant order.
+    ///
+    /// An element of `tails` is the range of values remaining for its corresponding digit *given
+    /// the current values of all more significant digits*, with the first element of the range
+    /// being the current value of the digit.
+    ///
+    /// When a digit d0 runs out of values, the first value is removed from the
+    /// next-more-significant digit d1 and whether d0 is even needed given the new value of d1
+    /// depends on d1 and the forest.  In general, how many digits less significant than d1 are
+    /// needed, and their representations, need to be discovered newly in the forest.  That
+    /// discovery is implemented by the `extend` operation.
     struct Storage {
+      /// The completions of all derivations in the set; the most significant digit of the counter
       var completions: Array<Chart.Entry>.SubSequence
-      var mainstems: [Range<Chart.Entries.Index>]
+
+      /// A series of mainstems of the first element of `completions`,
+      var tails: [Range<Chart.Entries.Index>]
     }
 
     init(storage: Storage, domain: Forest) {
@@ -64,32 +77,31 @@ extension Forest {
   ///
   /// - Precondition: `!p.last.isEmpty`
   private func extend(_ p: inout DerivationSet.Storage) {
-    var e = p.mainstems.isEmpty
+    var e = p.tails.isEmpty
       ? p.completions.first!
-      : chart.entries[p.mainstems.last!.first!]
+      : chart.entries[p.tails.last!.first!]
 
-    while e.predotOrigin != e.item.origin {
-      let x = chart.mainstemDerivations(of: e, in: grammar).indices
-      p.mainstems.append(x)
-      e = chart.entries[x.first!]
+    while let x = chart.mainstem(of: e)?.derivations, x.first!.mainstemIndex != nil {
+      p.tails.append(x.indices)
+      e = x.first!
     }
   }
 
   /// Drops the first derivation from `p`, leaving it empty if there are no further derivations.
   func removeFirst(from p: inout DerivationSet.Storage) {
     func step() -> Bool {
-      if p.mainstems.isEmpty {
+      if p.tails.isEmpty {
         _ = p.completions.popFirst()
         return false
       }
-      return mutate(&p.mainstems[p.mainstems.index(before: p.mainstems.endIndex)]) {
+      return mutate(&p.tails[p.tails.index(before: p.tails.endIndex)]) {
         _ = $0.popFirst()
         return $0.isEmpty
       }
     }
 
     while step() {
-      p.mainstems.removeLast()
+      p.tails.removeLast()
     }
 
     if !p.completions.isEmpty {
@@ -104,7 +116,7 @@ extension Forest {
     let leos = leoCompletions[.init(locus: locus, lhs: lhs), default: []]
 
     var roots = DerivationSet.Storage(
-      completions: completions.merged(with: leos)[...], mainstems: []
+      completions: completions.merged(with: leos)[...], tails: []
     )
 
     if !roots.completions.isEmpty { extend(&roots) }
@@ -150,7 +162,7 @@ extension Forest.DerivationSet: Collection {
 
   public var startIndex: Index { Index(remainder: self.storage) }
   public var endIndex: Index {
-    Index(remainder: .init(completions: [], mainstems: []))
+    Index(remainder: .init(completions: [], tails: []))
   }
 
   public func formIndex(after x: inout Index) {
@@ -179,11 +191,13 @@ extension Forest.Derivation {
   /// The position in the source where each RHS symbol of this derivation starts.
   public var rhsOrigins: some BidirectionalCollection<SourcePosition> {
     var r: [SourcePosition] = []
-    r.reserveCapacity(path.mainstems.count + 1)
+    r.reserveCapacity(path.tails.count + 1)
     r.append(
       contentsOf:
-        path.mainstems.reversed().lazy.map { domain.chart.entries[$0.lowerBound].predotOrigin })
-    r.append(path.completions.first!.predotOrigin)
+        path.tails.reversed().lazy.map {
+          domain.chart.earleme(ofEntryIndex: domain.chart.entries[$0.lowerBound].mainstemIndex!)
+        })
+    r.append(domain.chart.earleme(ofEntryIndex: path.completions.first!.mainstemIndex!))
     return r
   }
 }
