@@ -81,7 +81,10 @@ extension Forest {
       ? p.completions.first!
       : chart.entries[p.tails.last!.first!]
 
-    while let x = chart.mainstem(of: e)?.derivations, x.first!.mainstemIndex != nil {
+    while let x = Optional(chart.earleyMainstem(of: e)),
+          let head = x.first,
+          head.mainstemIndex != nil
+    {
       p.tails.append(x.indices)
       e = x.first!
     }

@@ -86,32 +86,6 @@ extension DebugGrammar: CustomStringConvertible {
     + rhsText.dropFirst(predotRHSCount).joined(separator: " ")
   }
 
-  /// Returns a human-readable representation of `dotInGrammar` as the position of the dot in a
-  /// dotted rule, with `mainstemIndices` enumerated at the position before the dot.
-  func derivationText<MainstemIndices: Collection<Chart.Entries.Index>>(
-    origin: SourcePosition,
-    dotInGrammar: DefaultGrammar.Position,
-    dotInSource: SourcePosition?,
-    mainstemIndices: MainstemIndices
-  ) -> String {
-    let r0 = raw.rule(containing: dotInGrammar)
-    let r = raw.storedRule(r0)
-
-    let rhsText = r.rhs.lazy.map { s in text(s) }
-    let predotRHSCount = Int(dotInGrammar) - r.rhs.startIndex
-    return "[\(origin) \(text(r.lhs))"
-      + (dotInSource == nil || Int(dotInGrammar) != r.rhs.endIndex
-           ? "\(dotInSource == nil ? "]" : "")\t::= " : " \(dotInSource!)]\t::= ")
-      + "[\(origin)\(predotRHSCount == 0 ? "" : " ")"
-      + rhsText.prefix(max(predotRHSCount - 1, 0)).joined(separator: " ")
-      + (
-        mainstemIndices.isEmpty ? " "
-          : " {\(mainstemIndices.lazy.map(String.init).joined(separator: " "))} ")
-      + rhsText.prefix(predotRHSCount).suffix(1).joined() // predot symbol
-      + (predotRHSCount == 0 || dotInSource == nil ? "•" : " \(dotInSource!)]\t•")
-      + rhsText.dropFirst(predotRHSCount).joined(separator: " ")
-  }
-
   /// Returns the set of names of `s`'s elements.
   func text(_ s: Set<Symbol>) -> Set<String> { Set(s.lazy.map(text)) }
 

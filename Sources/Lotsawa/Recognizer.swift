@@ -75,14 +75,10 @@ extension Recognizer {
     let mainstems = chart.transitionEntries(on: s, inEarleySet: origin)
 
     if let head = mainstems.first,
-       let d = head.item.leoMemo(in: g)
+       let p = head.item.memoizedPenultIndex
     {
-
-      let m = mainstems.startIndex
-        // FIXME: This adjustment is suspect.  It works sometimes but surely not always.
-        + (head.mainstemIndex == nil ? 1 : 0)
-
-      derive(.init(item: d, mainstemIndex: m))
+      derive(
+        .init(item: chart.entries[p].item.advanced(in: g), mainstemIndex: mainstems.startIndex))
     }
     else {
       assert(
@@ -149,11 +145,14 @@ extension Recognizer {
 
         if let p = leoPredecessorIndex(x) {
           l = .init(
-            item: .init(memoizing: chart.entries[p].item, transitionSymbol: t), mainstemIndex: p)
+            item: .init(
+              memoizingItemIndex: chart.entries[p].item.memoizedPenultIndex!, transitionSymbol: t),
+            mainstemIndex: p)
         }
         else {
           l = .init(
-            item: .init(memoizing: x.advanced(in: g), transitionSymbol: t), mainstemIndex: nil)
+            item: .init(
+              memoizingItemIndex: i + 1, transitionSymbol: t), mainstemIndex: nil)
         }
 
         let inserted = chart.insertLeo(l, at: i)

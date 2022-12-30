@@ -14,27 +14,28 @@ extension DebugChart: CustomStringConvertible {
 
       result.append("---------- \(earleme) ----------\n")
 
-      var allDerivations = earleme == base.currentEarleme
+      var remainingDerivations = earleme == base.currentEarleme
         ? base.currentEarleySet : base.earleySet(earleme)
 
-      while !allDerivations.isEmpty {
-        let currentItem = allDerivations.first!.item
-        let itemDerivations = allDerivations.prefix { x in x.item == currentItem }
-
-        result.append("\(itemDerivations.startIndex): ")
-
-        result.append(
-          language.derivationText(
-            origin: currentItem.origin,
-            dotInGrammar: rawPosition[currentItem.dotPosition],
-            dotInSource: currentItem.isLeo ? nil : earleme,
-            mainstemIndices: itemDerivations.first!.mainstemIndex == nil ? [] : itemDerivations.map { d in d.mainstemIndex! }))
-
-        if currentItem.isLeo {
-          result.append("\(language.text(currentItem.transitionSymbol!))* ")
+      while let head = remainingDerivations.first {
+        let itemDerivations = remainingDerivations.prefix { x in x.item == head.item }
+        result += "\(itemDerivations.startIndex): "
+        if !head.item.isLeo {
+          result.append("<\(head.item.origin)> ")
         }
-        result.append("\n")
-        allDerivations = allDerivations[itemDerivations.endIndex...]
+        if head.mainstemIndex != nil {
+          result.append(
+            "{\(itemDerivations.map { String($0.mainstemIndex!) }.joined(separator: ", "))} ")
+        }
+
+        if head.item.isLeo {
+          result += "L(\(head.item.memoizedPenultIndex!)) •\(head.item.transitionSymbol!)"
+        }
+        else  {
+          result += language.dottedText(head.item.dotPosition)
+        }
+        result += "\n"
+        remainingDerivations.removeFirst(itemDerivations.count)
       }
     }
     return result
