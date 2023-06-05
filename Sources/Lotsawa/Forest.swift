@@ -12,16 +12,32 @@ public struct Forest<StoredSymbol: SignedInteger & FixedWidthInteger> {
     self.grammar = grammar
   }
 
-  struct LeoCompletionKey: Hashable {
+  /// A lookup key for already-computed Leo completions.
+  ///
+  /// There can only be one Leo item memoizing completion of a given symbol over a given source
+  /// range, so this key identifies a Leo item.
+  private struct LeoCompletionKey: Hashable {
     let locus: Range<SourcePosition>
     let lhs: Symbol
   }
 
+  /// Completions that were omitted from the chart by Leo optimization, computed on-demand during
+  /// parse forest exploration.
+  ///
+  /// Maps a Leo item to a sorted set of completions that were optimized out.  Leo is still an
+  /// optimization because many Leo-optimized entries never participate in a complete recognition,
+  /// and thus will never be stored, even here.
   private var leoCompletions: [LeoCompletionKey: [Chart.Entry]] = [:]
 }
 
+// FIXME: Could use better names.  Should DerivationSet be DerivationIterator? DerivationSet.Storage
+// be DerivationSet.IterationState or something?  completions be heads?
+
 extension Forest {
   /// A subset of the parses of a single symbol over a range of source positions.
+  ///
+  /// Could also be seen as a notional iterator over that subset (which starts out being the whole
+  /// set of such parses), via repeated calls to `removeFirst`.
   public struct DerivationSet {
     /// The internal representation of a DerivationSet independent of Chart or Grammar.
     ///
@@ -31,31 +47,41 @@ extension Forest {
     /// `completions` stores the remaining values for the most significant digit of the counter,
     /// with the current value of that digit being `completions.first`.
     ///
-    /// Each *element* of `tails` corresponds to another digit, in least-to-most-significant order.
+    /// Each *element* of `tails` is a range of chart positions for another digit, in
+    /// least-to-most-significant order, with the first element of the range being the current value
+    /// of the digit.
     ///
     /// An element of `tails` is the range of values remaining for its corresponding digit *given
-    /// the current values of all more significant digits*, with the first element of the range
-    /// being the current value of the digit.
+    /// the current values of all more significant digits*,
     ///
     /// When a digit d0 runs out of values, the first value is removed from the
     /// next-more-significant digit d1 and whether d0 is even needed given the new value of d1
     /// depends on d1 and the forest.  In general, how many digits less significant than d1 are
     /// needed, and their representations, need to be discovered newly in the forest.  That
     /// discovery is implemented by the `extend` operation.
+    ///
+    /// Storage begins as a prefix containing only most-significant digit information and is
+    /// completed by the first call to `extend`.
     struct Storage {
       /// The completions of all derivations in the set; the most significant digit of the counter
+      /// is `completions.first`.
       var completions: Array<Chart.Entry>.SubSequence
 
-      /// A series of mainstems of the first element of `completions`,
+      /// A series of mainstems of the first element of `completions`; the first element of each
+      /// range is the current value of the other digits of the notional counter.
       var tails: [Range<Chart.Entries.Index>]
     }
 
+    /// Creates an instance with the given properties.
     init(storage: Storage, domain: Forest) {
       self.storage = storage
       self.domain = domain
     }
 
+    /// The counter.
     private var storage: Storage
+
+    /// The forest in which this set is defined.
     private var domain: Forest
   }
 
