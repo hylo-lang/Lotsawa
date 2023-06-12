@@ -24,6 +24,8 @@ public struct Forest<StoredSymbol: SignedInteger & FixedWidthInteger> {
   /// Completions that were omitted from the chart by Leo optimization, computed on-demand during
   /// parse forest exploration.
   ///
+  /// A “compound chart” is thus formed from `chart` plus `leoCompletions`.
+  ///
   /// Maps a Leo item to a sorted set of completions that were optimized out.  Leo is still an
   /// optimization because many Leo-optimized entries never participate in a complete recognition,
   /// and thus will never be stored, even here.
@@ -138,6 +140,8 @@ extension Forest {
     }
   }
 
+  /// Inject `c` into `leoCompletions` unless it is already represented in the compound chart,
+  /// returning `false` iff `c`'s *item* was not previously represented in the compound chart.
   public mutating func requireCompletion(
     _ c: Chart.Entry, inEarleme i: SourcePosition
   ) -> Bool {
@@ -164,6 +168,8 @@ extension Forest {
     } || r0
   }
 
+  /// Ensures there is a record in `leoCompletions` of all completions omitted by Leo optimization
+  /// that participate in a derivation of `top`, with the given `endEarleme`.
   public mutating func collectLeoCompletions(
     causing top: Chart.Entry, endingAt endEarleme: SourcePosition
   ) {
@@ -224,7 +230,9 @@ extension Forest.DerivationSet: Collection {
   public struct Index: Comparable {
     var offset: Int
 
+    /// The derivations starting at `self`.
     fileprivate var remainder: Storage
+
     public static func < (l: Self, r: Self) -> Bool {
       UInt(bitPattern: l.offset) < UInt(bitPattern: r.offset)
     }
@@ -233,6 +241,7 @@ extension Forest.DerivationSet: Collection {
       l.offset == r.offset
     }
 
+    /// Creates an instance indicating the position at the beginning of `remainder`.
     init(remainder: Storage) {
       self.remainder = remainder
       offset = remainder.completions.isEmpty ? -1 : 0
@@ -240,6 +249,7 @@ extension Forest.DerivationSet: Collection {
   }
 
   public var startIndex: Index { Index(remainder: self.storage) }
+
   public var endIndex: Index {
     Index(remainder: .init(completions: [], tails: []))
   }

@@ -7,8 +7,13 @@ import Lotsawa
 struct DebugGrammar {
   /// Representation produced by Citron parser from the string.
   enum AST {
+    /// The rules extracted from BNF.
     typealias RuleList = [Rule]
+
+    /// A parse rule.
     typealias Rule = (lhs: Token, alternatives: [RHS])
+
+    /// The RHS of a rule.
     typealias RHS = [Token]
   }
 

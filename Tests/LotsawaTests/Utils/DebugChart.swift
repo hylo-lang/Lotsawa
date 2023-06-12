@@ -2,8 +2,13 @@
 
 /// A Chart wrapper engineered for convenient testing and diagnostics
 struct DebugChart {
+  /// The underlying chart.
   var base: Chart
+
+  /// The language recognized.
   let language: DebugGrammar
+
+  /// A mapping from positions in `language` to those in the raw grammar from which it was derived.
   let rawPosition: DiscreteMap<DefaultGrammar.Position, DefaultGrammar.Position>
 }
 

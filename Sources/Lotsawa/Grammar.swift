@@ -54,6 +54,7 @@ public struct Grammar<StoredSymbol: SignedInteger & FixedWidthInteger> {
   /// The greatest symbol ID value in any rule, or -1 if there are no rules.
   private(set) var maxSymbolID: Symbol.ID = -1
 
+  /// The symbol derivation over the whole input constitutes a successful parse.
   let startSymbol: Symbol
 
   /// Creates an empty instance intended (when rules have been added) to recognize `startSymbol`.
@@ -94,9 +95,11 @@ extension Grammar {
     /// The symbol to be recognized.
     public var lhs: Symbol { Grammar.lhsSymbol(storage.last!) }
 
+    /// The sequence of symbols whose recognition implies the
+    /// recognition of a `Rule`'s LHS.
     public typealias RHS = LazyMapSequence<Array<StoredSymbol>.SubSequence, Symbol>
 
-    /// The sequence of symbols that lead to recognition of the `lhs`.
+    /// The sequence of symbols that imply to recognition of the `lhs`.
     public var rhs: RHS {
       storage.dropLast().lazy.map { x in Symbol(id: Symbol.ID(x)) }
     }
@@ -333,6 +336,7 @@ extension Grammar {
     ruleStart.append(Size(ruleStore.count))
   }
 
+  /// The sets of terminals and nonterminals.
   func symbols() -> (terminals: Set<Symbol>, nonTerminals: Set<Symbol>) {
     let nonTerminals = Set(rules.lazy.map(\.lhs))
     let terminals = Set(rules.lazy.map(\.rhs).joined()).subtracting(nonTerminals)
@@ -341,6 +345,7 @@ extension Grammar {
 }
 
 extension Grammar {
+  /// Creates an instance with the given properties.
   internal init(
     ruleStore: [StoredSymbol], ruleStart: [GrammarSize], maxSymbolID: Symbol.ID, startSymbol: Symbol
   ) {
@@ -350,6 +355,7 @@ extension Grammar {
     self.startSymbol = startSymbol
   }
 
+  /// Returns a textual representation sufficient in principle for reconstructing `self`.
   func serialized() -> String {
     """
     Grammar<\(StoredSymbol.self)>(

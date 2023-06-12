@@ -1,6 +1,7 @@
 /// A mapping from keys `K` to arrays of values `[V]`, where by default every
 /// key maps to the empty array.
 struct MultiMap<K: Hashable, V> {
+  /// The type used as underlying storage.
   typealias Storage = Dictionary<K, [V]>
 
   /// Creates an instance whose keys are the set of results of applying the given closure to each
@@ -16,6 +17,7 @@ struct MultiMap<K: Hashable, V> {
   /// Creates an instance mapping every key to an empty array.
   init() {}
 
+  /// Creates an instance using the given underlying `storage`.
   init(storage: Storage) {
     self.storage = storage
   }

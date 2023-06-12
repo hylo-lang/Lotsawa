@@ -3,6 +3,10 @@
 struct DiscreteMap<Key: Strideable, Value: Strideable>
   where Key.Stride: SignedInteger, Value.Stride: SignedInteger
 {
+  /// Potential discontinuities between which keys map to value stepwise.
+  ///
+  /// For example, `[(key: 3, value: 4), (key: 7, 12)]` indicates the following mapping:
+  /// `[3:4, 4:5, 5:6, 6:7, 7:12, 8:13, 9:14, ...]`.
   var points: [(key: Key, value: Value)] = []
 
   /// Returns the value for key `k`.

@@ -1,10 +1,12 @@
 private typealias Word = UInt
 
-/// A bitwise view of an integer sequence.
+/// A bitwise view of a `Base` integer sequence.
 struct Bits<Base: Sequence>: Sequence
   where Base.Element: FixedWidthInteger
 {
+  /// The underlying sequence of integers.
   public var base: Base
+
   typealias Element = Bool
 
   func makeIterator() -> Iterator { Iterator(base: base.makeIterator()) }

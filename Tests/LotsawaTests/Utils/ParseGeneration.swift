@@ -15,8 +15,9 @@ extension Grammar {
     case end(Symbol)
   }
 
-  /// A representation of a parse tree.
+  /// A linear representation of a parse tree.
   struct Parse: Hashable {
+    /// The individual moves in a preorder traversal of the tree.
     var moves: [ParseMove] = []
   }
 
@@ -81,6 +82,7 @@ extension Grammar.ParseMove {
     }
   }
 
+  /// The recognized symbol.
   var symbol: Symbol {
     switch self {
     case let .terminal(s, _): return s
@@ -91,6 +93,7 @@ extension Grammar.ParseMove {
 }
 
 extension Grammar.Parse {
+  /// Returns `self` with all zero-length nonterminals removed.
   func eliminatingNulls() -> Self {
     var r = Grammar.Parse()
     r.moves.reserveCapacity(moves.count)
@@ -106,6 +109,8 @@ extension Grammar.Parse {
     return r
   }
 
+  /// Returns `self` without any symbols whose ordinal value exceeds `maxSymbol`, and with all
+  /// grammar positions translated via `positionMap`.
   func eliminatingSymbols(
     greaterThan maxSymbol: Symbol,
     mappingPositionsThrough positionMap: DiscreteMap<Grammar.Position, Grammar.Position>

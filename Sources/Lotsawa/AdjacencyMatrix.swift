@@ -15,6 +15,7 @@ struct AdjacencyMatrix: Hashable {
     source < rows.count && rows[source].contains(destination)
   }
 
+  /// A mapping from vertex onto its successors.
   var rows: [BitSet] = []
 
   /// For each vertex v, adds an edge from v to u iff u is reachable from v.

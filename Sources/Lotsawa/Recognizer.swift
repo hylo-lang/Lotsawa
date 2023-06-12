@@ -1,6 +1,7 @@
 /// A process that creates the parse forest for a token stream with respect to a `Grammar`.
-public struct Recognizer<StoredSymbol: SignedInteger & FixedWidthInteger>
-{
+public struct Recognizer<StoredSymbol: SignedInteger & FixedWidthInteger> {
+
+  /// A recognizable language description.
   public typealias Grammar = Lotsawa.Grammar<StoredSymbol>
 
   /// The grammar being recognized.
@@ -9,8 +10,10 @@ public struct Recognizer<StoredSymbol: SignedInteger & FixedWidthInteger>
   /// True iff the raw grammar from which g was derived was nullable.
   private let acceptsNull: Bool
 
+  /// The rules of `g`, grouped by LHS symbol.
   private let rulesByLHS: MultiMap<Symbol, RuleID>
 
+  /// The positions of the final symbol in all right-recursive rules.
   private let leoPositions: Set<Grammar.Position>
 
   /// Storage for all DerivationGroups, grouped by Earleme and sorted within each Earleme.
@@ -43,6 +46,7 @@ extension Recognizer {
     predict(g.startSymbol)
   }
 
+  /// The index of the Earley set currently being worked on.
   public var currentEarleme: UInt32 { chart.currentEarleme }
 
   /// Returns the chart entry that predicts the start of `r`.
@@ -61,6 +65,8 @@ extension Recognizer {
     }
   }
 
+  /// Inserts `newEntry` into `chart`, tracking whether Leo item
+  /// processing may be needed.
   mutating func insert(_ newEntry: Chart.Entry) -> Bool {
     if !chart.insert(newEntry) { return false }
     if leoPositions.contains(newEntry.dotPosition) {
@@ -192,10 +198,12 @@ extension Recognizer {
     return !completions.isEmpty
   }
 
+  /// Returns the `i`th Earley set.
   func earleySet(_ i: UInt32) -> Chart.EarleySet {
     return i < currentEarleme ? chart.earleySet(i) : chart.currentEarleySet
   }
 
+  /// Returns a representation of everything recognized so far.
   public var forest: Forest<StoredSymbol> {
     Forest(chart: chart, grammar: g)
   }

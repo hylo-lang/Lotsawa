@@ -1,19 +1,31 @@
 import Lotsawa
 import XCTest
 
+/// A wrapped `Forest` with conveniences for testing and debugging.
 struct DebugForest {
+  /// The underlying forest.
   var base: Forest<Symbol.ID>
+
+  /// The language recognized.
   let language: DebugGrammar
+
+  /// The recognizer used.
   let recognizer: DebugRecognizer
 
+  /// A wrapped `Forest.Derivation` with conveniences for testing and debugging.
   struct Derivation {
+    /// The underlying derivation.
     let base: Forest<Symbol.ID>.Derivation
+
+    /// The language recognized.
     let language: DebugGrammar
 
+    /// A textual representation of the BNF rule recognized.
     var ruleName: String {
       "\(language.text(base.lhs)) ::= \(base.rhs.map { language.text($0) }.joined(separator: " "))"
     }
 
+    /// The position at which each constituent RHS symbol of the rule was recognized.
     var rhsOrigins: [SourcePosition] { Array(base.rhsOrigins) }
   }
 
@@ -35,6 +47,9 @@ extension DebugRecognizer {
 }
 
 extension DebugForest {
+  /// `XCTAssert`s that `self` is the only derivation of its LHS symbol over `locus`, that its rule
+  /// has the textual representation `expectedRule`, and that its RHS symbols start at `rhsOrigins`,
+  /// failing with `message` otherwise.
   mutating func checkUniqueDerivation(
     ofLHS expectedRule: String,
     over locus: Range<SourcePosition>,

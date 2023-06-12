@@ -5,6 +5,7 @@ import CitronLexerModule
 /// and https://www.unicode.org/reports/tr44/#BC_Values_Table).
 let comment = #"(?://\P{Bidi_Class=B}*)"#
 
+/// A lexical analyzer for the grammar we use to describe other grammars for testing.
 let testGrammarScanner = Scanner<DebugGrammarParser.CitronTokenCode>(
   literalStrings: [
     "::=": .IS_DEFINED_AS,
@@ -23,17 +24,27 @@ let testGrammarScanner = Scanner<DebugGrammarParser.CitronTokenCode>(
 )
 
 extension DebugGrammar.AST {
+
+  /// A nonterminal symbol.
   struct Token: Hashable, CustomStringConvertible {
+    /// The ordinal ID.
     typealias ID = DebugGrammarParser.CitronTokenCode
 
+    /// Creates an instance with ID `id` covering `content` at the
+    /// given `position`.
     init(_ id: ID, _ content: Substring, at position: SourceRegion) {
       self.id = id
       self.text = content
       self.position = Incidental(position)
     }
 
+    /// The ordinal ID.
     let id: ID
+
+    /// The content covered.
     let text: Substring
+
+    /// Where `text` appears in the input text.
     let position: Incidental<SourceRegion>
 
     var description: String {

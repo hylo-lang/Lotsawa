@@ -15,7 +15,10 @@ public struct Chart: Hashable
   private var setStart: [Position] = [0]
 }
 
+/// A position within source text.
 public typealias SourcePosition = UInt32
+
+/// A position on the RHS of a grammar rule.
 public typealias DotPosition = UInt16
 
 extension Chart {
@@ -45,6 +48,7 @@ extension Chart {
     entries[setStart[Int(i)]..<setStart[Int(i) + 1]]
   }
 
+  /// The source position corresponding to entry `j`.
   public func earleme(ofEntryIndex j: Entries.Index) -> SourcePosition {
     SourcePosition(setStart.partitionPoint { start in start > j } - 1)
   }
@@ -79,11 +83,13 @@ extension Chart {
       (lhs.key, lhs.mainstemIndexStorage) < (rhs.key, rhs.mainstemIndexStorage)
     }
 
+    /// The member `m` of `item`.
     subscript<Target>(dynamicMember m: KeyPath<ItemID, Target>) -> Target {
       item[keyPath: m]
     }
   }
 
+  /// Returns `true` iff `i` refers to the first derivation of an `item`.
   private func isItemIndexStart(_ i: Entries.Index) -> Bool {
     let s = earleySet(earleme(ofEntryIndex: i))
     return i == s.startIndex || s[s.index(before: i)].item != s[i].item
@@ -190,11 +196,13 @@ private protocol OptionalProtocol {
 }
 
 extension Optional: OptionalProtocol {
+  /// A string representing the value of `self`.
   var valueString: String {
     self == nil ? "nil" : "\(self!)"
   }
 }
 
+/// Returns a string representing the value of `x`.
 func valueString<T>(_ x: T) -> String {
   (x as? any OptionalProtocol)?.valueString ?? "\(x)"
 }
@@ -240,7 +248,6 @@ extension Chart {
   func leoDerivations(awaiting s: Symbol, at i: SourcePosition)
     -> Optional<some BidirectionalCollection<Entry>>
   {
-
     let predecessors = transitionEntries(on: s, inEarleySet: i)
     return predecessors.first.map { $0.isLeo ? predecessors : nil } ?? nil
   }
