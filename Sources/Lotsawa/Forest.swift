@@ -140,7 +140,7 @@ extension Forest {
     }
   }
 
-  /// Inject `c` into `leoCompletions` unless it is already represented in the compound chart,
+  /// Injects `c` into `leoCompletions` unless it is already represented in the compound chart,
   /// returning `false` iff `c`'s *item* was not previously represented in the compound chart.
   public mutating func requireCompletion(
     _ c: Chart.Entry, inEarleme i: SourcePosition
