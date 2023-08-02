@@ -1,0 +1,47 @@
+{
+  "warnings": [
+    {
+      "file": "/Users/runner/work/Lotsawa/Lotsawa/Sources/Lotsawa/Chart.swift",
+      "line": 34,
+      "symbol": "Chart.EarleySet",
+      "symbol_kind": "source.lang.swift.decl.typealias",
+      "warning": "undocumented"
+    },
+    {
+      "file": "/Users/runner/work/Lotsawa/Lotsawa/Sources/Lotsawa/Forest.swift",
+      "line": 221,
+      "symbol": "Forest.DerivationSet.first",
+      "symbol_kind": "source.lang.swift.decl.var.instance",
+      "warning": "undocumented"
+    },
+    {
+      "file": "/Users/runner/work/Lotsawa/Lotsawa/Sources/Lotsawa/Forest.swift",
+      "line": 224,
+      "symbol": "Forest.DerivationSet.removeFirst()",
+      "symbol_kind": "source.lang.swift.decl.function.method.instance",
+      "warning": "undocumented"
+    },
+    {
+      "file": "/Users/runner/work/Lotsawa/Lotsawa/Sources/Lotsawa/Grammar.swift",
+      "line": 20,
+      "symbol": "Symbol.maxID",
+      "symbol_kind": "source.lang.swift.decl.var.static",
+      "warning": "undocumented"
+    },
+    {
+      "file": "/Users/runner/work/Lotsawa/Lotsawa/Sources/Lotsawa/Grammar.swift",
+      "line": 24,
+      "symbol": "GrammarSize",
+      "symbol_kind": "source.lang.swift.decl.typealias",
+      "warning": "undocumented"
+    },
+    {
+      "file": "/Users/runner/work/Lotsawa/Lotsawa/Sources/Lotsawa/Grammar.swift",
+      "line": 28,
+      "symbol": "RuleID.ordinal",
+      "symbol_kind": "source.lang.swift.decl.var.instance",
+      "warning": "undocumented"
+    }
+  ],
+  "source_directory": "/Users/runner/work/Lotsawa/Lotsawa"
+}
