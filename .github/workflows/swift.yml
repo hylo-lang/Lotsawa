@@ -39,6 +39,14 @@ jobs:
     steps:
     - uses: actions/checkout@v2
     - name: Test and generate code coverage report
-      run: xcrun xcodebuild -skipPackagePluginValidation -enableCodeCoverage YES -scheme Lotsawa -destination 'platform=macOS' test
+      run: xcrun xcodebuild -resultBundlePath coverage -skipPackagePluginValidation -enableCodeCoverage YES -scheme Lotsawa -destination 'platform=macOS' test
     - name: Upload coverage to Codecov
       uses: codecov/codecov-action@v3
+      with:
+        directory: ./coverage
+        env_vars: OS
+        fail_ci_if_error: true
+        flags: unittests
+        swift: true
+        name: codecov-umbrella
+        verbose: true
