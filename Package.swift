@@ -7,7 +7,10 @@ let CitronLexer
   = Target.Dependency.product(  name: "CitronLexerModule", package: "citron")
 
 let package = Package(
-    name: "Lotsawa",
+  name: "Lotsawa",
+    platforms: [
+       .macOS(.v10_15)
+    ],
     products: [
         .library(
             name: "Lotsawa",
