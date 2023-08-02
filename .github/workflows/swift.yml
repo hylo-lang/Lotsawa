@@ -20,7 +20,7 @@ jobs:
     steps:
       - uses: actions/checkout@v2
       - name: Build
-        run: xcrun xcodebuild -scheme Lotsawa -destination 'platform=macOS'
+        run: xcrun xcodebuild -skipPackagePluginValidation -scheme Lotsawa -destination 'platform=macOS'
   linux:
     container:
       image: swift:${{ matrix.linux }}
@@ -39,6 +39,6 @@ jobs:
     steps:
     - uses: actions/checkout@v2
     - name: Test and generate code coverage report
-      run: xcrun xcodebuild -scheme Lotsawa -destination -enableCodeCoverage YES 'platform=macOS' test
+      run: xcrun xcodebuild -skipPackagePluginValidation -scheme Lotsawa -destination -enableCodeCoverage YES 'platform=macOS' test
     - name: Upload coverage to Codecov
       uses: codecov/codecov-action@v1
