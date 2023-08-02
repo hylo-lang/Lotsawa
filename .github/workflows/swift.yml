@@ -27,7 +27,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        linux: [bionic, xenial, focal]
+        linux: [bionic, focal]
     steps:
     - uses: actions/checkout@v2
     - name: Build
