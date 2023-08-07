@@ -25,7 +25,7 @@ jobs:
         git config --local user.email "bot@github.com"
         git config --local user.name "GitHub Actions"
         git fetch origin generated-docs
-        git checkout --detach generated-docs
+        git checkout --detach origin/generated-docs
         rm -r ./docs
         mv updated-docs docs
         git add ./docs
