@@ -13,7 +13,7 @@ jobs:
       run: gem install jazzy
     - name: Generate documentation
       run: |
-        jazzy \https://github.com/val-lang/Lotsawa/tree/refs/heads/main/
+        jazzy \
         --clean \
         --source-host-files-url "https://github.com/${GITHUB_REPOSITORY}/tree/${GITHUB_REF}" \
         --module-version "${{ github.event.release.tag_name }}" \
