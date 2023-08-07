@@ -2,7 +2,7 @@ name: Publish Documentation
 
 on:
   push:
-    branches: [ main ]
+    branches: [ * ]
 
 jobs:
   macos:
@@ -21,8 +21,13 @@ jobs:
         --config .jazzy.yml
     - name: Commit docs
       run: |
+        mv docs updated-docs
         git config --local user.email "bot@github.com"
         git config --local user.name "GitHub Actions"
+        git fetch origin generated-docs
+        git checkout --detach generated-docs
+        rm -r ./docs
+        mv updated-docs docs
         git add ./docs
         git commit -m "Update docs"
-        git push origin HEAD:main
+        git push origin HEAD:generated-docs
