@@ -13,9 +13,9 @@ jobs:
       run: gem install jazzy
     - name: Generate documentation
       run: |
-        jazzy \
+        jazzy \https://github.com/val-lang/Lotsawa/tree/refs/heads/main/
         --clean \
-        --github-file-prefix "https://github.com/val-lang/$module/tree/${GITHUB_REF}" \
+        --source-host-files-url "https://github.com/${GITHUB_REPOSITORY}/tree/${GITHUB_REF}" \
         --module-version "${{ github.event.release.tag_name }}" \
         --copyright "© $(date '+%Y') Dave Abrahams. (Last updated: $(date '+%Y-%m-%d'))" \
         --config .jazzy.yml
