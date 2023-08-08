@@ -9,18 +9,20 @@ jobs:
     runs-on: macos-latest
     steps:
     - uses: actions/checkout@v2
-    - uses: fwcd/swift-docc-action@v1
-      with:
-        target: Lotsawa
-        output: ./docc
-        hosting-base-path: Lotsawa/docc
-        disable-indexing: true
-        enable-inherited-docs: true
-        experimental-documentation-coverage: true
-        transform-for-static-hosting: true
-        source-service: github
-        source-service-base-url: "https://github.com/${GITHUB_REPOSITORY}/blob/${GITHUB_REF}"
-        checkout-path: .
+    - name: Run DocC
+      run: |
+        swift package --allow-writing-to-directory ./docc \
+        generate-documentation \
+        --product Lotsawa \
+        --output-path ./docc \
+        --experimental-documentation-coverage --level detailed \
+        --enable-inherited-docs \
+        --checkout-path . \
+        --source-service github \
+        --source-service-base-url "https://github.com/${GITHUB_REPOSITORY}/blob/${GITHUB_REF}" \
+        --transform-for-static-hosting \
+        --hosting-base-path Lotsawa/docc \
+        --diagnostic-level hint
     - name: Install jazzy
       run: gem install jazzy
     - name: Run Jazzy
