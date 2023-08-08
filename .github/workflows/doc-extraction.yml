@@ -11,9 +11,9 @@ jobs:
     - uses: actions/checkout@v2
     - uses: fwcd/swift-docc-action@v1
       with:
-        target: YourTarget
+        target: Lotsawa
         output: ./docs
-        hosting-base-path: yourproject
+        hosting-base-path: Lotsawa
         disable-indexing: 'true'
         transform-for-static-hosting: 'true'
     - name: Commit docs
