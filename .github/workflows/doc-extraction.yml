@@ -13,7 +13,7 @@ jobs:
       with:
         target: Lotsawa
         output: ./docc
-        hosting-base-path: Lotsawa
+        hosting-base-path: Lotsawa/docc
         disable-indexing: true
         enable-inherited-docs: true
         experimental-documentation-coverage: true
