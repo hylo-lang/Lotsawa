@@ -2,7 +2,7 @@ name: Publish Documentation
 
 on:
   push:
-    branches: [ "*" ]
+    branches: [ main, docc ]
 
 jobs:
   macos:
