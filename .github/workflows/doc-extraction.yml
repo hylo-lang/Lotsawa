@@ -30,7 +30,7 @@ jobs:
         --source-host-files-url "https://github.com/${GITHUB_REPOSITORY}/tree/${GITHUB_REF}" \
         --module-version "${{ github.event.release.tag_name }}" \
         --copyright "© $(date '+%Y') Dave Abrahams. (Last updated: $(date '+%Y-%m-%d'))" \
-        --config .jazzy.yml
+        --config .jazzy.yml \
         --output jazzy
     - name: Commit docs
       run: |
