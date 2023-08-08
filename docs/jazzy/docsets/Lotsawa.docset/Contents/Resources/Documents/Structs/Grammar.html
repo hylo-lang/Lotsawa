@@ -1,0 +1,491 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <title>Grammar Structure Reference</title>
+    <link rel="stylesheet" type="text/css" href="../css/jazzy.css" />
+    <link rel="stylesheet" type="text/css" href="../css/highlight.css" />
+    <meta charset="utf-8">
+    <script src="../js/jquery.min.js" defer></script>
+    <script src="../js/jazzy.js" defer></script>
+    
+    <script src="../js/lunr.min.js" defer></script>
+    <script src="../js/typeahead.jquery.js" defer></script>
+    <script src="../js/jazzy.search.js" defer></script>
+  </head>
+  <body>
+
+    <a name="//apple_ref/swift/Struct/Grammar" class="dashAnchor"></a>
+
+    <a title="Grammar Structure Reference"></a>
+
+    <header class="header">
+      <p class="header-col header-col--primary">
+        <a class="header-link" href="../index.html">
+          Lotsawa  Docs
+        </a>
+         (93% documented)
+      </p>
+    
+      <div class="header-col--secondary">
+        <form role="search" action="../search.json">
+          <input type="text" placeholder="Search documentation" data-typeahead>
+        </form>
+      </div>
+    
+        <p class="header-col header-col--secondary">
+          <a class="header-link" href="https://github.com/val-lang/Lotsawa">
+            <img class="header-icon" src="../img/gh.png" alt="GitHub"/>
+            View on GitHub
+          </a>
+        </p>
+    
+        <p class="header-col header-col--secondary">
+          <a class="header-link" href="dash-feed://https%3A%2F%2Fval-lang.github.io%2FLotsawa%2Freference%2Fdocsets%2FLotsawa.xml">
+            <img class="header-icon" src="../img/dash.png" alt="Dash"/>
+            Install in Dash
+          </a>
+        </p>
+    </header>
+
+    <p class="breadcrumbs">
+      <a class="breadcrumb" href="../index.html">Lotsawa Reference</a>
+      <img class="carat" src="../img/carat.png" alt=""/>
+      Grammar Structure Reference
+    </p>
+
+    <div class="content-wrapper">
+      <nav class="navigation">
+        <ul class="nav-groups">
+          <li class="nav-group-name">
+            <a class="nav-group-name-link" href="../Extensions.html">Extensions</a>
+            <ul class="nav-group-tasks">
+              <li class="nav-group-task">
+                <a class="nav-group-task-link" href="../Extensions/BidirectionalCollection.html">BidirectionalCollection</a>
+              </li>
+            </ul>
+          </li>
+          <li class="nav-group-name">
+            <a class="nav-group-name-link" href="../Structs.html">Structures</a>
+            <ul class="nav-group-tasks">
+              <li class="nav-group-task">
+                <a class="nav-group-task-link" href="../Structs/Chart.html">Chart</a>
+              </li>
+              <li class="nav-group-task">
+                <a class="nav-group-task-link" href="../Structs/Chart/Entry.html">– Entry</a>
+              </li>
+              <li class="nav-group-task">
+                <a class="nav-group-task-link" href="../Structs/Forest.html">Forest</a>
+              </li>
+              <li class="nav-group-task">
+                <a class="nav-group-task-link" href="../Structs/Forest/DerivationSet.html">– DerivationSet</a>
+              </li>
+              <li class="nav-group-task">
+                <a class="nav-group-task-link" href="../Structs/Forest/Derivation.html">– Derivation</a>
+              </li>
+              <li class="nav-group-task">
+                <a class="nav-group-task-link" href="../Structs/Grammar.html">Grammar</a>
+              </li>
+              <li class="nav-group-task">
+                <a class="nav-group-task-link" href="../Structs/Grammar/Rule.html">– Rule</a>
+              </li>
+              <li class="nav-group-task">
+                <a class="nav-group-task-link" href="../Structs/PreprocessedGrammar.html">PreprocessedGrammar</a>
+              </li>
+              <li class="nav-group-task">
+                <a class="nav-group-task-link" href="../Structs/Recognizer.html">Recognizer</a>
+              </li>
+              <li class="nav-group-task">
+                <a class="nav-group-task-link" href="../Structs/RuleID.html">RuleID</a>
+              </li>
+              <li class="nav-group-task">
+                <a class="nav-group-task-link" href="../Structs/Symbol.html">Symbol</a>
+              </li>
+            </ul>
+          </li>
+          <li class="nav-group-name">
+            <a class="nav-group-name-link" href="../Typealiases.html">Type Aliases</a>
+            <ul class="nav-group-tasks">
+              <li class="nav-group-task">
+                <a class="nav-group-task-link" href="../Typealiases.html#/s:7Lotsawa14DefaultGrammara">DefaultGrammar</a>
+              </li>
+              <li class="nav-group-task">
+                <a class="nav-group-task-link" href="../Typealiases.html#/s:7Lotsawa11DotPositiona">DotPosition</a>
+              </li>
+              <li class="nav-group-task">
+                <a class="nav-group-task-link" href="../Typealiases.html#/s:7Lotsawa11GrammarSizea">GrammarSize</a>
+              </li>
+              <li class="nav-group-task">
+                <a class="nav-group-task-link" href="../Typealiases.html#/s:7Lotsawa14SourcePositiona">SourcePosition</a>
+              </li>
+            </ul>
+          </li>
+        </ul>
+      </nav>
+      <article class="main-content">
+
+        <section class="section">
+          <div class="section-content top-matter">
+            <h1>Grammar</h1>
+              <div class="declaration">
+                <div class="language">
+                  
+                  <pre class="highlight swift"><code><span class="kd">public</span> <span class="kd">struct</span> <span class="kt">Grammar</span><span class="o">&lt;</span><span class="kt">StoredSymbol</span><span class="o">&gt;</span> <span class="k">where</span> <span class="kt">StoredSymbol</span> <span class="p">:</span> <span class="kt">FixedWidthInteger</span><span class="p">,</span> <span class="kt">StoredSymbol</span> <span class="p">:</span> <span class="kt">SignedInteger</span></code></pre>
+
+                </div>
+              </div>
+            <p>A collection of Backus-Naur Form (BNF) rules, each defining a symbol
+on its left-hand side in terms of a string of symbols on its right-hand
+side.</p>
+
+              <div>
+                <h4>Parameters</h4>
+                <table class="graybox">
+                  <tbody>
+                      <tr>
+                        <td>
+                          <code>
+                          <em>StoredSymbol</em>
+                          </code>
+                        </td>
+                        <td>
+                          <div>
+                            <p>storage representation of <code><a href="../Structs/Symbol.html#/s:7Lotsawa6SymbolV2ids5Int16Vvp">Symbol.id</a></code> values in this grammar.</p>
+                          </div>
+                        </td>
+                      </tr>
+                  </tbody>
+                </table>
+              </div>
+              <div class="slightly-smaller">
+                <a href="https://github.com/val-lang/Lotsawa/tree/refs/heads/docc/Sources/Lotsawa/Grammar.swift#L40-L62">Show on GitHub</a>
+              </div>
+          </div>
+        </section>
+
+        <section class="section">
+          <div class="section-content">
+            <div class="task-group">
+              <ul class="item-container">
+                <li class="item">
+                  <div>
+                    <code>
+                    <a name="/s:7Lotsawa7GrammarV11recognizingACyxGAA6SymbolV_tcfc"></a>
+                    <a name="//apple_ref/swift/Method/init(recognizing:)" class="dashAnchor"></a>
+                    <a class="token" href="#/s:7Lotsawa7GrammarV11recognizingACyxGAA6SymbolV_tcfc">init(recognizing:<wbr>)</a>
+                    </code>
+                  </div>
+                  <div class="height-container">
+                    <div class="pointer-container"></div>
+                    <section class="section">
+                      <div class="pointer"></div>
+                      <div class="abstract">
+                        <p>Creates an empty instance intended (when rules have been added) to recognize <code>startSymbol</code>.</p>
+
+                      </div>
+                      <div class="declaration">
+                        <h4>Declaration</h4>
+                        <div class="language">
+                          <p class="aside-title">Swift</p>
+                          <pre class="highlight swift"><code><span class="kd">public</span> <span class="nf">init</span><span class="p">(</span><span class="n">recognizing</span> <span class="nv">startSymbol</span><span class="p">:</span> <span class="kt"><a href="../Structs/Symbol.html">Symbol</a></span><span class="p">)</span></code></pre>
+
+                        </div>
+                      </div>
+                      <div class="slightly-smaller">
+                        <a href="https://github.com/val-lang/Lotsawa/tree/refs/heads/docc/Sources/Lotsawa/Grammar.swift#L61">Show on GitHub</a>
+                      </div>
+                    </section>
+                  </div>
+                </li>
+                <li class="item">
+                  <div>
+                    <code>
+                    <a name="/s:7Lotsawa7GrammarV4Sizea"></a>
+                    <a name="//apple_ref/swift/Alias/Size" class="dashAnchor"></a>
+                    <a class="token" href="#/s:7Lotsawa7GrammarV4Sizea">Size</a>
+                    </code>
+                  </div>
+                  <div class="height-container">
+                    <div class="pointer-container"></div>
+                    <section class="section">
+                      <div class="pointer"></div>
+                      <div class="abstract">
+                        <p>A representation of the size of the grammar (the total length of all right-hand sides
+of the rules plus the number of rules).</p>
+
+                      </div>
+                      <div class="declaration">
+                        <h4>Declaration</h4>
+                        <div class="language">
+                          <p class="aside-title">Swift</p>
+                          <pre class="highlight swift"><code><span class="kd">public</span> <span class="kd">typealias</span> <span class="kt">Size</span> <span class="o">=</span> <span class="kt"><a href="../Typealiases.html#/s:7Lotsawa11GrammarSizea">GrammarSize</a></span></code></pre>
+
+                        </div>
+                      </div>
+                      <div class="slightly-smaller">
+                        <a href="https://github.com/val-lang/Lotsawa/tree/refs/heads/docc/Sources/Lotsawa/Grammar.swift#L67">Show on GitHub</a>
+                      </div>
+                    </section>
+                  </div>
+                </li>
+                <li class="item">
+                  <div>
+                    <code>
+                    <a name="/s:7Lotsawa7GrammarV8Positiona"></a>
+                    <a name="//apple_ref/swift/Alias/Position" class="dashAnchor"></a>
+                    <a class="token" href="#/s:7Lotsawa7GrammarV8Positiona">Position</a>
+                    </code>
+                  </div>
+                  <div class="height-container">
+                    <div class="pointer-container"></div>
+                    <section class="section">
+                      <div class="pointer"></div>
+                      <div class="abstract">
+                        <p>A location in the grammar; e.g. the position of a dot in a partially-recognized rule.</p>
+
+                      </div>
+                      <div class="declaration">
+                        <h4>Declaration</h4>
+                        <div class="language">
+                          <p class="aside-title">Swift</p>
+                          <pre class="highlight swift"><code><span class="kd">public</span> <span class="kd">typealias</span> <span class="kt">Position</span> <span class="o">=</span> <span class="kt"><a href="../Typealiases.html#/s:7Lotsawa11GrammarSizea">GrammarSize</a></span></code></pre>
+
+                        </div>
+                      </div>
+                      <div class="slightly-smaller">
+                        <a href="https://github.com/val-lang/Lotsawa/tree/refs/heads/docc/Sources/Lotsawa/Grammar.swift#L70">Show on GitHub</a>
+                      </div>
+                    </section>
+                  </div>
+                </li>
+                <li class="item">
+                  <div>
+                    <code>
+                    <a name="/s:7Lotsawa7GrammarV4sizes6UInt16Vvp"></a>
+                    <a name="//apple_ref/swift/Property/size" class="dashAnchor"></a>
+                    <a class="token" href="#/s:7Lotsawa7GrammarV4sizes6UInt16Vvp">size</a>
+                    </code>
+                  </div>
+                  <div class="height-container">
+                    <div class="pointer-container"></div>
+                    <section class="section">
+                      <div class="pointer"></div>
+                      <div class="abstract">
+                        <p>Returns the size of <code>self</code> (the sum of the lengths of each rule&rsquo;s RHS and LHS).</p>
+
+                      </div>
+                      <div class="declaration">
+                        <h4>Declaration</h4>
+                        <div class="language">
+                          <p class="aside-title">Swift</p>
+                          <pre class="highlight swift"><code><span class="kd">public</span> <span class="k">var</span> <span class="nv">size</span><span class="p">:</span> <span class="kt"><a href="../Structs/Grammar.html#/s:7Lotsawa7GrammarV4Sizea">Size</a></span> <span class="p">{</span> <span class="k">get</span> <span class="p">}</span></code></pre>
+
+                        </div>
+                      </div>
+                      <div class="slightly-smaller">
+                        <a href="https://github.com/val-lang/Lotsawa/tree/refs/heads/docc/Sources/Lotsawa/Grammar.swift#L73-L75">Show on GitHub</a>
+                      </div>
+                    </section>
+                  </div>
+                </li>
+                <li class="item">
+                  <div>
+                    <code>
+                    <a name="/s:7Lotsawa7GrammarV7ruleIDsQrvp"></a>
+                    <a name="//apple_ref/swift/Property/ruleIDs" class="dashAnchor"></a>
+                    <a class="token" href="#/s:7Lotsawa7GrammarV7ruleIDsQrvp">ruleIDs</a>
+                    </code>
+                  </div>
+                  <div class="height-container">
+                    <div class="pointer-container"></div>
+                    <section class="section">
+                      <div class="pointer"></div>
+                      <div class="abstract">
+                        <p>The identifiers of all rules.</p>
+
+                      </div>
+                      <div class="declaration">
+                        <h4>Declaration</h4>
+                        <div class="language">
+                          <p class="aside-title">Swift</p>
+                          <pre class="highlight swift"><code><span class="kd">public</span> <span class="k">var</span> <span class="nv">ruleIDs</span><span class="p">:</span> <span class="n">some</span> <span class="kt">RandomAccessCollection</span><span class="o">&lt;</span><span class="kt"><a href="../Structs/RuleID.html">RuleID</a></span><span class="o">&gt;</span> <span class="p">{</span> <span class="k">get</span> <span class="p">}</span></code></pre>
+
+                        </div>
+                      </div>
+                      <div class="slightly-smaller">
+                        <a href="https://github.com/val-lang/Lotsawa/tree/refs/heads/docc/Sources/Lotsawa/Grammar.swift#L78-L80">Show on GitHub</a>
+                      </div>
+                    </section>
+                  </div>
+                </li>
+                <li class="item">
+                  <div>
+                    <code>
+                    <a name="/s:7Lotsawa7GrammarV4RuleV"></a>
+                    <a name="//apple_ref/swift/Struct/Rule" class="dashAnchor"></a>
+                    <a class="token" href="#/s:7Lotsawa7GrammarV4RuleV">Rule</a>
+                    </code>
+                  </div>
+                  <div class="height-container">
+                    <div class="pointer-container"></div>
+                    <section class="section">
+                      <div class="pointer"></div>
+                      <div class="abstract">
+                        <p>A Backus-Naur Form (BNF) rule, or production.</p>
+
+                        <a href="../Structs/Grammar/Rule.html" class="slightly-smaller">See more</a>
+                      </div>
+                      <div class="declaration">
+                        <h4>Declaration</h4>
+                        <div class="language">
+                          <p class="aside-title">Swift</p>
+                          <pre class="highlight swift"><code><span class="kd">public</span> <span class="kd">struct</span> <span class="kt">Rule</span></code></pre>
+
+                        </div>
+                      </div>
+                      <div class="slightly-smaller">
+                        <a href="https://github.com/val-lang/Lotsawa/tree/refs/heads/docc/Sources/Lotsawa/Grammar.swift#L91-L106">Show on GitHub</a>
+                      </div>
+                    </section>
+                  </div>
+                </li>
+                <li class="item">
+                  <div>
+                    <code>
+                    <a name="/s:7Lotsawa7GrammarV5rulesQrvp"></a>
+                    <a name="//apple_ref/swift/Property/rules" class="dashAnchor"></a>
+                    <a class="token" href="#/s:7Lotsawa7GrammarV5rulesQrvp">rules</a>
+                    </code>
+                  </div>
+                  <div class="height-container">
+                    <div class="pointer-container"></div>
+                    <section class="section">
+                      <div class="pointer"></div>
+                      <div class="abstract">
+                        <p>The collection of all rules in the grammar.</p>
+
+                      </div>
+                      <div class="declaration">
+                        <h4>Declaration</h4>
+                        <div class="language">
+                          <p class="aside-title">Swift</p>
+                          <pre class="highlight swift"><code><span class="kd">public</span> <span class="k">var</span> <span class="nv">rules</span><span class="p">:</span> <span class="n">some</span> <span class="kt">RandomAccessCollection</span><span class="o">&lt;</span><span class="kt"><a href="../Structs/Grammar/Rule.html">Rule</a></span><span class="o">&gt;</span> <span class="p">{</span> <span class="k">get</span> <span class="p">}</span></code></pre>
+
+                        </div>
+                      </div>
+                      <div class="slightly-smaller">
+                        <a href="https://github.com/val-lang/Lotsawa/tree/refs/heads/docc/Sources/Lotsawa/Grammar.swift#L109-L113">Show on GitHub</a>
+                      </div>
+                    </section>
+                  </div>
+                </li>
+                <li class="item">
+                  <div>
+                    <code>
+                    <a name="/s:7Lotsawa7GrammarV7addRule3lhs3rhsAA0D2IDVAA6SymbolV_qd__tSlRd__AJ7ElementRtd__lF"></a>
+                    <a name="//apple_ref/swift/Method/addRule(lhs:rhs:)" class="dashAnchor"></a>
+                    <a class="token" href="#/s:7Lotsawa7GrammarV7addRule3lhs3rhsAA0D2IDVAA6SymbolV_qd__tSlRd__AJ7ElementRtd__lF">addRule(lhs:<wbr>rhs:<wbr>)</a>
+                    </code>
+                  </div>
+                  <div class="height-container">
+                    <div class="pointer-container"></div>
+                    <section class="section">
+                      <div class="pointer"></div>
+                      <div class="abstract">
+                        <p>Adds a rule recognizing <code>rhs</code> as <code>lhs</code>.</p>
+<div class="aside aside-precondition">
+    <p class="aside-title">Precondition</p>
+    <code>lhs</code> and all elements of <code>rhs</code> are non-negative; the resulting size of the
+grammar is representable by <code><a href="../Structs/Grammar.html#/s:7Lotsawa7GrammarV4Sizea">Size</a></code>.
+
+</div>
+
+                      </div>
+                      <div class="declaration">
+                        <h4>Declaration</h4>
+                        <div class="language">
+                          <p class="aside-title">Swift</p>
+                          <pre class="highlight swift"><code><span class="kd">@discardableResult</span>
+<span class="kd">public</span> <span class="k">mutating</span> <span class="kd">func</span> <span class="n">addRule</span><span class="o">&lt;</span><span class="kt">RHS</span><span class="p">:</span> <span class="kt">Collection</span><span class="o">&gt;</span><span class="p">(</span><span class="nv">lhs</span><span class="p">:</span> <span class="kt"><a href="../Structs/Symbol.html">Symbol</a></span><span class="p">,</span> <span class="nv">rhs</span><span class="p">:</span> <span class="kt">RHS</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kt"><a href="../Structs/RuleID.html">RuleID</a></span>
+  <span class="k">where</span> <span class="kt">RHS</span><span class="o">.</span><span class="kt">Element</span> <span class="o">==</span> <span class="kt"><a href="../Structs/Symbol.html">Symbol</a></span></code></pre>
+
+                        </div>
+                      </div>
+                      <div class="slightly-smaller">
+                        <a href="https://github.com/val-lang/Lotsawa/tree/refs/heads/docc/Sources/Lotsawa/Grammar.swift#L120-L129">Show on GitHub</a>
+                      </div>
+                    </section>
+                  </div>
+                </li>
+                <li class="item">
+                  <div>
+                    <code>
+                    <a name="/s:7Lotsawa7GrammarV10storedRuleyAC0D0Vyx_GAA0D2IDVF"></a>
+                    <a name="//apple_ref/swift/Method/storedRule(_:)" class="dashAnchor"></a>
+                    <a class="token" href="#/s:7Lotsawa7GrammarV10storedRuleyAC0D0Vyx_GAA0D2IDVF">storedRule(_:<wbr>)</a>
+                    </code>
+                  </div>
+                  <div class="height-container">
+                    <div class="pointer-container"></div>
+                    <section class="section">
+                      <div class="pointer"></div>
+                      <div class="abstract">
+                        <p>Returns the Rule corresponding to i</p>
+
+                      </div>
+                      <div class="declaration">
+                        <h4>Declaration</h4>
+                        <div class="language">
+                          <p class="aside-title">Swift</p>
+                          <pre class="highlight swift"><code><span class="kd">public</span> <span class="kd">func</span> <span class="nf">storedRule</span><span class="p">(</span><span class="n">_</span> <span class="nv">r</span><span class="p">:</span> <span class="kt"><a href="../Structs/RuleID.html">RuleID</a></span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kt"><a href="../Structs/Grammar/Rule.html">Rule</a></span></code></pre>
+
+                        </div>
+                      </div>
+                      <div class="slightly-smaller">
+                        <a href="https://github.com/val-lang/Lotsawa/tree/refs/heads/docc/Sources/Lotsawa/Grammar.swift#L134-L136">Show on GitHub</a>
+                      </div>
+                    </section>
+                  </div>
+                </li>
+                <li class="item">
+                  <div>
+                    <code>
+                    <a name="/s:7Lotsawa7GrammarV4rule10containingAA6RuleIDVs6UInt16V_tF"></a>
+                    <a name="//apple_ref/swift/Method/rule(containing:)" class="dashAnchor"></a>
+                    <a class="token" href="#/s:7Lotsawa7GrammarV4rule10containingAA6RuleIDVs6UInt16V_tF">rule(containing:<wbr>)</a>
+                    </code>
+                  </div>
+                  <div class="height-container">
+                    <div class="pointer-container"></div>
+                    <section class="section">
+                      <div class="pointer"></div>
+                      <div class="abstract">
+                        <p>Returns the ID of the rule containing <code>p</code>.</p>
+
+                      </div>
+                      <div class="declaration">
+                        <h4>Declaration</h4>
+                        <div class="language">
+                          <p class="aside-title">Swift</p>
+                          <pre class="highlight swift"><code><span class="kd">public</span> <span class="kd">func</span> <span class="nf">rule</span><span class="p">(</span><span class="n">containing</span> <span class="nv">p</span><span class="p">:</span> <span class="kt"><a href="../Structs/Grammar.html#/s:7Lotsawa7GrammarV8Positiona">Position</a></span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kt"><a href="../Structs/RuleID.html">RuleID</a></span></code></pre>
+
+                        </div>
+                      </div>
+                      <div class="slightly-smaller">
+                        <a href="https://github.com/val-lang/Lotsawa/tree/refs/heads/docc/Sources/Lotsawa/Grammar.swift#L154-L156">Show on GitHub</a>
+                      </div>
+                    </section>
+                  </div>
+                </li>
+              </ul>
+            </div>
+          </div>
+        </section>
+
+      </article>
+    </div>
+    <section class="footer">
+      <p>© 2023 Dave Abrahams. (Last updated: 2023-08-08)</p>
+      <p>Generated by <a class="link" href="https://github.com/realm/jazzy" target="_blank" rel="external noopener">jazzy ♪♫ v0.14.3</a>, a <a class="link" href="https://realm.io" target="_blank" rel="external noopener">Realm</a> project.</p>
+    </section>
+  </body>
+</html>
