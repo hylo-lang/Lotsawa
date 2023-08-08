@@ -2,23 +2,20 @@ name: Publish Documentation
 
 on:
   push:
-    branches: [ main ]
+    branches: [ "*" ]
 
 jobs:
   macos:
     runs-on: macos-latest
     steps:
     - uses: actions/checkout@v2
-    - name: Install jazzy
-      run: gem install jazzy
-    - name: Generate documentation
-      run: |
-        jazzy \
-        --clean \
-        --source-host-files-url "https://github.com/${GITHUB_REPOSITORY}/tree/${GITHUB_REF}" \
-        --module-version "${{ github.event.release.tag_name }}" \
-        --copyright "© $(date '+%Y') Dave Abrahams. (Last updated: $(date '+%Y-%m-%d'))" \
-        --config .jazzy.yml
+    - uses: fwcd/swift-docc-action@v1
+      with:
+        target: YourTarget
+        output: ./docs
+        hosting-base-path: yourproject
+        disable-indexing: 'true'
+        transform-for-static-hosting: 'true'
     - name: Commit docs
       run: |
         mv docs updated-docs
