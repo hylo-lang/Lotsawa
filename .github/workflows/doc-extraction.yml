@@ -30,7 +30,7 @@ jobs:
         run: mkdir _site
       - name: Run DocC
         run: |
-          swift package --allow-writing-to-directory ./docc \
+          swift package --allow-writing-to-directory ./_site \
           generate-documentation \
           --product Lotsawa \
           --output-path _site/docc \
