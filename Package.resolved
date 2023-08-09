@@ -8,6 +8,24 @@
         "revision" : "ecfdaf5db81dcea8c7162f85e6defc5a7052b618",
         "version" : "2.1.0"
       }
+    },
+    {
+      "identity" : "spimanifest",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/SwiftPackageIndex/SPIManifest.git",
+      "state" : {
+        "revision" : "59b957c55c274ae08da9aaa36efcaac3fb7a326c",
+        "version" : "0.19.0"
+      }
+    },
+    {
+      "identity" : "yams",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/jpsim/Yams.git",
+      "state" : {
+        "revision" : "0d9ee7ea8c4ebd4a489ad7a73d5c6cad55d6fed3",
+        "version" : "5.0.6"
+      }
     }
   ],
   "version" : 2

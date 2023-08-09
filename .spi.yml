@@ -2,3 +2,10 @@ version: 1
 builder:
   configs:
     - documentation_targets: [Lotsawa]
+
+  custom_documentation_parameters: [
+  --include-extended-types, --enable-inherited-docs,
+  --source-service, github,
+  --source-service-base-url, https://github.com/val-lang/Lotsawa/blob/main,
+  --checkout-path, .
+  ]
