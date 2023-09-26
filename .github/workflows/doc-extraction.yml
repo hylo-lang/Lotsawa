@@ -1,5 +1,9 @@
 name: Extract And Publish Documentation
 
+defaults:
+  run:
+    shell: bash -eo pipefail {0}
+
 on:
   push:
     branches: ["main", "docc"]
@@ -22,12 +26,30 @@ concurrency:
 jobs:
   # Build job
   build:
+    if: github.repository == 'hylo-lang/Lotsawa'
     runs-on: macos-latest
     steps:
       - name: Checkout
         uses: actions/checkout@v3
       - name: Make site Directory
-        run: mkdir _site
+        run: mkdir -p _site/docc
+      - name: Prepare Shell Environment
+        # The format of the ${GITHUB_ENV} file is extremely restrictive; it apparently only supports
+        # lines of the form:
+        #
+        #   <variable-name>=<one-line-of-text>
+        #
+        # And a multiline version
+        # (https://docs.github.com/en/actions/using-workflows/workflow-commands-for-github-actions#multiline-strings).
+        # It is not interpreted directly by a shell, so any quotes or other special characters are
+        # taken literally.
+
+        # FIXME: REF_URL_COMPONENT computation is probably wrong for some refs.
+        run: |
+          echo "REPO_SANS_OWNER=${GITHUB_REPOSITORY##*/}
+          REF_URL_COMPONENT=${GITHUB_REF##*/}
+          " >> "${GITHUB_ENV}"
+
       - name: Run DocC
         run: |
           swift package --allow-writing-to-directory ./_site \
@@ -37,18 +59,22 @@ jobs:
           --experimental-documentation-coverage --level detailed \
           --enable-inherited-docs \
           --transform-for-static-hosting \
-          --hosting-base-path Lotsawa/docc
+          --hosting-base-path "${REPO_SANS_OWNER}/docc/${TARGET}" \
+          --source-service github \
+          --source-service-base-url "https://github.com/${GITHUB_REPOSITORY}/blob/${REF_URL_COMPONENT}" \
+          --checkout-path "$(pwd)"
       - name: Install jazzy
         run: gem install jazzy
       - name: Run Jazzy
         run: |
           jazzy \
-          --clean \
-          --source-host-files-url "https://github.com/${GITHUB_REPOSITORY}/tree/${GITHUB_REF}" \
+          --source-host-files-url "https://github.com/${GITHUB_REPOSITORY}/blob/${REF_URL_COMPONENT}" \
+          --module Lotsawa \
           --module-version "${{ github.event.release.tag_name }}" \
           --copyright "© $(date '+%Y') Dave Abrahams. (Last updated: $(date '+%Y-%m-%d'))" \
           --config .jazzy.yml \
-          --output _site/jazzy
+          --output _site/jazzy \
+          --min-acl private
 
       - name: Setup Pages
         uses: actions/configure-pages@v3
@@ -64,6 +90,7 @@ jobs:
 
   # Deployment job
   deploy:
+    if: github.repository == 'hylo-lang/Lotsawa'
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
