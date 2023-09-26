@@ -1,5 +1,9 @@
 # Lotsawa
 
+[![](https://img.shields.io/endpoint?url=https%3A%2F%2Fswiftpackageindex.com%2Fapi%2Fpackages%2Fval-lang%2FLotsawa%2Fbadge%3Ftype%3Dswift-versions)](https://swiftpackageindex.com/val-lang/Lotsawa)
+
+[![](https://img.shields.io/endpoint?url=https%3A%2F%2Fswiftpackageindex.com%2Fapi%2Fpackages%2Fval-lang%2FLotsawa%2Fbadge%3Ftype%3Dswift-versions)](https://swiftpackageindex.com/val-lang/Lotsawa)
+
 A parsing library and tool with the essential features of
 [MARPA](https://jeffreykegler.github.io/Marpa-web-site/), encoded in pure Swift.
 
