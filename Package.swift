@@ -17,7 +17,7 @@ let package = Package(
             targets: ["Lotsawa"]),
     ],
     dependencies: [
-      .package(url: "https://github.com/dabrahams/citron.git", from: "2.1.0"),
+      .package(url: "https://github.com/dabrahams/citron.git", from: "2.1.1"),
       .package(url: "https://github.com/apple/swift-docc-plugin.git", from: "1.1.0"),
       .package(url: "https://github.com/SwiftPackageIndex/SPIManifest.git", from: "0.12.0")
     ],
