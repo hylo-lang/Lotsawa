@@ -36,7 +36,7 @@ extension DebugGrammar {
     symbols[startSymbol] = Symbol(0)
     symbolName = [startSymbol]
     let tokens = testGrammarScanner.tokens(
-      in: bnf, fromFile: file, unrecognizedToken: .ILLEGAL_CHARACTER)
+      in: bnf, fromFile: file, unrecognizedCharacter: .ILLEGAL_CHARACTER)
     let parser = DebugGrammarParser()
     for (id, text, position) in tokens {
       try parser.consume(token: AST.Token(id, text, at: position), code: id)
