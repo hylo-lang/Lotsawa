@@ -1,8 +1,8 @@
 # Lotsawa
 
-[![](https://img.shields.io/endpoint?url=https%3A%2F%2Fswiftpackageindex.com%2Fapi%2Fpackages%2Fval-lang%2FLotsawa%2Fbadge%3Ftype%3Dswift-versions)](https://swiftpackageindex.com/val-lang/Lotsawa)
+[![](https://img.shields.io/endpoint?url=https%3A%2F%2Fswiftpackageindex.com%2Fapi%2Fpackages%2Fval-lang%2FLotsawa%2Fbadge%3Ftype%3Dswift-versions)](https://swiftpackageindex.com/hylo-lang/Lotsawa)
 
-[![](https://img.shields.io/endpoint?url=https%3A%2F%2Fswiftpackageindex.com%2Fapi%2Fpackages%2Fval-lang%2FLotsawa%2Fbadge%3Ftype%3Dswift-versions)](https://swiftpackageindex.com/val-lang/Lotsawa)
+[![](https://img.shields.io/endpoint?url=https%3A%2F%2Fswiftpackageindex.com%2Fapi%2Fpackages%2Fval-lang%2FLotsawa%2Fbadge%3Ftype%3Dswift-versions)](https://swiftpackageindex.com/hylo-lang/Lotsawa)
 
 A parsing library and tool with the essential features of
 [MARPA](https://jeffreykegler.github.io/Marpa-web-site/), encoded in pure Swift.
@@ -17,8 +17,8 @@ Lotsawa owes almost everything of value to MARPA and its author, Jeffrey Kegler,
 [thread of progress in parsing technology](https://jeffreykegler.github.io/personal/timeline_v3),
 gathering it together into one group of algorithms, proving important properties about them, and
 contributing some key innovations.  This project exists primarily because MARPA is [missing
-functionality](https://github.com/jeffreykegler/libmarpa/issues/117) needed by the [Val
-language](https://github.com/val-lang/val) implementation.
+functionality](https://github.com/jeffreykegler/libmarpa/issues/117) needed by the [Hylo
+language](https://github.com/hylo-lang/hylo) implementation.
 
 Secondary reasons Lotsawa might be useful:
 

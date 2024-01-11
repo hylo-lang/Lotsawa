@@ -3,5 +3,5 @@ author: Dave Abrahams
 theme: fullwidth
 output: ./docs
 author_url: "https://daveabrahams.com"
-github_url: "https://github.com/val-lang/Lotsawa"
-root_url: "https://val-lang.github.io/Lotsawa/reference/"
+github_url: "https://github.com/hylo-lang/Lotsawa"
+root_url: "https://hylo-lang.github.io/Lotsawa/reference/"

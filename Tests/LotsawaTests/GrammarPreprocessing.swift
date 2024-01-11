@@ -11,7 +11,7 @@ class GrammarPreprocessing: XCTestCase {
   }
 }
 
-// This is a very ambiguous grammar derived from Val with explicit representation of whitespace.
+// This is a very ambiguous grammar derived from Hylo with explicit representation of whitespace.
 let valWithExplicitWhitespace: [(lhs: Int, rhs: [Int])] = [
   (lhs: 2, rhs: [3]),
   (lhs: 2, rhs: [4]),
