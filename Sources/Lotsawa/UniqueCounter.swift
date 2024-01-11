@@ -1,5 +1,6 @@
-// A function object; returns the number of unique `T`'s in a given Sequence.
-// Implemented as a function object to optimize repeated invocations by reusing a Set<T>.
+/// A function object; returns the number of unique `T`'s in a given Sequence.
+///
+/// Implemented as a function object to optimize repeated invocations by reusing a Set<T>.
 struct UniqueCounter<T: Hashable> {
   private var scratch: Set<T> = []
 
