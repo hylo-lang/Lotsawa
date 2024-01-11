@@ -1,0 +1,89 @@
+---
+name: Build and test
+
+"on":
+  push:
+    branches: [main]
+  pull_request:
+    branches: ["**"]
+
+jobs:
+
+  devcontainer:
+    name: "Devcontainer: ${{ matrix.os }}/${{ matrix.configuration }}"
+    strategy:
+      matrix:
+        os: [ubuntu-latest]
+        configuration: [debug]
+
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          show-progress: false
+
+      - name: Build and Test
+        uses: devcontainers/ci@v0.3
+        with:
+          runCmd: swift test --explicit-target-dependency-import-check=error -c ${{ matrix.configuration }}
+
+  xcode:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          show-progress: false
+
+      - name: Build and Test
+        run: xcrun xcodebuild -skipPackagePluginValidation -scheme Lotsawa -destination 'platform=macOS' test
+
+  native:
+    name: "Native: ${{ matrix.os }}/${{ matrix.configuration }}"
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [macos-latest, ubuntu-latest, windows-latest]
+
+        configuration: [debug]
+
+        include:
+          # Default values to add
+          - shell: 'bash -eo pipefail {0}'
+          - build-options: '--explicit-target-dependency-import-check=error'
+
+          # Overrides for the defaults
+          - shell: pwsh
+            os: windows-latest
+
+    runs-on: ${{ matrix.os }}
+
+    defaults:
+      run:
+        shell: ${{ matrix.shell }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          show-progress: false
+
+
+      - name: Setup Swift (Unices)
+        if: ${{ matrix.os != 'windows-latest' }}
+        uses: 'swift-actions/setup-swift@v1'
+        with:
+          version: 5.9
+
+      - name: Setup Swift (Windows)
+        if: ${{ matrix.os == 'windows-latest' }}
+        uses: 'compnerd/gha-setup-swift@main'
+        with:
+          github-repo: thebrowsercompany/swift-build
+          release-asset-name: installer-amd64.exe
+          release-tag-name: 20231010.3
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and Test (${{ matrix.configuration }})
+        run: >
+          swift test -c ${{ matrix.configuration }} ${{ matrix.build-options }}
+          --explicit-target-dependency-import-check=error

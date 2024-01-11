@@ -1,0 +1,32 @@
+name: Code Coverage
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ "**" ]
+   
+jobs:
+
+  codecov:
+    runs-on: macos-latest
+
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        submodules: true
+        show-progress: false
+
+
+    - name: Test and generate code coverage report
+      run: xcrun xcodebuild -skipPackagePluginValidation -enableCodeCoverage YES -scheme Lotsawa -destination 'platform=macOS' test
+
+    - name: Upload coverage to Codecov
+      uses: codecov/codecov-action@v3
+      with:
+        env_vars: OS
+        fail_ci_if_error: true
+        flags: unittests
+        swift: true
+        name: codecov-umbrella
+        verbose: true
