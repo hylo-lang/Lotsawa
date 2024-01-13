@@ -114,8 +114,9 @@ class GrammarPreprocessingTests: XCTestCase {
 
   func testDenullification_slow() {
 
-    // Exhaustively test all 3^8 combinations of grammars containing S -> RHS
-    // where RHS has 0-8 symbols and each symbol of RHS is a unique symbol that is either nulling, nullable, or non-nullable.
+    // Exhaustively test all 3^8 combinations of grammars containing S -> RHS where RHS has 0-8
+    // symbols and each symbol of RHS is a unique symbol that is either nulling, nullable, or
+    // non-nullable.
     let maxRHSCount: Symbol.ID = 8
     for n in 0...maxRHSCount {
       var base = TinyGrammar(recognizing: Symbol(0))
