@@ -72,7 +72,8 @@ extension Grammar {
     return (nullable: nullable, nulling: nulling)
   }
 
-  /// Returns a dictionary mapping each symbol that appears on the RHS of a rule to
+  /// Returns a dictionary mapping each symbol that appears on the RHS of any rule to the rules on
+  /// whose RHS the symbol appears.
   func rulesByRHS() -> MultiMap<Symbol, RuleID> {
     var result = MultiMap<Symbol, RuleID>()
     for (i, r) in zip(ruleIDs, rules) {
