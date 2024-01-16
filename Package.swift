@@ -9,7 +9,7 @@ let CitronLexer
 
 /// Dependencies for documentation extraction.
 ///
-/// Most people don't need to extract documentation; set `HYLO_ENABLE_DOC_GENERATION` in your
+/// Most people don't need to extract documentation; set `LOTSAWA_ENABLE_DOC_GENERATION` in your
 /// environment if you do.
 let docGenerationDependency: [Package.Dependency] =
   ProcessInfo.processInfo.environment["LOTSAWA_ENABLE_DOC_GENERATION"] != nil
