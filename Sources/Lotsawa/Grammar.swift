@@ -20,7 +20,10 @@ public struct Symbol: Hashable, Comparable {
   public static var maxID: ID { (1 << 14) - 1 }
 }
 
-// A type that can represent the size of any grammar.
+/// A type that can represent the size of any grammar.
+///
+/// A grammar's size is defined to be the sum of the sizes of its BNF rules, where the size of a
+/// rule is one greater than the size of its right-hand side.
 public typealias GrammarSize = UInt16
 
 /// A rule identifier for public consumption.
@@ -32,9 +35,8 @@ public struct RuleID: Hashable, Comparable {
 }
 
 
-/// A collection of Backus-Naur Form (BNF) rules, each defining a symbol
-/// on its left-hand side in terms of a string of symbols on its right-hand
-/// side.
+/// A collection of Backus-Naur Form (BNF) rules, each defining a symbol on its left-hand side in
+/// terms of a string of symbols on its right-hand side.
 ///
 /// - Parameter StoredSymbol: storage representation of `Symbol.id` values in this grammar.
 public struct Grammar<StoredSymbol: SignedInteger & FixedWidthInteger> {
