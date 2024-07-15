@@ -22,7 +22,7 @@ jobs:
       run: xcrun xcodebuild -skipPackagePluginValidation -enableCodeCoverage YES -scheme Lotsawa -destination 'platform=macOS' test
 
     - name: Upload coverage to Codecov
-      uses: codecov/codecov-action@v3
+      uses: codecov/codecov-action@v4
       with:
         env_vars: OS
         fail_ci_if_error: true
