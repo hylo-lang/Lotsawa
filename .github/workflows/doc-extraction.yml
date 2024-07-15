@@ -91,7 +91,7 @@ jobs:
         --min-acl private
 
     - name: Setup Pages
-      uses: actions/configure-pages@v3
+      uses: actions/configure-pages@v5
 
     - name: Fix permissions
       run: |
