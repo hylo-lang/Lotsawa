@@ -10,6 +10,15 @@
       }
     },
     {
+      "identity" : "hylo-spec-parser",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/dabrahams/hylo-spec-parser.git",
+      "state" : {
+        "branch" : "main",
+        "revision" : "5b2622b36bba863f2c4902c4c9dcbb5268f402e2"
+      }
+    },
+    {
       "identity" : "spimanifest",
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/SwiftPackageIndex/SPIManifest.git",
@@ -23,8 +32,8 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/jpsim/Yams.git",
       "state" : {
-        "revision" : "0d9ee7ea8c4ebd4a489ad7a73d5c6cad55d6fed3",
-        "version" : "5.0.6"
+        "revision" : "3036ba9d69cf1fd04d433527bc339dc0dc75433d",
+        "version" : "5.1.3"
       }
     }
   ],

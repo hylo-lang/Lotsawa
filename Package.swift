@@ -27,14 +27,15 @@ let package = Package(
     ],
     dependencies: [
       .package(url: "https://github.com/dabrahams/citron.git", from: "2.1.5"),
-      .package(url: "https://github.com/SwiftPackageIndex/SPIManifest.git", from: "0.12.0")
+      .package(url: "https://github.com/SwiftPackageIndex/SPIManifest.git", from: "0.12.0"),
+      .package(url: "https://github.com/dabrahams/hylo-spec-parser.git", branch: "main"),
     ]
       + docGenerationDependency,
 
     targets: [
         .target(
             name: "Lotsawa",
-            dependencies: []),
+            dependencies: [.product(name: "HyloEBNF", package: "hylo-spec-parser")]),
         .testTarget(
             name: "LotsawaTests",
             dependencies: ["Lotsawa", CitronParser, CitronLexer],
