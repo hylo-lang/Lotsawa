@@ -1,4 +1,5 @@
 {
+  "originHash" : "d1e34fdb2ca25d057f59ed9573c5bc295cbcdaed69e42def6d10243b96f90b79",
   "pins" : [
     {
       "identity" : "citron",
@@ -6,7 +7,7 @@
       "location" : "https://github.com/dabrahams/citron.git",
       "state" : {
         "revision" : "d19a40c8de65b68fec0d224576d60565c1f7ccf1",
-        "version" : "2.1.5"
+        "version" : "2.1.7"
       }
     },
     {
@@ -28,5 +29,5 @@
       }
     }
   ],
-  "version" : 2
+  "version" : 3
 }

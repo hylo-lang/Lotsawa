@@ -1,4 +1,4 @@
-// swift-tools-version: 5.7
+// swift-tools-version: 6.0
 import PackageDescription
 import Foundation
 
@@ -26,7 +26,7 @@ let package = Package(
             targets: ["Lotsawa"]),
     ],
     dependencies: [
-      .package(url: "https://github.com/dabrahams/citron.git", from: "2.1.5"),
+      .package(url: "https://github.com/dabrahams/citron.git", from: "2.1.7"),
       .package(url: "https://github.com/SwiftPackageIndex/SPIManifest.git", from: "0.12.0")
     ]
       + docGenerationDependency,

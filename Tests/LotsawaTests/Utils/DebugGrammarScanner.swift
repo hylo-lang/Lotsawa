@@ -6,22 +6,23 @@ import CitronLexerModule
 let comment = #"(?://\P{Bidi_Class=B}*)"#
 
 /// A lexical analyzer for the grammar we use to describe other grammars for testing.
-let testGrammarScanner = Scanner<DebugGrammarParser.CitronTokenCode>(
-  literalStrings: [
-    "::=": .IS_DEFINED_AS,
-    "_": .UNDERSCORE,
-    "|": .ALTERNATION,
-  ],
-  patterns: [
-    /// A mapping from regular expression pattern to either a coresponding token ID,
-    /// or `nil` if the pattern is to be discarded (e.g. for whitespace).
-    #"[A-Za-z][-_A-Za-z0-9]*(?=\s*::=)"#: .LHS,
-    #"[A-Za-z][-_A-Za-z0-9]*(?!\s*::=)"#: .SYMBOL,
-    #"'([^\\']|\\.)*'"#: .LITERAL,
-    #"\s*"#: nil,
-    comment: nil,
-  ]
-)
+var testGrammarScanner : Scanner<DebugGrammarParser.CitronTokenCode> {
+  return .init(
+    literalStrings: [
+      "::=": .IS_DEFINED_AS,
+      "_": .UNDERSCORE,
+      "|": .ALTERNATION,
+    ],
+    patterns: [
+      /// A mapping from regular expression pattern to either a coresponding token ID,
+      /// or `nil` if the pattern is to be discarded (e.g. for whitespace).
+      #"[A-Za-z][-_A-Za-z0-9]*(?=\s*::=)"#: .LHS,
+      #"[A-Za-z][-_A-Za-z0-9]*(?!\s*::=)"#: .SYMBOL,
+      #"'([^\\']|\\.)*'"#: .LITERAL,
+      #"\s*"#: nil,
+      comment: nil,
+    ])
+}
 
 extension DebugGrammar.AST {
 

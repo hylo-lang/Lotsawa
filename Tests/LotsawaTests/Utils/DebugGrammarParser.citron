@@ -4,7 +4,7 @@
   import CitronParserModule
   import CitronLexerModule
 
-  extension _CitronParserUnexpectedTokenError : CustomDebugStringConvertible {
+  extension _CitronParserUnexpectedTokenError : @retroactive CustomDebugStringConvertible {
     public var debugDescription: String {
       if let t = token as? DebugGrammar.AST.Token {
         return "\n\(t.position): error: unexpected token (\(t), tokenCode: \(tokenCode))"
