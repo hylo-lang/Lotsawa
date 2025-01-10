@@ -73,61 +73,72 @@ extension BisonGrammar {
   public init(_ source: String) throws {
     var input = source[...]
 
-    func drop1() { input = input.dropFirst() }
-    func drop2() { input = input.dropFirst(2) }
+    @discardableResult
+    func pop1() -> Character? { input.popFirst() }
 
-    func dropExpected<S: StringProtocol>(_ s: S) throws {
-      if input.popInitial(s) == nil {
-        throw BisonSyntaxParseError(at: input[..<input.startIndex], "Expected \(s) not found")
+    @discardableResult
+    func pop2() -> Substring? {
+      defer {
+        input = input.dropFirst(2)
       }
+      return input.prefix(2)
     }
 
-    func popLines<S: StringProtocol>(between open: S, and close: S) throws -> Substring {
-      try dropWhitespace(throughEOL: true)
+    @discardableResult
+    func popExpected<S: StringProtocol>(_ s: S) throws -> Substring {
+      if let r = input.popInitial(s) { return r }
+      throw BisonSyntaxParseError(at: input[..<input.startIndex], "Expected \(s) not found")
+    }
+
+    func popExpectedLines<S: StringProtocol>(between open: S, and close: S) throws -> Substring {
+      try popSpaceAndComments(throughEOL: true)
       input = input.droppingHorizontalWhitespace()
-      try dropExpected(open)
+      try popExpected(open)
       input = input.droppingHorizontalWhitespace()
       input = input.dropFirst()
       let r = input.untilLineStartingWithToken(close)
       input = input[r.endIndex...].droppingHorizontalWhitespace()
-      try dropExpected(close)
-      try dropWhitespace()
+      try popExpected(close)
+      try popSpaceAndComments()
       return r
     }
 
-    func dropWhitespace(throughEOL: Bool = false) throws {
+    @discardableResult
+    func popSpaceAndComments(throughEOL: Bool = false) throws -> Substring {
+      let initial = input
       while !input.isEmpty {
         let first2 = input.prefix(2)
         if first2 == "//" {
-          drop2()
-          while !(input.first?.isNewline ?? false) { drop1() }
-          drop1()
-          if throughEOL { return }
+          pop2()
+          while !(input.first?.isNewline ?? false) { pop1() }
+          pop1()
+          if throughEOL { break }
         }
         else if first2 == "/*" {
-          drop2()
+          pop2()
           while !input.isEmpty && input.prefix(2) != "*/" {
             if throughEOL && !input.first!.isWhitespace { input = input.suffix(0) }
-            drop1()
+            pop1()
           }
           if input.isEmpty { throw BisonSyntaxParseError(at: first2, "Closing */ not found") }
-          drop2()
+          pop2()
         }
         else if input.first!.isWhitespace {
-          if throughEOL && input.first!.isNewline { drop1(); break }
-          drop1()
+          if throughEOL && input.first!.isNewline { pop1(); break }
+          pop1()
         }
         else { break }
       }
+      return initial[..<input.startIndex]
     }
 
-    try dropWhitespace()
-    self.prologue = try popLines(between: "%{", and: "%}")
+    try popSpaceAndComments()
+    self.prologue = try popExpectedLines(between: "%{", and: "%}")
     let declarations = input.untilLineStartingWithToken("%%")
     // read declarations instead of this
     _ = declarations
     input = input[declarations.endIndex...]
-    let rules = try popLines(between: "%%", and: "%%")
+    let rules = try popExpectedLines(between: "%%", and: "%%")
     // read rules instead of this
     _ = rules
     self.epilogue = input
