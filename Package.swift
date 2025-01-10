@@ -24,6 +24,9 @@ let package = Package(
         .library(
             name: "Lotsawa",
             targets: ["Lotsawa"]),
+        .library(
+            name: "LotsawaFrontend",
+            targets: ["LotsawaFrontend"]),
     ],
     dependencies: [
       .package(url: "https://github.com/dabrahams/citron.git", from: "2.1.7"),
@@ -35,10 +38,15 @@ let package = Package(
         .target(
             name: "Lotsawa",
             dependencies: []),
+        .target(
+            name: "LotsawaFrontend",
+            dependencies: ["Lotsawa"]),
         .testTarget(
             name: "LotsawaTests",
             dependencies: ["Lotsawa", CitronParser, CitronLexer],
-            plugins: [ .plugin(name: "CitronParserGenerator", package: "citron") ]
-        ),
+            plugins: [ .plugin(name: "CitronParserGenerator", package: "citron") ]),
+        .testTarget(
+            name: "LotsawaFrontendTests",
+            dependencies: ["Lotsawa", "LotsawaFrontend"])
     ]
 )
