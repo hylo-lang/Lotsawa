@@ -18,7 +18,7 @@ public struct BisonGrammar<StoredSymbol: SignedInteger & FixedWidthInteger> {
 
 extension StringProtocol {
 
-  mutating func untilLineStartingWithToken<S: StringProtocol>(_ t: S) -> Self.SubSequence {
+  func untilLineStartingWithToken<S: StringProtocol>(_ t: S) -> Self.SubSequence {
     var rest = self[...]
     while !rest.isEmpty {
       let lineStart = rest
@@ -132,12 +132,19 @@ extension BisonGrammar {
       return initial[..<input.startIndex]
     }
 
+    func readDeclaration() throws -> Bool {
+      if input.isEmpty { return false }
+      try popSpaceAndComments()
+      if input.starts(with: "%%") { return false }
+      input = input.drop { !$0.isNewline }
+      return true
+    }
+
     try popSpaceAndComments()
     self.prologue = try popExpectedLines(between: "%{", and: "%}")
-    let declarations = input.untilLineStartingWithToken("%%")
-    // read declarations instead of this
-    _ = declarations
-    input = input[declarations.endIndex...]
+
+    while try readDeclaration() {}
+
     let rules = try popExpectedLines(between: "%%", and: "%%")
     // read rules instead of this
     _ = rules
