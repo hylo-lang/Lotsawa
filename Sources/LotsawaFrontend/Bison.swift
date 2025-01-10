@@ -22,15 +22,11 @@ extension StringProtocol {
     var rest = self[...]
     while !rest.isEmpty {
       let lineStart = rest
-      // print("### line: \(rest.prefix(80))")
       rest = rest.droppingHorizontalWhitespace(followedBy: t)
-      // print("### after seeking \(t): \(rest.prefix(80))")
       if t.isEmpty || rest.startIndex != lineStart.startIndex {
-        // print("### FOUND")
         return self[..<lineStart.startIndex]
       }
       rest = rest.drop(while: { !$0.isNewline }).dropFirst()
-      // print("### after dropping remainder of line: \(rest.prefix(80))")
     }
     return self[...]
   }
@@ -93,9 +89,7 @@ extension BisonGrammar {
       input = input.droppingHorizontalWhitespace()
       input = input.dropFirst()
       let r = input.untilLineStartingWithToken(close)
-      // print("### between: \(r.prefix(80))...\(r.suffix(80))")
       input = input[r.endIndex...].droppingHorizontalWhitespace()
-      // print("### after: \(input.prefix(80))")
       try dropExpected(close)
       try dropWhitespace()
       return r
@@ -127,20 +121,15 @@ extension BisonGrammar {
       }
     }
 
-    // print("### drop: \(input.prefix(80))")
     try dropWhitespace()
-    // print("### after initial whitespace: \(input.prefix(80))")
     self.prologue = try popLines(between: "%{", and: "%}")
-    // print("### after prologue: \(input.prefix(80))")
     let declarations = input.untilLineStartingWithToken("%%")
     // read declarations instead of this
     _ = declarations
     input = input[declarations.endIndex...]
-    // print("### after declarations: \(input.prefix(80))")
     let rules = try popLines(between: "%%", and: "%%")
     // read rules instead of this
     _ = rules
-    // print("### after rules: \(input.prefix(80))")
     self.epilogue = input
     lotsawaGrammar = .init(recognizing: Symbol(id: 0))
   }
