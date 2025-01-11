@@ -24,11 +24,9 @@ let package = Package(
         .library(
             name: "Lotsawa",
             targets: ["Lotsawa"]),
-        /*
         .library(
             name: "LotsawaC",
             targets: ["LotsawaC"]),
-         */
         .library(
             name: "LotsawaFrontend",
             targets: ["LotsawaFrontend"]),
@@ -43,12 +41,11 @@ let package = Package(
         .target(
             name: "Lotsawa",
             dependencies: []),
-        /* Can't figure out how to get the import header LotsawaC.h
         .target(
             name: "LotsawaC",
-            dependencies: ["Lotsawa"]),
-
-         */
+            dependencies: ["Lotsawa"],
+            swiftSettings: [
+              .unsafeFlags(["-import-objc-header", "Sources/LotsawaC/include/LotsawaC.h"])]),
         .target(
             name: "LotsawaFrontend",
             dependencies: ["Lotsawa"]),
@@ -61,8 +58,8 @@ let package = Package(
             dependencies: ["Lotsawa", "LotsawaFrontend"]),
         /*
         .testTarget(
-            name: "LotsawaCTests",
-            dependencies: ["LotsawaC"])
-         */
+          name: "LotsawaCTests",
+          dependencies: ["LotsawaC"]),
+        */
     ]
 )
