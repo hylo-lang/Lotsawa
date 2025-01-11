@@ -164,9 +164,9 @@ extension BisonGrammar {
     }
 
     @discardableResult
-    func popExpectedIdentifier() throws -> Substring {
-      if let id = popIdentifier() { return id }
-      try syntaxError("identifier expected")
+    func popExpectedIdentifier(_ expectation: String? = nil) throws -> Substring {
+      if let id = popIdentifier(), expectation == nil || id == expectation! { return id }
+      try syntaxError("\(expectation ?? "identifier") expected")
     }
 
     @discardableResult
@@ -179,6 +179,12 @@ extension BisonGrammar {
       if input.isEmpty { input = start; return nil }
       pop1()
       return start[..<input.startIndex]
+    }
+
+    @discardableResult
+    func popExpectedCharConstant() throws -> Substring {
+      if let r = popCharConstant() { return r }
+      try syntaxError("unterminated char constant")
     }
 
     @discardableResult
@@ -335,14 +341,42 @@ extension BisonGrammar {
       return true
     }
 
+    func readRule() throws -> Bool {
+      try popSpaceAndComments()
+      guard let lhs = popIdentifier() else { return false }
+      _ = lhs
+      try popSpaceAndComments()
+      try popExpected(":")
+      try popSpaceAndComments()
+      while let c = input.first, c != ";" {
+        switch c {
+        case "|":
+          pop1()
+        case "{":
+          try popExpectedBalancedBraces()
+        case "'":
+          try popExpectedCharConstant()
+        case "%":
+          try popExpectedIdentifier("empty")
+        default:
+          try popExpectedIdentifier()
+        }
+        try popSpaceAndComments()
+      }
+      try popExpected(";")
+      return true
+    }
+
     try popSpaceAndComments()
     self.prologue = try popExpectedLines(between: "%{", and: "%}")
 
     while try readDeclaration() {}
 
-    let rules = try popExpectedLines(between: "%%", and: "%%")
-    // read rules instead of this
-    _ = rules
+    var rules = try popExpectedLines(between: "%%", and: "%%")
+    swap(&rules, &input)
+    while try readRule() {}
+    swap(&rules, &input)
+
     self.epilogue = input
     lotsawaGrammar = .init(recognizing: Symbol(id: 0))
   }
