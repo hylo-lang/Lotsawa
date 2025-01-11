@@ -59,11 +59,21 @@ extension StringProtocol {
 
 extension StringProtocol where SubSequence == Self {
 
+  @discardableResult
   mutating func popInitial<S: StringProtocol>(_ s: S) -> Self? {
     let r = self.droppingInitial(s)
     if !s.isEmpty && r.startIndex == self.startIndex { return nil }
     defer { self = r }
     return self[..<r.startIndex]
+  }
+
+  @discardableResult
+  mutating func popHorizontalWhitespace() -> Self? {
+    let next = self.droppingHorizontalWhitespace()
+    if next.startIndex == self.startIndex { return nil }
+    let r = self[..<next.startIndex]
+    self = next
+    return r
   }
 
 }
@@ -84,10 +94,14 @@ extension BisonGrammar {
       return input.prefix(2)
     }
 
+    func syntaxError(at position: Substring? = nil, _ message: String) throws -> Never {
+       throw BisonSyntaxParseError(at: position ?? input[..<input.startIndex], message)
+    }
+
     @discardableResult
     func popExpected<S: StringProtocol>(_ s: S) throws -> Substring {
       if let r = input.popInitial(s) { return r }
-      throw BisonSyntaxParseError(at: input[..<input.startIndex], "Expected \(s) not found")
+      try syntaxError("Expected \(s) not found")
     }
 
     func popExpectedLines<S: StringProtocol>(between open: S, and close: S) throws -> Substring {
@@ -132,11 +146,192 @@ extension BisonGrammar {
       return initial[..<input.startIndex]
     }
 
-    func readDeclaration() throws -> Bool {
-      if input.isEmpty { return false }
+    @discardableResult
+    func popIdentifier() -> Substring? {
+      let id = input.prefix(while: { $0 == "_" || $0.isLetter || $0.isNumber })
+      if !id.isEmpty && (id.first == "_" || id.first!.isLetter) {
+        input = input[id.endIndex...]
+        return id
+      }
+      return nil
+    }
+
+    @discardableResult
+    func popNonwhitespace() -> Substring? {
+      let start = input
+      while let c = input.first, !c.isWhitespace { pop1() }
+      return start.startIndex == input.startIndex ? nil : start[..<input.startIndex]
+    }
+
+    @discardableResult
+    func popExpectedIdentifier() throws -> Substring {
+      if let id = popIdentifier() { return id }
+      try syntaxError("identifier expected")
+    }
+
+    @discardableResult
+    func popCharConstant() -> Substring? {
+      let start = input
+      if input.first != "'" { return nil }
+      pop1()
+      if input.first == "\\" { pop2() }
+      while !input.isEmpty && input.first != "'" { pop1() }
+      if input.isEmpty { input = start; return nil }
+      pop1()
+      return start[..<input.startIndex]
+    }
+
+    @discardableResult
+    func popStringConstant() -> Substring? {
+      let start = input
+      if input.first != "\"" { return nil }
+      pop1()
+      while !input.isEmpty && input.first != "\"" {
+        if input.first == "\\" { pop1() }
+        pop1()
+      }
+      if input.isEmpty { input = start; return nil }
+      pop1()
+      return start[..<input.startIndex]
+    }
+
+    @discardableResult
+    func popBalancedBraces() throws -> Substring? {
+      let saved = input
       try popSpaceAndComments()
+      var nesting = 0
+      if !input.starts(with: "{") { return nil }
+      pop1()
+      try popSpaceAndComments()
+      nesting = 1
+      while !input.isEmpty && nesting != 0 {
+        switch input.first {
+        case "{":
+          nesting += 1
+          pop1()
+        case "}":
+          nesting -= 1
+          pop1()
+        case "'":
+          if popCharConstant() == nil {
+            try syntaxError("unterminated char constant")
+          }
+        case "\"":
+          if popStringConstant() == nil {
+            try syntaxError("unterminated string constant")
+          }
+        default:
+          if try popSpaceAndComments().isEmpty { pop1() }
+        }
+      }
+      return saved[..<input.startIndex]
+    }
+
+    @discardableResult
+    func popExpectedBalancedBraces() throws -> Substring {
+      if let b = try popBalancedBraces() { return b }
+      try syntaxError("expected balanced braces")
+    }
+
+    @discardableResult
+    func popExpectedOptionalIdentifierAndThenBalancedBraces() throws -> (identifier: Substring?, body: Substring)
+    {
+      try popSpaceAndComments()
+      let id = popIdentifier()
+      let b = try popExpectedBalancedBraces()
+      return (id, b)
+    }
+
+    @discardableResult
+    func popLine() -> Substring? {
+      let start = input
+      while let c = input.popFirst(), !c.isNewline {}
+      if input.startIndex == start.startIndex { return nil }
+      return start[..<input.startIndex]
+    }
+
+    @discardableResult
+    func popExpectedStringConstant() throws -> Substring {
+      try popSpaceAndComments()
+      let saved = input
+      if popStringConstant() == nil {
+        try syntaxError("expected string constant")
+      }
+      return saved[..<input.startIndex]
+    }
+
+    func readDeclaration() throws -> Bool {
+      try popSpaceAndComments()
+      if input.isEmpty { return false }
       if input.starts(with: "%%") { return false }
-      input = input.drop { !$0.isNewline }
+      try popExpected("%")
+      let key = try popExpectedIdentifier()
+      switch key {
+      case "union":
+        try popExpectedOptionalIdentifierAndThenBalancedBraces()
+      case "token":
+        input.popHorizontalWhitespace()
+        if let id = popIdentifier() {
+          _ = id
+          popLine()
+        }
+        else {
+          let x = input.untilLineStartingWithToken("%")
+          input = input[x.endIndex...]
+        }
+      case "right", "left", "nonassoc", "precedence":
+        try popSpaceAndComments()
+        popLine()
+      case "type", "nterm":
+        try popSpaceAndComments()
+        popLine()
+      case "start":
+        try popSpaceAndComments()
+        popLine()
+      case "expect", "expect-rr":
+        try popSpaceAndComments()
+        popLine()
+      case "code":
+        try popExpectedOptionalIdentifierAndThenBalancedBraces()
+      case "debug": break
+      case "define":
+        try popSpaceAndComments()
+        guard let variable = popNonwhitespace() else { try syntaxError("expected variable name") }
+        _ = variable
+        try popSpaceAndComments()
+        let body = try popBalancedBraces()
+        if body == nil {
+          let stringValue = popStringConstant()
+          if stringValue == nil { popLine() }
+        }
+      case "defines", "header":
+        try popSpaceAndComments()
+        popLine()
+        break
+      case "destructor":
+        try popSpaceAndComments()
+        try popExpectedBalancedBraces()
+        popLine()
+      case "file-prefix":
+        try popExpectedStringConstant()
+      case "language":
+        try popExpectedStringConstant()
+      case "locations": popLine()
+      case "name-prefix":
+        try popExpectedStringConstant()
+      case "no-lines": popLine()
+      case "output":
+        try popExpectedStringConstant()
+      case "pure-parser": popLine()
+      case "require":
+        try popExpectedStringConstant()
+      case "skeleton":
+        try popExpectedStringConstant()
+      case "token-table": popLine()
+      case "verbose": popLine()
+      case "yacc": popLine()
+      default: try syntaxError(at: key, "unknown directive")
+      }
       return true
     }
 
@@ -153,3 +348,43 @@ extension BisonGrammar {
   }
 
 }
+
+/*
+       case "code": break
+      case "debug": break
+      case "define": break
+      case "defines": break
+      case "destructor": break
+      case "empty": break
+      case "expect": break
+      case "expect-rr": break
+      case "file-prefix": break
+      case "glr-parser": break
+      case "header": break
+      case "initial-action": break
+      case "language": break
+      case "left": break
+      case "lex-param": break
+      case "locations": break
+      case "name-prefix": break
+      case "no-lines": break
+      case "nonassoc": break
+      case "nterm": break
+      case "output": break
+      case "param": break
+      case "parse-param": break
+      case "precedence": break
+      case "printer": break
+      case "pure-parser": break
+      case "require": break
+      case "right": break
+      case "skeleton": break
+      case "start": break
+      case "token": break
+      case "token-table": break
+      case "type": break
+      case "union": break
+      case "verbose": break
+      case "yacc": break
+
+ */
