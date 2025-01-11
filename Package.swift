@@ -24,6 +24,11 @@ let package = Package(
         .library(
             name: "Lotsawa",
             targets: ["Lotsawa"]),
+        /*
+        .library(
+            name: "LotsawaC",
+            targets: ["LotsawaC"]),
+         */
         .library(
             name: "LotsawaFrontend",
             targets: ["LotsawaFrontend"]),
@@ -38,6 +43,12 @@ let package = Package(
         .target(
             name: "Lotsawa",
             dependencies: []),
+        /* Can't figure out how to get the import header LotsawaC.h
+        .target(
+            name: "LotsawaC",
+            dependencies: ["Lotsawa"]),
+
+         */
         .target(
             name: "LotsawaFrontend",
             dependencies: ["Lotsawa"]),
@@ -47,6 +58,11 @@ let package = Package(
             plugins: [ .plugin(name: "CitronParserGenerator", package: "citron") ]),
         .testTarget(
             name: "LotsawaFrontendTests",
-            dependencies: ["Lotsawa", "LotsawaFrontend"])
+            dependencies: ["Lotsawa", "LotsawaFrontend"]),
+        /*
+        .testTarget(
+            name: "LotsawaCTests",
+            dependencies: ["LotsawaC"])
+         */
     ]
 )
