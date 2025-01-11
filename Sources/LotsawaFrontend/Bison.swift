@@ -349,6 +349,8 @@ extension BisonGrammar {
     }
 
     func readRule() throws -> Bool {
+      // Note: named references (3.6 in the bison manual) not
+      // implemented.
       try popSpaceAndComments()
       guard let lhs = popIdentifier() else { return false }
       _ = lhs
