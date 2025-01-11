@@ -95,7 +95,14 @@ extension BisonGrammar {
     }
 
     func syntaxError(at position: Substring? = nil, _ message: String) throws -> Never {
-       throw BisonSyntaxParseError(at: position ?? input[..<input.startIndex], message)
+      throw BisonSyntaxParseError(
+        // Temporarily grab the first 80 characters of input so we can
+        // tell where the error is from simple console output.
+        // Normally we'd have real reporting that refers to the file,
+        // line, column, etc. and we can go back to defaulting to a
+        // point in the input.
+        at: position ?? input/*[..<input.startIndex]*/.prefix(80), message
+      )
     }
 
     @discardableResult
