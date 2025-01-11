@@ -1,5 +1,6 @@
-struct LotsawaGrammar_;
-typedef struct LotsawaGrammar_* LotsawaGrammar;
+typedef struct LotsawaGrammar {
+  struct LotsawaGrammar_* value_;
+} LotsawaGrammar;
 
 struct LotsawaRule { int id; };
 
