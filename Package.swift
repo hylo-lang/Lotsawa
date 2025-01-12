@@ -15,6 +15,8 @@ let docGenerationDependency: [Package.Dependency] =
   ProcessInfo.processInfo.environment["LOTSAWA_ENABLE_DOC_GENERATION"] != nil
   ? [.package(url: "https://github.com/apple/swift-docc-plugin.git", from: "1.3.0")] : []
 
+let thisDirectory = try (#filePath).replacing(Regex(#"[\\/][^\\/]*$"#), with: "")
+
 let package = Package(
   name: "Lotsawa",
     platforms: [
@@ -45,7 +47,7 @@ let package = Package(
             name: "LotsawaC",
             dependencies: ["Lotsawa"],
             swiftSettings: [
-              .unsafeFlags(["-import-objc-header", "Sources/LotsawaC/include/LotsawaC.h"])]),
+              .unsafeFlags(["-import-objc-header", thisDirectory + "/Sources/LotsawaC/include/LotsawaC.h"])]),
         .target(
             name: "LotsawaFrontend",
             dependencies: ["Lotsawa"]),

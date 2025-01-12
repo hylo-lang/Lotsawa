@@ -1,6 +1,9 @@
 import XCTest
 
+struct UnexpectedlyEmpty: Error {}
+
 extension Collection {
+
   func checkedOnlyElement(
     _ message: @autoclosure () -> String = "",
     file: StaticString = #filePath, line: UInt = #line) throws -> Element
@@ -11,6 +14,7 @@ extension Collection {
       self.dropFirst().isEmpty, "Non-unique \(Array(self)) " + message(), file: file, line: line)
     return self.first!
   }
+
 }
 
 extension BinaryInteger {

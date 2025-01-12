@@ -1,8 +1,6 @@
 @testable import Lotsawa
 import XCTest
 
-struct UnexpectedlyEmpty: Error {}
-
 class ChartInternalTests: XCTestCase {
   func testItemOperations() throws {
     let g = try """

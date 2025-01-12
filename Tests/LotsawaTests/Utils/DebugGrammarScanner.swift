@@ -1,3 +1,4 @@
+import Lotsawa
 import CitronLexerModule
 
 /// "//" followed by any number of non-newlines (See

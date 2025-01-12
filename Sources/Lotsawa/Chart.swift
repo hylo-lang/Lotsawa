@@ -13,6 +13,11 @@ public struct Chart: Hashable
   /// The position in `chart` where each Earley/derivation set begins, plus a sentinel for the end
   /// of the last complete set.
   private var setStart: [Position] = [0]
+
+  init() {
+    entries.reserveCapacity(1024 * 1024 * 4)
+    setStart.reserveCapacity(1024 * 1024)
+  }
 }
 
 /// A position within source text.
@@ -39,7 +44,7 @@ extension Chart {
   }
 
   /// The index of the Earley set currently being worked on.
-  var currentEarleme: SourcePosition {
+  public var currentEarleme: SourcePosition {
     SourcePosition(setStart.count - 1)
   }
 

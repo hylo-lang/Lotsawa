@@ -1,6 +1,6 @@
 /// A mapping from `Key`s to `Value`s, where a key `k` not explicitly specified is mapped to the
 /// value associated of the next lower key plus the distance from that key to `k`.
-struct DiscreteMap<Key: Strideable, Value: Strideable>
+public struct DiscreteMap<Key: Strideable, Value: Strideable>
   where Key.Stride: SignedInteger, Value.Stride: SignedInteger
 {
   /// Potential discontinuities between which keys map to value stepwise.
@@ -12,7 +12,7 @@ struct DiscreteMap<Key: Strideable, Value: Strideable>
   /// Returns the value for key `k`.
   ///
   /// - Precondition: a mapping has been appended with key < `k`.
-  subscript(k: Key) -> Value {
+  public subscript(k: Key) -> Value {
     let i = points.partitionPoint { e in e.key > k }
     return offsetValue(from: points.prefix(i).last!, for: k)
   }
@@ -21,7 +21,7 @@ struct DiscreteMap<Key: Strideable, Value: Strideable>
   ///
   /// - Precondition: `k` exceeds any key from a previously appended mapping; the distance between
   ///   successive keys is representable as `Value.Stride`.
-  mutating func appendMapping(from k: Key, to v: Value) {
+  public mutating func appendMapping(from k: Key, to v: Value) {
     if !points.isEmpty {
       precondition(k > points.last.unsafelyUnwrapped.key)
       if offsetValue(from: points.last.unsafelyUnwrapped, for: k) == v { return }
@@ -39,7 +39,7 @@ struct DiscreteMap<Key: Strideable, Value: Strideable>
 }
 
 extension DiscreteMap {
-  func serialized() -> String {
+  public func serialized() -> String {
     let points1 = points.lazy.map { kv in "\((kv.0, kv.1))" }.joined(separator: ",")
     return "DiscreteMap<\(Key.self), \(Value.self)>(points: [\(points1)]))"
   }

@@ -57,10 +57,13 @@ public struct Grammar<StoredSymbol: SignedInteger & FixedWidthInteger> {
   private(set) var maxSymbolID: Symbol.ID = -1
 
   /// The symbol derivation over the whole input constitutes a successful parse.
-  let startSymbol: Symbol
+  public var startSymbol: Symbol!
 
   /// Creates an empty instance intended (when rules have been added) to recognize `startSymbol`.
   public init(recognizing startSymbol: Symbol) { self.startSymbol = startSymbol }
+
+  /// Creates an empty instance.
+  public init() {}
 }
 
 extension Grammar {
@@ -364,7 +367,7 @@ extension Grammar {
       ruleStore: \(ruleStore),
       ruleStart: \(ruleStart),
       maxSymbolID: \(maxSymbolID)
-      startSymbol: \(startSymbol))
+      startSymbol: \(startSymbol.map { String(describing: $0) } ?? "nil"))
     """
   }
 }

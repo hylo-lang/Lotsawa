@@ -281,9 +281,9 @@ class ForestTests: XCTestCase {
     var f = r.base.forest
     let d0 = f.derivations(of: g.symbols["X"]!, over: 0..<4)
 
-    XCTAssertEqual(d0.map { g.symbolName[Int($0.lhs.id)] }, ["X", "X", "X"])
+    XCTAssertEqual(d0.map { g.symbolName[.init($0.lhs.id)] }, ["X", "X", "X"])
     XCTAssertEqual(
-      d0.map { $0.rhs.map { g.symbolName[Int($0.id)] } },
+      d0.map { $0.rhs.map { g.symbolName[.init($0.id)] } },
       [["B", "B", "B"], ["B", "B", "B"], ["B", "B", "B"]])
     XCTAssertEqual(
       Set(d0.map(\.rhsOrigins).map(Array.init)),

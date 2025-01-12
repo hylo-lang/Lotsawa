@@ -3,6 +3,7 @@
 %preface {
   import CitronParserModule
   import CitronLexerModule
+  import Lotsawa
 
   extension _CitronParserUnexpectedTokenError : @retroactive CustomDebugStringConvertible {
     public var debugDescription: String {
