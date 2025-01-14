@@ -16,11 +16,21 @@ extension DebugGrammar {
   /// Creates an instance by parsing `bnf`, or throws an error if `bnf` can't be parsed.
   init(
     recognizing startSymbol: String, per bnf: String,
+    symbolNames: [Int16: String] = [:],
     file: String = #filePath, line: Int = #line
   ) throws {
     self.init()
-    symbols[startSymbol] = Symbol(0)
-    symbolName[0] = startSymbol
+
+    for (id, name) in symbolNames {
+      symbols[name] = Symbol(id)
+      symbolName[Int(id)] = name
+    }
+
+    if symbols[startSymbol] == nil {
+      precondition(symbolName[0] == nil, "Symbol 0 already assigned name \(symbolName[0]!)")
+      symbols[startSymbol] = Symbol(0)
+      symbolName[0] = startSymbol
+    }
     let tokens = testGrammarScanner.tokens(
       in: bnf, fromFile: file, unrecognizedCharacter: .ILLEGAL_CHARACTER)
     let parser = DebugGrammarParser()
@@ -50,7 +60,9 @@ extension DebugGrammar {
 extension String {
   /// Returns the result of parsing `self` as a `DebugGrammar`, or throws if `self` can't be parsed.
   func asTestGrammar(
-    recognizing startSymbol: String, file: String = #filePath, line: Int = #line
+    recognizing startSymbol: String,
+    symbolNames: [Int16: String] = [:],
+    file: String = #filePath, line: Int = #line
   ) throws -> DebugGrammar {
     try DebugGrammar(recognizing: startSymbol, per: self, file: file, line: line)
   }

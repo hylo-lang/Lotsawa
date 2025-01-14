@@ -94,15 +94,17 @@ extension Grammar {
 
   /// A Backus-Naur Form (BNF) rule, or production.
   public struct Rule {
+    public typealias Storage = Array<StoredSymbol>.SubSequence
+
     /// The RHS symbols followed by the LHS symbol, with its high bit set.
-    internal let storage: Array<StoredSymbol>.SubSequence
+    internal let storage: Storage
 
     /// The symbol to be recognized.
     public var lhs: Symbol { Grammar.lhsSymbol(storage.last!) }
 
     /// The sequence of symbols whose recognition implies the
     /// recognition of a `Rule`'s LHS.
-    public typealias RHS = LazyMapSequence<Array<StoredSymbol>.SubSequence, Symbol>
+    public typealias RHS = LazyMapSequence<Storage, Symbol>
 
     /// The sequence of symbols that imply to recognition of the `lhs`.
     public var rhs: RHS {

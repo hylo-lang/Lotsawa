@@ -21,6 +21,9 @@ public struct Recognizer<StoredSymbol: SignedInteger & FixedWidthInteger> {
 
   /// True iff at least one Leo candidate item was added to the current earley set.
   private var leoCandidateFound = false
+
+  private var pendingDiscoveries: [(Symbol, startingAt: SourcePosition)] = []
+  private var pendingPredictions: [Symbol] = []
 }
 
 /// applies `f` to `x`.
@@ -57,10 +60,19 @@ extension Recognizer {
 
   /// Seed the current item set with rules implied by the predicted recognition of `s` starting at
   /// the current earleme.
+  /// Seed the current item set with rules implied by the predicted recognition of `s` starting at
+  /// the current earleme.
   mutating func predict(_ s: Symbol) {
+    predict1(s)
+    while let s = pendingPredictions.popLast() {
+      predict1(s)
+    }
+  }
+
+  mutating func predict1(_ s: Symbol) {
     for r in rulesByLHS[s] {
       if insert(prediction(r)) {
-        predict(g.rhs(r).first!)
+        pendingPredictions.append(g.rhs(r).first!)
       }
     }
   }
@@ -77,6 +89,13 @@ extension Recognizer {
 
   /// Respond to the discovery of `s` starting at `origin` and ending in the current earleme.
   public mutating func discover(_ s: Symbol, startingAt origin: SourcePosition) {
+    discover1(s, startingAt: origin)
+    while let (s, origin) = pendingDiscoveries.popLast() {
+      discover1(s, startingAt: origin)
+    }
+  }
+
+  mutating func discover1(_ s: Symbol, startingAt origin: SourcePosition) {
     // The set containing potential mainstem derivations to be paired with the one for s.
     let mainstems = chart.transitionEntries(on: s, inEarleySet: origin)
 
@@ -91,12 +110,13 @@ extension Recognizer {
         mainstems.allSatisfy(\.isEarley),
         "Leo item is not first in mainstems.")
 
-      let transitionItemIndices
-        = mainstems.indices.keepingFirstOfAdjacentDuplicates { [chart=chart] in
-          chart.entries[$0].item == chart.entries[$1].item
-        }
-
-      for i in transitionItemIndices {
+      // Make sure this isn't some lazy collection dependent on the
+      // chart or an unsafe buffer pointer; we're going to insert
+      // stuff.
+      let transitionItems: Range<Int> = mainstems.indices
+      for i in transitionItems
+          where i == transitionItems.first || chart.entries[i - 1].item != chart.entries[i].item
+      {
         derive(.init(item: chart.entries[i].item.advanced(in: g), mainstemIndex: i))
       }
     }
@@ -127,7 +147,7 @@ extension Recognizer {
       predict(t)
     }
     else { // it's complete
-      discover(g.recognized(at: x.dotPosition)!, startingAt: x.origin)
+      pendingDiscoveries.append((g.recognized(at: x.dotPosition)!, startingAt: x.origin))
     }
   }
 

@@ -1,4 +1,5 @@
 import Lotsawa
+import TestResources
 
 import XCTest
 
@@ -91,5 +92,23 @@ class RecognizerTests: XCTestCase {
     var r = DebugRecognizer(g)
 
     XCTAssertNil(r.recognize("aaaa"))
+  }
+
+  func testAnsiC() throws {
+    let g = TestResources.ansiCGrammar
+    var r = DebugRecognizer(g)
+    XCTAssert(r.base.finishEarleme(), "Couldn't finish initial earleme")
+
+    var completedParseDiscovered = false
+    for (i, c) in ansiCTokens.prefix(1000).enumerated() {
+      r.base.discover(c, startingAt: .init(i))
+      XCTAssert(r.base.finishEarleme(), "No progress in earleme \(i)")
+
+      if completedParseDiscovered || r.base.hasCompleteParse() {
+        completedParseDiscovered = true
+      }
+    }
+
+    XCTAssert(completedParseDiscovered, "Input not recognized.")
   }
 }

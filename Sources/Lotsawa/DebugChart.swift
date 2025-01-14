@@ -14,7 +14,9 @@ extension DebugChart: CustomStringConvertible {
 
   public var description: String {
     var result = ""
+    // print("base.currentEarleme =", base.currentEarleme)
     for earleme in (0 ... base.currentEarleme) {
+      // print("earleme =", earleme)
 
       result.append("---------- \(earleme) ----------\n")
 
@@ -24,19 +26,24 @@ extension DebugChart: CustomStringConvertible {
       while let head = remainingDerivations.first {
         let itemDerivations = remainingDerivations.prefix { x in x.item == head.item }
         result += "\(itemDerivations.startIndex): "
+        // print("###", itemDerivations.startIndex)
         if !head.isLeo {
+          // print("non-leo")
           result.append("<\(head.origin)> ")
         }
         if head.mainstemIndex != nil {
+          // print("has mainstem")
           result.append(
             "{\(itemDerivations.map { String($0.mainstemIndex!) }.joined(separator: ", "))} ")
         }
 
         if head.isLeo {
-          result += "L(\(head.memoizedPenultIndex!)) •\(head.transitionSymbol!)"
+          // print("leo description")
+          result += "L(\(head.memoizedPenultIndex ?? -999)) •\(head.transitionSymbol ?? Symbol(id: -999))"
         }
         else  {
-          result += language.dottedText(head.dotPosition)
+          // print("dotted text")
+          result += language.dottedText(rawPosition[head.dotPosition])
         }
         result += "\n"
         remainingDerivations.removeFirst(itemDerivations.count)

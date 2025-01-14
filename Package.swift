@@ -31,7 +31,7 @@ let package = Package(
             targets: ["LotsawaC"]),
         .library(
             name: "LotsawaFrontend",
-            targets: ["LotsawaFrontend"]),
+            targets: ["LotsawaFrontend"])
     ],
     dependencies: [
       .package(url: "https://github.com/dabrahams/citron.git", from: "2.1.7"),
@@ -53,11 +53,21 @@ let package = Package(
             dependencies: ["Lotsawa"]),
         .testTarget(
             name: "LotsawaTests",
-            dependencies: ["Lotsawa", CitronParser, CitronLexer],
+            dependencies: ["Lotsawa", CitronParser, CitronLexer, "TestResources"],
             plugins: [ .plugin(name: "CitronParserGenerator", package: "citron") ]),
         .testTarget(
             name: "LotsawaFrontendTests",
             dependencies: ["Lotsawa", "LotsawaFrontend"]),
+        .target(
+          name: "TestResources",
+          dependencies: ["Lotsawa"],
+          resources: [
+            .copy("AnsiCTokens.txt"),
+            .copy("AnsiCGrammar.txt"),
+            .copy("AnsiCSymbolIDs.txt"),
+          ]
+        ),
+        .executableTarget(name: "Profile", dependencies: ["Lotsawa", "TestResources"]),
         /*
         .testTarget(
           name: "LotsawaCTests",

@@ -1,0 +1,242 @@
+start: translation_unit
+identifier: IDENTIFIER
+constant: CONSTANT
+string_literal: STRING_LITERAL
+primary_expression: identifier
+primary_expression: constant
+primary_expression: string_literal
+primary_expression: '(' expression ')'
+postfix_expression: primary_expression
+postfix_expression: postfix_expression '[' expression ']'
+postfix_expression: postfix_expression '(' argument_expression_list_opt ')'
+postfix_expression: postfix_expression '.' identifier
+postfix_expression: postfix_expression PTR_OP identifier
+postfix_expression: postfix_expression INC_OP
+postfix_expression: postfix_expression DEC_OP
+postfix_expression: '(' type_name ')' '{' initializer_list '}'
+postfix_expression: '(' type_name ')' '{' initializer_list ',' '}'
+argument_expression_list_opt: _
+argument_expression_list_opt: argument_expression_list
+argument_expression_list: assignment_expression
+argument_expression_list: argument_expression_list ',' assignment_expression
+unary_expression: postfix_expression
+unary_expression: INC_OP unary_expression
+unary_expression: DEC_OP unary_expression
+unary_expression: unary_operator cast_expression
+unary_expression: SIZEOF unary_expression
+unary_expression: SIZEOF '(' type_name ')'
+unary_operator: '&'
+unary_operator: '*'
+unary_operator: '+'
+unary_operator: '-'
+unary_operator: '~'
+unary_operator: '!'
+cast_expression: unary_expression
+cast_expression: '(' type_name ')' cast_expression
+multiplicative_expression: cast_expression
+multiplicative_expression: multiplicative_expression '*' cast_expression
+multiplicative_expression: multiplicative_expression '/' cast_expression
+multiplicative_expression: multiplicative_expression '%' cast_expression
+additive_expression: multiplicative_expression
+additive_expression: additive_expression '+' multiplicative_expression
+additive_expression: additive_expression '-' multiplicative_expression
+shift_expression: additive_expression
+shift_expression: shift_expression LEFT_OP additive_expression
+shift_expression: shift_expression RIGHT_OP additive_expression
+relational_expression: shift_expression
+relational_expression: relational_expression '<' shift_expression
+relational_expression: relational_expression '>' shift_expression
+relational_expression: relational_expression LE_OP shift_expression
+relational_expression: relational_expression GE_OP shift_expression
+equality_expression: relational_expression
+equality_expression: equality_expression EQ_OP relational_expression
+equality_expression: equality_expression NE_OP relational_expression
+AND_expression: equality_expression
+AND_expression: AND_expression '&' equality_expression
+exclusive_OR_expression: AND_expression
+exclusive_OR_expression: exclusive_OR_expression '^' AND_expression
+inclusive_OR_expression: exclusive_OR_expression
+inclusive_OR_expression: inclusive_OR_expression '|' exclusive_OR_expression
+logical_AND_expression: inclusive_OR_expression
+logical_AND_expression: logical_AND_expression AND_OP inclusive_OR_expression
+logical_OR_expression: logical_AND_expression
+logical_OR_expression: logical_OR_expression OR_OP logical_AND_expression
+conditional_expression: logical_OR_expression
+conditional_expression: logical_OR_expression '?' expression ':' conditional_expression
+assignment_expression: conditional_expression
+assignment_expression: unary_expression assignment_operator assignment_expression
+assignment_operator: '='
+assignment_operator: MUL_ASSIGN
+assignment_operator: DIV_ASSIGN
+assignment_operator: MOD_ASSIGN
+assignment_operator: ADD_ASSIGN
+assignment_operator: SUB_ASSIGN
+assignment_operator: LEFT_ASSIGN
+assignment_operator: RIGHT_ASSIGN
+assignment_operator: AND_ASSIGN
+assignment_operator: XOR_ASSIGN
+assignment_operator: OR_ASSIGN
+expression: assignment_expression
+expression: expression ',' assignment_expression
+expression: error
+constant_expression: conditional_expression
+declaration: declaration_specifiers init_declarator_list_opt ';'
+declaration: error
+init_declarator_list_opt: _
+init_declarator_list_opt: init_declarator_list
+declaration_specifiers: storage_class_specifier declaration_specifiers_opt
+declaration_specifiers: type_specifier declaration_specifiers_opt
+declaration_specifiers: type_qualifier declaration_specifiers_opt
+declaration_specifiers: function_specifier declaration_specifiers_opt
+declaration_specifiers_opt: _
+declaration_specifiers_opt: declaration_specifiers
+init_declarator_list: init_declarator
+init_declarator_list: init_declarator_list ',' init_declarator
+init_declarator: declarator
+init_declarator: declarator '=' initializer
+storage_class_specifier: TYPEDEF
+storage_class_specifier: EXTERN
+storage_class_specifier: STATIC
+storage_class_specifier: AUTO
+storage_class_specifier: REGISTER
+type_specifier: VOID
+type_specifier: CHAR
+type_specifier: SHORT
+type_specifier: INT
+type_specifier: LONG
+type_specifier: FLOAT
+type_specifier: DOUBLE
+type_specifier: SIGNED
+type_specifier: UNSIGNED
+type_specifier: _BOOL
+type_specifier: _COMPLEX
+type_specifier: _IMAGINARY
+type_specifier: struct_or_union_specifier
+type_specifier: enum_specifier
+type_specifier: typedef_name
+struct_or_union_specifier: struct_or_union identifier_opt '{' struct_declaration_list '}'
+struct_or_union_specifier: struct_or_union identifier
+identifier_opt: _
+identifier_opt: identifier
+struct_or_union: STRUCT
+struct_or_union: UNION
+struct_declaration_list: struct_declaration
+struct_declaration_list: struct_declaration_list struct_declaration
+struct_declaration: specifier_qualifier_list struct_declarator_list ';'
+specifier_qualifier_list: type_specifier specifier_qualifier_list_opt
+specifier_qualifier_list: type_qualifier specifier_qualifier_list_opt
+specifier_qualifier_list_opt: _
+specifier_qualifier_list_opt: specifier_qualifier_list
+struct_declarator_list: struct_declarator
+struct_declarator_list: struct_declarator_list ',' struct_declarator
+struct_declarator: declarator
+struct_declarator: declarator_opt ':' constant_expression
+declarator_opt: _
+declarator_opt: declarator
+enum_specifier: ENUM identifier_opt '{' enumerator_list '}'
+enum_specifier: ENUM identifier_opt '{' enumerator_list ',' '}'
+enum_specifier: ENUM identifier
+enumerator_list: enumerator
+enumerator_list: enumerator_list ',' enumerator
+enumerator: enumeration_constant
+enumerator: enumeration_constant '=' constant_expression
+type_qualifier: CONST
+type_qualifier: RESTRICT
+type_qualifier: VOLATILE
+function_specifier: INLINE
+declarator: pointer_opt direct_declarator
+pointer_opt: _
+pointer_opt: pointer
+direct_declarator: identifier
+direct_declarator: '(' declarator ')'
+direct_declarator: direct_declarator '[' type_qualifier_list_opt assignment_expression_opt ']'
+direct_declarator: direct_declarator '[' STATIC type_qualifier_list_opt assignment_expression ']'
+direct_declarator: direct_declarator '[' type_qualifier_list STATIC assignment_expression ']'
+direct_declarator: direct_declarator '[' type_qualifier_list_opt '*' ']'
+direct_declarator: direct_declarator '(' parameter_type_list ')'
+direct_declarator: direct_declarator '(' identifier_list_opt ')'
+type_qualifier_list_opt: _
+type_qualifier_list_opt: type_qualifier_list
+identifier_list_opt: _
+identifier_list_opt: identifier_list
+pointer: '*' type_qualifier_list_opt
+pointer: '*' type_qualifier_list_opt pointer
+type_qualifier_list: type_qualifier
+type_qualifier_list: type_qualifier_list type_qualifier
+parameter_type_list: parameter_list
+parameter_type_list: parameter_list ',' ELIPSIS
+parameter_list: parameter_declaration
+parameter_list: parameter_list ',' parameter_declaration
+parameter_declaration: declaration_specifiers declarator
+parameter_declaration: declaration_specifiers abstract_declarator_opt
+abstract_declarator_opt: _
+abstract_declarator_opt: abstract_declarator
+identifier_list: identifier
+identifier_list: identifier_list ',' identifier
+type_name: specifier_qualifier_list abstract_declarator_opt
+abstract_declarator: pointer
+abstract_declarator: pointer_opt direct_abstract_declarator
+direct_abstract_declarator: '(' abstract_declarator ')'
+direct_abstract_declarator: direct_abstract_declarator_opt '[' assignment_expression_opt ']'
+direct_abstract_declarator: direct_abstract_declarator_opt '[' '*' ']'
+direct_abstract_declarator: direct_abstract_declarator_opt '(' parameter_type_list_opt ')'
+direct_abstract_declarator_opt: _
+direct_abstract_declarator_opt: direct_abstract_declarator
+assignment_expression_opt: _
+assignment_expression_opt: assignment_expression
+parameter_type_list_opt: _
+parameter_type_list_opt: parameter_type_list
+typedef_name: identifier
+initializer: assignment_expression
+initializer: '{' initializer_list '}'
+initializer: '{' initializer_list ',' '}'
+initializer_list: designation_opt initializer
+initializer_list: initializer_list ',' designation_opt initializer
+designation_opt: _
+designation_opt: designation
+designation: designator_list '='
+designator_list: designator
+designator_list: designator_list designator
+designator: '[' constant_expression ']'
+designator: '.' identifier
+statement: labeled_statement
+statement: compound_statement
+statement: expression_statement
+statement: selection_statement
+statement: iteration_statement
+statement: jump_statement
+statement: error
+labeled_statement: identifier ':' statement
+labeled_statement: CASE constant_expression ':' statement
+labeled_statement: DEFAULT ':' statement
+compound_statement: '{' block_item_list_opt '}'
+block_item_list_opt: _
+block_item_list_opt: block_item_list
+block_item_list: block_item
+block_item_list: block_item_list block_item
+block_item: declaration
+block_item: statement
+expression_statement: expression_opt ';'
+expression_opt: _
+expression_opt: expression
+selection_statement: IF '(' expression ')' statement
+selection_statement: IF '(' expression ')' statement ELSE statement
+selection_statement: SWITCH '(' expression ')' statement
+iteration_statement: WHILE '(' expression ')' statement
+iteration_statement: DO statement WHILE '(' expression ')' ';'
+iteration_statement: FOR '(' expression_opt ';' expression_opt ';' expression_opt ')' statement
+iteration_statement: FOR '(' declaration expression_opt ';' expression_opt ')' statement
+jump_statement: GOTO identifier ';'
+jump_statement: CONTINUE ';'
+jump_statement: BREAK ';'
+jump_statement: RETURN expression_opt ';'
+translation_unit: external_declaration
+translation_unit: translation_unit external_declaration
+external_declaration: function_definition
+external_declaration: declaration
+function_definition: declaration_specifiers declarator declaration_list_opt compound_statement
+declaration_list_opt: _
+declaration_list_opt: declaration_list
+declaration_list: declaration
+declaration_list: declaration_list declaration
+enumeration_constant: identifier

@@ -15,8 +15,8 @@ public struct Chart: Hashable
   private var setStart: [Position] = [0]
 
   init() {
-    entries.reserveCapacity(1024 * 1024 * 4)
-    setStart.reserveCapacity(1024 * 1024)
+    //entries.reserveCapacity(1024 * 1024 * 4)
+    //setStart.reserveCapacity(1024 * 1024)
   }
 }
 
@@ -36,11 +36,20 @@ extension Chart {
 }
 
 extension Chart {
-  public typealias EarleySet = Array<Entry>.SubSequence
+  public typealias EarleySet = UnsafeBufferPointer<Entry>.SubSequence
+  public typealias ItemSequence = UnsafeBufferPointer<Entry>.SubSequence
 
   /// The item set under construction.
   var currentEarleySet: EarleySet {
-    entries[setStart.last!...]
+    get {
+      entries.withUnsafeBufferPointer { $0 [setStart.last!...] }
+    }
+    /*
+    _modify {
+      var r = entries.withUnsafeMutableBufferPointer { $0 }
+      yield &r[setStart.last!...]
+      }
+     */
   }
 
   /// The index of the Earley set currently being worked on.
@@ -50,7 +59,9 @@ extension Chart {
 
   /// The set of partial parses ending at earleme `i`.
   public func earleySet(_ i: SourcePosition) -> EarleySet {
-    entries[setStart[Int(i)]..<setStart[Int(i) + 1]]
+    entries.withUnsafeBufferPointer {
+      $0[setStart[Int(i)]..<setStart[Int(i) + 1]]
+    }
   }
 
   /// The source position corresponding to entry `j`.
@@ -112,7 +123,7 @@ extension Chart {
   }
 
   /// Returns the entries in Earley set `i` whose use is triggered by the recognition of `s`.
-  func transitionEntries(on s: Symbol, inEarleySet i: UInt32) -> Entries.SubSequence
+  func transitionEntries(on s: Symbol, inEarleySet i: UInt32) -> ItemSequence
   {
     let ithSet = i == currentEarleme ? currentEarleySet : earleySet(i)
     let k = ItemID.transitionKey(s)
@@ -131,7 +142,7 @@ extension Chart {
   /// Returns the entries that complete a recognition of `lhs` covering `extent`.
   ///
   /// - Complexity: O(N) where N is the length of the result.
-  func completions(of lhs: Symbol, over extent: Range<SourcePosition>) -> Entries.SubSequence
+  func completions(of lhs: Symbol, over extent: Range<SourcePosition>) -> ItemSequence
   {
     let ithSet = earleySet(extent.upperBound)
     let k = ItemID.completionKey(lhs, origin: extent.lowerBound)
@@ -155,13 +166,15 @@ extension Chart {
   /// memoized Earley item index otherwise.
   ///
   /// - Complexity: O(N) where N is the length of the result.
-  func earleyMainstem(of x: Entry) -> Entries.SubSequence
+  func earleyMainstem(of x: Entry) -> ItemSequence
   {
-    guard let m = x.mainstemIndex else { return entries[entries.endIndex...] }
+    guard let m = x.mainstemIndex else {
+      return entries.withUnsafeBufferPointer { $0[entries.endIndex...] }
+    }
     let head = entries[m].item
     let start = head.memoizedPenultIndex ?? m
     let tail = earleySet(earleme(ofEntryIndex: start))[start...].dropFirst()
-    return entries[start..<tail.prefix { $0.item == head }.endIndex]
+    return entries.withUnsafeBufferPointer { $0[start..<tail.prefix { $0.item == head }.endIndex] }
   }
 
   /// Completes the current earleme and moves on to the next one, returning `true` unless no

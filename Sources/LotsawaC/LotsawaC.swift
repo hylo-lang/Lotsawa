@@ -133,8 +133,12 @@ extension LotsawaRecognizer: ExposedViaOpaquePointer {
 
 @_cdecl("lotsawa_recognizer_create")
 func lotsawa_recognizer_create(_ g: LotsawaGrammar) -> LotsawaRecognizer {
-  print("grammar:\n", g.value)
-  return LotsawaRecognizer.create(CRecognizer(g.value))
+  // print("grammar:\n", g.value)
+  let r = LotsawaRecognizer.create(CRecognizer(g.value))
+  // print("------------------")
+  // print("recognizer:")
+  // print(r.value)
+  return r
 }
 
 @_cdecl("lotsawa_recognizer_destroy")
@@ -154,14 +158,16 @@ func lotsawa_recognizer_initialize(_ r: LotsawaRecognizer) {
 
 @_cdecl("lotsawa_recognizer_discover")
 func lotsawa_recognizer_discover(_ r: LotsawaRecognizer, symbol: LotsawaSymbol, startingAt start: LotsawaSourcePosition) {
-  print(r.value)
   r.mutate { $0.base.discover(Symbol(id: symbol), startingAt: start) }
 }
 
 @_cdecl("lotsawa_recognizer_finish_earleme")
 func lotsawa_recognizer_finish_earleme(_ r: LotsawaRecognizer) -> CBool {
-  print(r.value)
   let x = r.mutate { $0.base.finishEarleme() }
+  if r.value.base.currentEarleme == 1000 {
+    // print("------------------")
+    // print(r.value)
+  }
   return x
 }
 
