@@ -119,11 +119,20 @@ extension Grammar {
     }
   }
 
-  /// The collection of all rules in the grammar.
-  public var rules: some RandomAccessCollection<Rule> {
-    ruleStart.indices.dropLast().lazy.map {
-      i in Rule(storage: ruleStore[Int(ruleStart[i])..<Int(ruleStart[i + 1])])
+  public struct Rules: RandomAccessCollection {
+    let ruleStore: [StoredSymbol]
+    let ruleStart: [Size]
+
+    public var startIndex: Int { ruleStart.indices.lowerBound }
+    public var endIndex: Int { ruleStart.indices.upperBound - 1 }
+    public subscript(i: Int) -> Rule {
+      Rule(storage: ruleStore[Int(ruleStart[i])..<Int(ruleStart[i + 1])])
     }
+  }
+
+  /// The collection of all rules in the grammar.
+  public var rules: Rules {
+    Rules(ruleStore: ruleStore, ruleStart: ruleStart)
   }
 
   /// Adds a rule recognizing `rhs` as `lhs`.
