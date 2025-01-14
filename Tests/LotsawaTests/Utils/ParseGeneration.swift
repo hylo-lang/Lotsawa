@@ -46,7 +46,7 @@ extension Grammar {
       parse.moves.append(.begin(s, at: p))
       let mark = (length: length, depth: depth, parseCount: parse.moves.count)
       for r in rulesByLHS[s] {
-        generateString(r.rhs) { parse.moves.append(.end(s)); onward() }
+        generateString(r.rhs[...]) { parse.moves.append(.end(s)); onward() }
         parse.moves.removeSubrange(mark.parseCount...)
         (length, depth) = (mark.length, mark.depth)
       }
@@ -62,7 +62,7 @@ extension Grammar {
       }
     }
 
-    func generateString(_ s: Grammar.Rule.RHS, then onward: ()->()) {
+    func generateString(_ s: Grammar.Rule.RHS.SubSequence, then onward: ()->()) {
       if s.isEmpty { return onward() }
       let depthMark = depth
       generateSymbol(at: GrammarSize(s.startIndex)) {

@@ -104,11 +104,18 @@ extension Grammar {
 
     /// The sequence of symbols whose recognition implies the
     /// recognition of a `Rule`'s LHS.
-    public typealias RHS = LazyMapSequence<Storage, Symbol>
+    public struct RHS: RandomAccessCollection {
+      let storage: Storage
+      public var startIndex: Int { storage.startIndex }
+      public var endIndex: Int { storage.endIndex }
+      public subscript(i: Int) -> Symbol {
+        Symbol(id: Symbol.ID(storage[i]))
+      }
+    }
 
     /// The sequence of symbols that imply to recognition of the `lhs`.
     public var rhs: RHS {
-      storage.dropLast().lazy.map { x in Symbol(id: Symbol.ID(x)) }
+      RHS(storage: storage.dropLast())
     }
   }
 
