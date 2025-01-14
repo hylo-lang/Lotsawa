@@ -153,7 +153,7 @@ extension Grammar {
 }
 
 extension Grammar {
-  /// Returns the Rule corresponding to i
+  /// Returns the Rule corresponding to `r`.
   public func storedRule(_ r: RuleID) -> Rule {
     rules[rules.index(rules.startIndex, offsetBy: Int(r.ordinal))]
   }
