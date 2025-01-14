@@ -138,9 +138,6 @@ extension Grammar {
         precondition(i >= startIndex && i < endIndex)
         return Symbol(id: Symbol.ID(storage[i]))
       }
-      public var first: Symbol? {
-        startIndex == endIndex ? nil : self[startIndex]
-      }
     }
 
     /// The sequence of symbols that imply to recognition of the `lhs`.
@@ -456,5 +453,12 @@ extension Grammar {
       }
     }
     return result
+  }
+
+  func firstSymbols() -> [RuleID: Symbol] {
+    Dictionary(
+      uniqueKeysWithValues: ruleIDs.map { r in
+        (r, storedRHS(r).first ?? Symbol(id: Symbol.maxID))
+      })
   }
 }

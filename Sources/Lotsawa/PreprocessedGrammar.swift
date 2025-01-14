@@ -25,11 +25,7 @@ public struct PreprocessedGrammar<StoredSymbol: SignedInteger & FixedWidthIntege
     (base, rawPosition, isNullable) = raw.eliminatingNulls()
     rulesByLHS = MultiMap(grouping: base.ruleIDs, by: base.lhs)
     leoPositions = base.leoPositions()
-    let b = self.base
-    first = Dictionary(
-      uniqueKeysWithValues: b.ruleIDs.map {
-        ($0, b[$0].rhs.first ?? Symbol(id: Symbol.maxID))
-      })
+    first = base.firstSymbols()
   }
 /*
   func rhsStartAndPostdot(_ r: RuleID) -> (Position, Symbol) {
@@ -52,10 +48,7 @@ extension PreprocessedGrammar {
     self.leoPositions = leoPositions
     self.rawPosition = rawPosition
     self.isNullable = isNullable
-    first = Dictionary(
-      uniqueKeysWithValues: base.ruleIDs.map {
-        ($0, base[$0].rhs.first ?? Symbol(id: Symbol.maxID))
-      })
+    first = base.firstSymbols()
   }
 
   /// Returns a complete string representation of `self` from which it

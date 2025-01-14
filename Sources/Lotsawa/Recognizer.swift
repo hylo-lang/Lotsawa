@@ -16,6 +16,8 @@ public struct Recognizer<StoredSymbol: SignedInteger & FixedWidthInteger> {
   /// The positions of the final symbol in all right-recursive rules.
   private let leoPositions: Set<Grammar.Position>
 
+  private let first: [RuleID: Symbol]
+
   /// Storage for all DerivationGroups, grouped by Earleme and sorted within each Earleme.
   public private(set) var chart = Chart()
 
@@ -40,6 +42,7 @@ extension Recognizer {
     self.rulesByLHS = g.rulesByLHS
     self.leoPositions = g.leoPositions
     self.acceptsNull = g.isNullable
+    self.first = g.first
     initialize()
   }
 
@@ -55,7 +58,9 @@ extension Recognizer {
   /// Returns the chart entry that predicts the start of `r`.
   private func prediction(_ r: RuleID) -> Chart.Entry {
     // FIXME: overflow here on 32-bit systems
-    .init(item: .init(predicting: r, in: g, at: currentEarleme), mainstemIndex: .init(UInt32.max))
+    .init(
+      item: .init(predicting: r, in: g, at: currentEarleme, first: first[r]!),
+      mainstemIndex: .init(UInt32.max))
   }
 
   /// Seed the current item set with rules implied by the predicted recognition of `s` starting at
@@ -72,7 +77,7 @@ extension Recognizer {
   mutating func predict1(_ s: Symbol) {
     for r in rulesByLHS[s] {
       if insert(prediction(r)) {
-        pendingPredictions.append(g[r].rhs.first!)
+        pendingPredictions.append(first[r]!)
       }
     }
   }
