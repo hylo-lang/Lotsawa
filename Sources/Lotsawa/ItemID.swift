@@ -25,8 +25,7 @@ extension Chart {
 extension Chart.ItemID {
   /// Creates an Earley item starting at `origin and predicting the rule identified by `r` in `g`.
   init<S>(predicting r: RuleID, in g: Grammar<S>, at origin: SourcePosition) {
-    let ruleStart = g.rhsStart(r)
-    let postdot = g.rhs(r).first!
+    let (ruleStart, postdot) = g.rhsStartAndPostdot(r)
     storage = (
       originLow_dotPosition:
         UInt32(UInt16(truncatingIfNeeded: origin)) << 16 | UInt32(ruleStart),

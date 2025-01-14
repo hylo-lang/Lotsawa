@@ -119,6 +119,44 @@ extension Grammar {
     }
   }
 
+  public struct UnstoredRule: ~Copyable {
+    public typealias Storage = UnsafeBufferPointer<StoredSymbol>.SubSequence
+
+    /// The RHS symbols followed by the LHS symbol, with its high bit set.
+    internal let storage: Storage
+
+    /// The symbol to be recognized.
+    public var lhs: Symbol { Grammar.lhsSymbol(storage.last!) }
+
+    /// The sequence of symbols whose recognition implies the
+    /// recognition of a `Rule`'s LHS.
+    public struct RHS: ~Copyable {
+      let storage: Storage
+      public var startIndex: Int { storage.startIndex }
+      public var endIndex: Int { storage.endIndex }
+      public subscript(i: Int) -> Symbol {
+        precondition(i >= startIndex && i < endIndex)
+        return Symbol(id: Symbol.ID(storage[i]))
+      }
+      public var first: Symbol? {
+        startIndex == endIndex ? nil : self[startIndex]
+      }
+    }
+
+    /// The sequence of symbols that imply to recognition of the `lhs`.
+    public var rhs: RHS {
+      RHS(storage: storage.dropLast())
+    }
+  }
+
+  public subscript(r: RuleID) -> UnstoredRule {
+    UnstoredRule(
+      storage: self.ruleStore.withUnsafeBufferPointer { b in
+        let i = Int(r.ordinal)
+        return b[Int(ruleStart[i])..<Int(ruleStart[i + 1])]
+      })
+  }
+
   public struct Rules: RandomAccessCollection {
     let ruleStore: [StoredSymbol]
     let ruleStart: [Size]
@@ -160,17 +198,27 @@ extension Grammar {
 
   /// Returns the LHS of `r`.
   func lhs(_ r: RuleID) -> Symbol {
-    storedRule(r).lhs
+    self[r].lhs
   }
 
   /// Returns the RHS of `r`.
-  func rhs(_ r: RuleID) -> Rule.RHS {
+  func storedRHS(_ r: RuleID) -> Rule.RHS {
     storedRule(r).rhs
+  }
+
+  subscript(r: RuleID, i: Int) -> Symbol {
+    self[r].rhs[i]
   }
 
   /// Returns the dot position at the beginning of `r`'s RHS.
   func rhsStart(_ r: RuleID) -> Position {
-    Position(storedRule(r).rhs.startIndex)
+    Position(self[r].rhs.startIndex)
+  }
+
+  func rhsStartAndPostdot(_ r: RuleID) -> (Position, Symbol) {
+    let i = Int(r.ordinal)
+    let rhsRange = ruleStart[i]..<ruleStart[i + 1]-1
+    return (rhsRange.lowerBound, Symbol(id: Symbol.ID(ruleStore[Int(rhsRange.lowerBound)])))
   }
 
   /// Returns the ID of the rule containing `p`.

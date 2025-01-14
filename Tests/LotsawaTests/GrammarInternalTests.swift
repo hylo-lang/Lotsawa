@@ -8,7 +8,7 @@ class GrammarInternalTests: XCTestCase {
     let r1 = g.addRule(lhs: Symbol(Int8.max), rhs: (1...4).map(Symbol.init))
     let r2 = g.addRule(lhs: Symbol(Int8.max), rhs: CollectionOfOne(Symbol(0)))
 
-    XCTAssert(g.rhs(r0).isEmpty)
+    XCTAssert(g.storedRHS(r0).isEmpty)
     XCTAssertEqual(g.rule(containing: g.rhsStart(r0)), r0)
     XCTAssertNil(g.predot(at: g.rhsStart(r0)))
     XCTAssertNil(g.postdot(at: g.rhsStart(r0)))

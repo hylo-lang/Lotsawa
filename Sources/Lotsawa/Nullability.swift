@@ -32,7 +32,7 @@ extension Grammar {
     // non-nulling.
     var maybeNonNullingRHSCount = Dictionary(
       uniqueKeysWithValues: rulesByLHS.storage.lazy.map { (lhs, lhsRuleIDs) in
-        (lhs, uniqueCount(lhsRuleIDs.lazy.map { r in rhs(r) }.joined()))
+        (lhs, uniqueCount(lhsRuleIDs.lazy.map { r in storedRHS(r) }.joined()))
       })
 
     // A work queue for unprocessed discoveries.
@@ -53,7 +53,7 @@ extension Grammar {
 
     // - Nullable analysis.
     // Start with the trivially nullable symbols (those on the lhs of any rule with an empty RHS).
-    var nullable = Set(ruleIDs.lazy.filter { r in rhs(r).isEmpty }.map { r in lhs(r) })
+    var nullable = Set(ruleIDs.lazy.filter { r in storedRHS(r).isEmpty }.map { r in lhs(r) })
 
     // For each rule, tracks the number of distinct symbols not yet known to be nullable on its RHS.
     var maybeNonNullableRHSCount: Array = rules.map { r in uniqueCount(r.rhs) }

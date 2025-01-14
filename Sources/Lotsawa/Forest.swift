@@ -275,7 +275,7 @@ extension Forest.Derivation {
   public var lhs: Symbol { domain.grammar.lhs(rule) }
 
   /// The RHS symbols of the rule by which `lhs` was derived.
-  public var rhs: Grammar<StoredSymbol>.Rule.RHS { domain.grammar.rhs(rule) }
+  public var rhs: Grammar<StoredSymbol>.Rule.RHS { domain.grammar.storedRHS(rule) }
 
   /// The position in the source where each RHS symbol of this derivation starts.
   public var rhsOrigins: some BidirectionalCollection<SourcePosition> {

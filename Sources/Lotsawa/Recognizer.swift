@@ -72,7 +72,7 @@ extension Recognizer {
   mutating func predict1(_ s: Symbol) {
     for r in rulesByLHS[s] {
       if insert(prediction(r)) {
-        pendingPredictions.append(g.rhs(r).first!)
+        pendingPredictions.append(g[r].rhs.first!)
       }
     }
   }

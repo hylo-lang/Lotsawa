@@ -18,12 +18,24 @@ public struct PreprocessedGrammar<StoredSymbol: SignedInteger & FixedWidthIntege
   /// True iff the empty string is a complete parse of the start symbol.
   let isNullable: Bool
 
+  let first: [RuleID: Symbol]
+
   /// Creates a preprocessed version of `raw`, ready for recognition.
   public init(_ raw: Grammar<StoredSymbol>) {
     (base, rawPosition, isNullable) = raw.eliminatingNulls()
     rulesByLHS = MultiMap(grouping: base.ruleIDs, by: base.lhs)
     leoPositions = base.leoPositions()
+    let b = self.base
+    first = Dictionary(
+      uniqueKeysWithValues: b.ruleIDs.map {
+        ($0, b[$0].rhs.first ?? Symbol(id: Symbol.maxID))
+      })
   }
+/*
+  func rhsStartAndPostdot(_ r: RuleID) -> (Position, Symbol) {
+    (base.ruleStart[Int(r.ordinal)], first[r])
+  }
+ */
 }
 
 extension PreprocessedGrammar {
@@ -40,6 +52,10 @@ extension PreprocessedGrammar {
     self.leoPositions = leoPositions
     self.rawPosition = rawPosition
     self.isNullable = isNullable
+    first = Dictionary(
+      uniqueKeysWithValues: base.ruleIDs.map {
+        ($0, base[$0].rhs.first ?? Symbol(id: Symbol.maxID))
+      })
   }
 
   /// Returns a complete string representation of `self` from which it
@@ -51,7 +67,8 @@ extension PreprocessedGrammar {
       rulesByLHS: \(rulesByLHS.storage),
       rawPosition: \(rawPosition.serialized()),
       leoPositions: \(leoPositions),
-      isNullable: \(isNullable)
+      isNullable: \(isNullable),
+      first: \(first)
       )
     """
   }
