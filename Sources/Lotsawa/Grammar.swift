@@ -212,7 +212,7 @@ extension Grammar {
 
   /// Returns the dot position at the beginning of `r`'s RHS.
   func rhsStart(_ r: RuleID) -> Position {
-    Position(self[r].rhs.startIndex)
+    ruleStart[Int(r.ordinal)]
   }
 
   func rhsStartAndPostdot(_ r: RuleID) -> (Position, Symbol) {
