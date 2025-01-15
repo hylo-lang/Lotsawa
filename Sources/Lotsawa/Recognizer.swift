@@ -18,6 +18,8 @@ public struct Recognizer<StoredSymbol: SignedInteger & FixedWidthInteger> {
 
   private let first: [RuleID: Symbol]
 
+  private let predictions: MultiMap<Symbol, Chart.Entry>
+
   /// Storage for all DerivationGroups, grouped by Earleme and sorted within each Earleme.
   public private(set) var chart = Chart()
 
@@ -25,7 +27,6 @@ public struct Recognizer<StoredSymbol: SignedInteger & FixedWidthInteger> {
   private var leoCandidateFound = false
 
   private var pendingDiscoveries: [(Symbol, startingAt: SourcePosition)] = []
-  private var pendingPredictions: [Symbol] = []
 }
 
 /// applies `f` to `x`.
@@ -43,6 +44,7 @@ extension Recognizer {
     self.leoPositions = g.leoPositions
     self.acceptsNull = g.isNullable
     self.first = g.first
+    self.predictions = g.predictions
     initialize()
   }
 
@@ -55,30 +57,14 @@ extension Recognizer {
   /// The index of the Earley set currently being worked on.
   public var currentEarleme: UInt32 { chart.currentEarleme }
 
-  /// Returns the chart entry that predicts the start of `r`.
-  private func prediction(_ r: RuleID) -> Chart.Entry {
-    // FIXME: overflow here on 32-bit systems
-    .init(
-      item: .init(predicting: r, in: g, at: currentEarleme, first: first[r]!),
-      mainstemIndex: .init(UInt32.max))
-  }
-
   /// Seed the current item set with rules implied by the predicted recognition of `s` starting at
   /// the current earleme.
   /// Seed the current item set with rules implied by the predicted recognition of `s` starting at
   /// the current earleme.
   mutating func predict(_ s: Symbol) {
-    predict1(s)
-    while let s = pendingPredictions.popLast() {
-      predict1(s)
-    }
-  }
-
-  mutating func predict1(_ s: Symbol) {
-    for r in rulesByLHS[s] {
-      if insert(prediction(r)) {
-        pendingPredictions.append(first[r]!)
-      }
+    for var p in predictions[s] {
+      p.item.origin = currentEarleme
+      _ = insert(p)
     }
   }
 
@@ -115,9 +101,10 @@ extension Recognizer {
         mainstems.allSatisfy(\.isEarley),
         "Leo item is not first in mainstems.")
 
-      // Make sure this isn't some lazy collection dependent on the
-      // chart or an unsafe buffer pointer; we're going to insert
-      // stuff.
+      // Use type annotation to make sure this isn't some lazy
+      // collection dependent on the chart or an unsafe buffer
+      // pointer; we're going to insert stuff and we don't want to
+      // cause needless copies or invalidate transitionItems.
       let transitionItems: Range<Int> = mainstems.indices
       for i in transitionItems
           where i == transitionItems.first || chart.entries[i - 1].item != chart.entries[i].item

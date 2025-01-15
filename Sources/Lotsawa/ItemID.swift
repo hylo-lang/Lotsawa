@@ -148,9 +148,18 @@ extension Chart.ItemID {
   ///
   /// - Precondition: !self.isLeo
   var origin: UInt32 {
-    assert(!isLeo)
-    return
-      storage.isCompletion_symbol_isEarley_originHi << 16 | storage.originLow_dotPosition >> 16
+    get {
+      assert(!isLeo)
+      return
+        storage.isCompletion_symbol_isEarley_originHi << 16 | storage.originLow_dotPosition >> 16
+    }
+    set {
+      assert(!isLeo)
+      storage.isCompletion_symbol_isEarley_originHi &= ~0 << 16
+      storage.isCompletion_symbol_isEarley_originHi |= newValue >> 16
+      storage.originLow_dotPosition &= ~0 >> 16
+      storage.originLow_dotPosition |= newValue << 16
+    }
   }
 
   /// The dot position representing this Earley Item's parse progress.

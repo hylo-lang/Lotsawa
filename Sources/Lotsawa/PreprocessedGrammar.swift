@@ -20,12 +20,45 @@ public struct PreprocessedGrammar<StoredSymbol: SignedInteger & FixedWidthIntege
 
   let first: [RuleID: Symbol]
 
+  let predictions: MultiMap<Symbol, Chart.Entry>
+
   /// Creates a preprocessed version of `raw`, ready for recognition.
   public init(_ raw: Grammar<StoredSymbol>) {
     (base, rawPosition, isNullable) = raw.eliminatingNulls()
     rulesByLHS = MultiMap(grouping: base.ruleIDs, by: base.lhs)
     leoPositions = base.leoPositions()
     first = base.firstSymbols()
+
+    /// Returns the chart entry that predicts the start of `r` at earleme 0.
+    func prediction(_ r: RuleID) -> Chart.Entry {
+      // FIXME: overflow here on 32-bit systems
+      .init(
+        item: .init(predicting: r, in: base, at: 0, first: first[r]!),
+        mainstemIndex: .init(UInt32.max))
+    }
+
+    let allSymbols = base.allSymbols()
+    var p: [Symbol: Set<Chart.Entry>] = Dictionary(uniqueKeysWithValues: allSymbols.map { ($0, []) })
+
+    var foundPrediction = false
+    repeat {
+      foundPrediction = false
+      for s in allSymbols {
+        for r in rulesByLHS[s] {
+          let oldCount = p[s]!.count
+          // FIXME: overflow here on 32-bit systems
+          p[s]!.insert(
+            .init(
+              item: .init(predicting: r, in: base, at: 0, first: first[r]!),
+              mainstemIndex: .init(UInt32.max)))
+          p[s]!.formUnion(p[first[r]!]!)
+          if p[s]!.count != oldCount { foundPrediction = true }
+        }
+      }
+    }
+    while foundPrediction
+
+    predictions = .init(storage: p.mapValues { $0.sorted() })
   }
 /*
   func rhsStartAndPostdot(_ r: RuleID) -> (Position, Symbol) {
@@ -41,7 +74,8 @@ extension PreprocessedGrammar {
     rulesByLHS: MultiMap<Symbol, RuleID>,
     leoPositions: Set<Position>,
     rawPosition: DiscreteMap<Position, Position>,
-    isNullable: Bool
+    isNullable: Bool,
+    predictions: MultiMap<Symbol, Chart.Entry>
   ) {
     self.base = base
     self.rulesByLHS = rulesByLHS
@@ -49,6 +83,7 @@ extension PreprocessedGrammar {
     self.rawPosition = rawPosition
     self.isNullable = isNullable
     first = base.firstSymbols()
+    self.predictions = predictions
   }
 
   /// Returns a complete string representation of `self` from which it
@@ -61,7 +96,7 @@ extension PreprocessedGrammar {
       rawPosition: \(rawPosition.serialized()),
       leoPositions: \(leoPositions),
       isNullable: \(isNullable),
-      first: \(first)
+      predictions: \(predictions)
       )
     """
   }

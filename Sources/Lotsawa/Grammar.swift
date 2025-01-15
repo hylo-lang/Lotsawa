@@ -410,6 +410,11 @@ extension Grammar {
     let terminals = Set(rules.lazy.map(\.rhs).joined()).subtracting(nonTerminals)
     return (terminals, nonTerminals)
   }
+
+  func allSymbols() -> Set<Symbol> {
+    Set(rules.lazy.map(\.lhs)).union(Set(rules.lazy.map(\.rhs).joined()))
+  }
+
 }
 
 extension Grammar {

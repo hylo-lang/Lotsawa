@@ -1,6 +1,7 @@
 /// A mapping from keys `K` to arrays of values `[V]`, where by default every
 /// key maps to the empty array.
-struct MultiMap<K: Hashable, V> {
+struct
+  MultiMap<K: Hashable, V> {
   /// The type used as underlying storage.
   typealias Storage = Dictionary<K, [V]>
 
