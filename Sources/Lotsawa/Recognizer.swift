@@ -80,8 +80,6 @@ extension Recognizer {
   }
 
   mutating func discover1(_ s: Symbol, startingAt origin: SourcePosition) {
-    let transitionEntries = chart.transitionEntries(on: s, inEarleySet: origin)
-
     do {
       // The set containing potential mainstem derivations to be paired with the one for s.
       let mainstems = chart.predictions(startingWith: s, inEarleySet: origin)
