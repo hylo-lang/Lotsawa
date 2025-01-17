@@ -12,11 +12,19 @@ public struct Chart: Hashable
 
   /// The position in `chart` where each Earley/derivation set begins, plus a sentinel for the end
   /// of the last complete set.
-  private var setStart: [Position] = [0]
+  internal var setStart: [Position] = [0]
 
-  init() {
+  init(predictionMemoSeed: PredictionsFromSymbols) {
     //entries.reserveCapacity(1024 * 1024 * 4)
     //setStart.reserveCapacity(1024 * 1024)
+    storedPredictionMemo = .init(.init(seed: predictionMemoSeed))
+  }
+
+  var storedPredictionMemo: Incidental<PredictionMemo>
+
+  var predictionMemo: PredictionMemo {
+    _read { yield storedPredictionMemo.value }
+    _modify { yield &storedPredictionMemo.value }
   }
 }
 
@@ -28,6 +36,9 @@ public typealias DotPosition = UInt16
 
 extension Chart {
   /// Clear `entries` and `setStart` without deallocating their storage.
+  ///
+  /// - Warning: do not use this to switch grammars; prediction memos
+  ///   tie the chart to a particular grammar.
   mutating func removeAll() {
     entries.removeAll(keepingCapacity: true)
     setStart.removeAll(keepingCapacity: true)
@@ -115,11 +126,18 @@ extension Chart {
   @discardableResult
   mutating func insert(_ e: Entry) -> Bool {
     assert(e.mainstemIndex == nil || isItemIndexStart(e.mainstemIndex!))
+    assert(e.dotPosition != 0, "predictions should be inserted with predict()")
     let i = currentEarleySet.partitionPoint { y in y >= e }
     let next = entries.at(i)
     if next == e { return false }
     entries.insert(e, at: i)
     return next?.item != e.item && currentEarleySet[..<i].last?.item != e.item
+  }
+
+  /// Seed the current item set with rules implied by the predicted
+  /// recognition of `s` starting at the current earleme.
+  mutating func predict(_ s: Symbol) {
+    predictionMemo.predict(s)
   }
 
   /// Returns the entries in Earley set `i` whose use is triggered by the recognition of `s`.
@@ -180,8 +198,11 @@ extension Chart {
   /// Completes the current earleme and moves on to the next one, returning `true` unless no
   /// progress was made in the current earleme.
   mutating func finishEarleme() -> Bool {
+    predictionMemo.finishEarleme()
     setStart.append(entries.count)
-    return setStart.last != setStart.dropLast().last
+    return setStart.last != setStart
+      .dropLast().last || !predictionMemo
+      .setInEarleme[setStart.count - 2].isEmpty
   }
 }
 
@@ -269,4 +290,29 @@ extension Chart {
     let predecessors = transitionEntries(on: s, inEarleySet: i)
     return predecessors.first.map { $0.isLeo ? predecessors : nil } ?? nil
   }
+}
+
+extension Chart {
+
+  struct Predictions: RandomAccessCollection {
+    typealias Base = [Chart.ItemID]
+    let earleme: UInt32
+    let base: Base
+
+    typealias Element = Chart.Entry
+    typealias Index = Base.Index
+    var startIndex: Index { base.startIndex }
+    var endIndex: Index { base.endIndex }
+
+    subscript(p: Base.Index) -> Element {
+      var i = base[p]
+      i.origin = earleme
+      return .init(item: i, mainstemIndex: .init(UInt32.max))
+    }
+  }
+
+  func predictions(startingWith transitionSymbol: Symbol, inEarleySet origin: UInt32) -> Predictions {
+    Predictions(earleme: origin, base: predictionMemo.setInEarleme[Int(origin)][transitionSymbol] ?? [])
+  }
+
 }

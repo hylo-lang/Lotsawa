@@ -20,7 +20,7 @@ public struct PreprocessedGrammar<StoredSymbol: SignedInteger & FixedWidthIntege
 
   let first: [RuleID: Symbol]
 
-  let predictions: MultiMap<Symbol, Chart.Entry>
+  let predictionMemoSeed: PredictionsFromSymbols
 
   /// Creates a preprocessed version of `raw`, ready for recognition.
   public init(_ raw: Grammar<StoredSymbol>) {
@@ -30,35 +30,30 @@ public struct PreprocessedGrammar<StoredSymbol: SignedInteger & FixedWidthIntege
     first = base.firstSymbols()
 
     /// Returns the chart entry that predicts the start of `r` at earleme 0.
-    func prediction(_ r: RuleID) -> Chart.Entry {
-      // FIXME: overflow here on 32-bit systems
-      .init(
-        item: .init(predicting: r, in: base, at: 0, first: first[r]!),
-        mainstemIndex: .init(UInt32.max))
+    func prediction(_ r: RuleID) -> Chart.ItemID {
+      .init(predicting: r, in: base, at: 0, first: first[r]!)
     }
 
     let allSymbols = base.allSymbols()
-    var p: [Symbol: Set<Chart.Entry>] = Dictionary(uniqueKeysWithValues: allSymbols.map { ($0, []) })
+    var p = Dictionary(uniqueKeysWithValues: allSymbols.map { (Set($0), Set<Chart.ItemID>()) })
 
     var foundPrediction = false
     repeat {
       foundPrediction = false
-      for s in allSymbols {
-        for r in rulesByLHS[s] {
+      for s0 in allSymbols {
+        let s = Set(s0)
+        for r in rulesByLHS[s0] {
           let oldCount = p[s]!.count
-          // FIXME: overflow here on 32-bit systems
           p[s]!.insert(
-            .init(
-              item: .init(predicting: r, in: base, at: 0, first: first[r]!),
-              mainstemIndex: .init(UInt32.max)))
-          p[s]!.formUnion(p[first[r]!]!)
+            .init(predicting: r, in: base, at: 0, first: first[r]!))
+          p[s]!.formUnion(p[Set(first[r]!)]!)
           if p[s]!.count != oldCount { foundPrediction = true }
         }
       }
     }
     while foundPrediction
 
-    predictions = .init(storage: p.mapValues { $0.sorted() })
+    predictionMemoSeed = p.mapValues { Dictionary(grouping: $0) { $0.transitionSymbol! } }
   }
 /*
   func rhsStartAndPostdot(_ r: RuleID) -> (Position, Symbol) {
@@ -75,7 +70,7 @@ extension PreprocessedGrammar {
     leoPositions: Set<Position>,
     rawPosition: DiscreteMap<Position, Position>,
     isNullable: Bool,
-    predictions: MultiMap<Symbol, Chart.Entry>
+    predictionMemoSeed: PredictionsFromSymbols
   ) {
     self.base = base
     self.rulesByLHS = rulesByLHS
@@ -83,7 +78,7 @@ extension PreprocessedGrammar {
     self.rawPosition = rawPosition
     self.isNullable = isNullable
     first = base.firstSymbols()
-    self.predictions = predictions
+    self.predictionMemoSeed = predictionMemoSeed
   }
 
   /// Returns a complete string representation of `self` from which it
@@ -96,8 +91,12 @@ extension PreprocessedGrammar {
       rawPosition: \(rawPosition.serialized()),
       leoPositions: \(leoPositions),
       isNullable: \(isNullable),
-      predictions: \(predictions)
+      predictionMemoSeed: \(predictionMemoSeed)
       )
     """
   }
+}
+
+extension Set {
+  init(_ s: Element) { self = .init(CollectionOfOne(s)) }
 }

@@ -18,10 +18,8 @@ public struct Recognizer<StoredSymbol: SignedInteger & FixedWidthInteger> {
 
   private let first: [RuleID: Symbol]
 
-  private let predictions: MultiMap<Symbol, Chart.Entry>
-
   /// Storage for all DerivationGroups, grouped by Earleme and sorted within each Earleme.
-  public private(set) var chart = Chart()
+  public private(set) var chart: Chart;
 
   /// True iff at least one Leo candidate item was added to the current earley set.
   private var leoCandidateFound = false
@@ -44,7 +42,7 @@ extension Recognizer {
     self.leoPositions = g.leoPositions
     self.acceptsNull = g.isNullable
     self.first = g.first
-    self.predictions = g.predictions
+    self.chart = Chart(predictionMemoSeed: g.predictionMemoSeed)
     initialize()
   }
 
@@ -59,13 +57,8 @@ extension Recognizer {
 
   /// Seed the current item set with rules implied by the predicted recognition of `s` starting at
   /// the current earleme.
-  /// Seed the current item set with rules implied by the predicted recognition of `s` starting at
-  /// the current earleme.
   mutating func predict(_ s: Symbol) {
-    for var p in predictions[s] {
-      p.item.origin = currentEarleme
-      _ = insert(p)
-    }
+    chart.predict(s)
   }
 
   /// Inserts `newEntry` into `chart`, tracking whether Leo item
@@ -87,29 +80,57 @@ extension Recognizer {
   }
 
   mutating func discover1(_ s: Symbol, startingAt origin: SourcePosition) {
-    // The set containing potential mainstem derivations to be paired with the one for s.
-    let mainstems = chart.transitionEntries(on: s, inEarleySet: origin)
+    let transitionEntries = chart.transitionEntries(on: s, inEarleySet: origin)
 
-    if let head = mainstems.first,
-       let p = head.memoizedPenultIndex
-    {
-      derive(
-        .init(item: chart.entries[p].item.advanced(in: g), mainstemIndex: mainstems.startIndex))
-    }
-    else {
-      assert(
-        mainstems.allSatisfy(\.isEarley),
-        "Leo item is not first in mainstems.")
+    do {
+      // The set containing potential mainstem derivations to be paired with the one for s.
+      let mainstems = chart.predictions(startingWith: s, inEarleySet: origin)
 
-      // Use type annotation to make sure this isn't some lazy
-      // collection dependent on the chart or an unsafe buffer
-      // pointer; we're going to insert stuff and we don't want to
-      // cause needless copies or invalidate transitionItems.
-      let transitionItems: Range<Int> = mainstems.indices
-      for i in transitionItems
-          where i == transitionItems.first || chart.entries[i - 1].item != chart.entries[i].item
+      if let head = mainstems.first,
+         let p = head.memoizedPenultIndex
       {
-        derive(.init(item: chart.entries[i].item.advanced(in: g), mainstemIndex: i))
+        derive(
+          .init(item: chart.entries[p].item.advanced(in: g), mainstemIndex: nil))
+      }
+      else {
+        assert(
+          mainstems.allSatisfy(\.isEarley),
+          "Leo item is not first in mainstems.")
+
+        var lastItem: Optional<Chart.ItemID> = nil
+
+        for m in mainstems where m.item != lastItem {
+          derive(.init(item: m.item.advanced(in: g), mainstemIndex: nil))
+          lastItem = m.item
+        }
+      }
+    }
+
+    do {
+      // The set containing potential mainstem derivations to be paired with the one for s.
+      let mainstems = chart.transitionEntries(on: s, inEarleySet: origin)
+
+      if let head = mainstems.first,
+         let p = head.memoizedPenultIndex
+      {
+        derive(
+          .init(item: chart.entries[p].item.advanced(in: g), mainstemIndex: mainstems.startIndex))
+      }
+      else {
+        assert(
+          mainstems.allSatisfy(\.isEarley),
+          "Leo item is not first in mainstems.")
+
+        // Use type annotation to make sure this isn't some lazy
+        // collection dependent on the chart or an unsafe buffer
+        // pointer; we're going to insert stuff and we don't want to
+        // cause needless copies or invalidate transitionItems.
+        let transitionItems: Range<Int> = mainstems.indices
+        for i in transitionItems
+            where i == transitionItems.first || chart.entries[i - 1].item != chart.entries[i].item
+        {
+          derive(.init(item: chart.entries[i].item.advanced(in: g), mainstemIndex: i))
+        }
       }
     }
   }
