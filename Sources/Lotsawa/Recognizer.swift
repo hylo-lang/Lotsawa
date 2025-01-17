@@ -80,58 +80,40 @@ extension Recognizer {
   }
 
   mutating func discover1(_ s: Symbol, startingAt origin: SourcePosition) {
-    do {
-      // The set containing potential mainstem derivations to be paired with the one for s.
-      let mainstems = chart.predictions(startingWith: s, inEarleySet: origin)
 
-      if let head = mainstems.first,
-         let p = head.memoizedPenultIndex
-      {
-        derive(
-          .init(item: chart.entries[p].item.advanced(in: g), mainstemIndex: nil))
-      }
-      else {
-        assert(
-          mainstems.allSatisfy(\.isEarley),
-          "Leo item is not first in mainstems.")
+    // The set containing potential mainstem derivations to be paired with the one for s.
+    let nonPredictionMainstems = chart.transitionEntries(on: s, inEarleySet: origin)
 
-        var lastItem: Optional<Chart.ItemID> = nil
-
-        for m in mainstems where m.item != lastItem {
-          derive(.init(item: m.item.advanced(in: g), mainstemIndex: nil))
-          lastItem = m.item
-        }
-      }
+    if let head = nonPredictionMainstems.first,
+       let p = head.memoizedPenultIndex
+    {
+      derive(
+        .init(item: chart.entries[p].item.advanced(in: g), mainstemIndex: nonPredictionMainstems.startIndex))
     }
+    else {
+      assert(
+        nonPredictionMainstems.allSatisfy(\.isEarley),
+        "Leo item is not first in mainstems.")
 
-    do {
       // The set containing potential mainstem derivations to be paired with the one for s.
-      let mainstems = chart.transitionEntries(on: s, inEarleySet: origin)
-
-      if let head = mainstems.first,
-         let p = head.memoizedPenultIndex
-      {
-        derive(
-          .init(item: chart.entries[p].item.advanced(in: g), mainstemIndex: mainstems.startIndex))
+      let predictions = chart.predictions(startingWith: s, inEarleySet: origin)
+      for m in predictions {
+        derive(.init(item: m.item.advanced(in: g), mainstemIndex: nil))
       }
-      else {
-        assert(
-          mainstems.allSatisfy(\.isEarley),
-          "Leo item is not first in mainstems.")
 
-        // Use type annotation to make sure this isn't some lazy
-        // collection dependent on the chart or an unsafe buffer
-        // pointer; we're going to insert stuff and we don't want to
-        // cause needless copies or invalidate transitionItems.
-        let transitionItems: Range<Int> = mainstems.indices
-        for i in transitionItems
-            where i == transitionItems.first || chart.entries[i - 1].item != chart.entries[i].item
-        {
-          derive(.init(item: chart.entries[i].item.advanced(in: g), mainstemIndex: i))
-        }
+      // Use type annotation to make sure this isn't some lazy
+      // collection dependent on the chart or an unsafe buffer
+      // pointer; we're going to insert stuff and we don't want to
+      // cause needless copies or invalidate transitionItems.
+      let transitionItems: Range<Int> = nonPredictionMainstems.indices
+      for i in transitionItems
+          where i == transitionItems.first || chart.entries[i - 1].item != chart.entries[i].item
+      {
+        derive(.init(item: chart.entries[i].item.advanced(in: g), mainstemIndex: i))
       }
     }
   }
+
 
   /// Returns the position of the mainstem of the Leo item that would preempt the completion of the
   /// penult Earley item `x`, or `nil` if there is no such mainstem.
