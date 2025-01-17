@@ -20,7 +20,7 @@ public struct PreprocessedGrammar<StoredSymbol: SignedInteger & FixedWidthIntege
 
   let first: [RuleID: Symbol]
 
-  let predictionMemoSeed: PredictionsFromSymbols
+  let predictionMemo: PredictionMemo
 
   /// Creates a preprocessed version of `raw`, ready for recognition.
   public init(_ raw: Grammar<StoredSymbol>) {
@@ -34,26 +34,7 @@ public struct PreprocessedGrammar<StoredSymbol: SignedInteger & FixedWidthIntege
       .init(predicting: r, in: base, at: 0, first: first[r]!)
     }
 
-    let allSymbols = base.allSymbols()
-    var p = Dictionary(uniqueKeysWithValues: allSymbols.map { (Set($0), Set<Chart.ItemID>()) })
-
-    var foundPrediction = false
-    repeat {
-      foundPrediction = false
-      for s0 in allSymbols {
-        let s = Set(s0)
-        for r in rulesByLHS[s0] {
-          let oldCount = p[s]!.count
-          p[s]!.insert(
-            .init(predicting: r, in: base, at: 0, first: first[r]!))
-          p[s]!.formUnion(p[Set(first[r]!)]!)
-          if p[s]!.count != oldCount { foundPrediction = true }
-        }
-      }
-    }
-    while foundPrediction
-
-    predictionMemoSeed = p.mapValues { Dictionary(grouping: $0) { $0.transitionSymbol! }.mapValues { $0.sorted() } }
+    predictionMemo = PredictionMemo(grammar: base, rulesByLHS: rulesByLHS, first: first)
   }
 /*
   func rhsStartAndPostdot(_ r: RuleID) -> (Position, Symbol) {
@@ -69,8 +50,7 @@ extension PreprocessedGrammar {
     rulesByLHS: MultiMap<Symbol, RuleID>,
     leoPositions: Set<Position>,
     rawPosition: DiscreteMap<Position, Position>,
-    isNullable: Bool,
-    predictionMemoSeed: PredictionsFromSymbols
+    isNullable: Bool
   ) {
     self.base = base
     self.rulesByLHS = rulesByLHS
@@ -78,7 +58,7 @@ extension PreprocessedGrammar {
     self.rawPosition = rawPosition
     self.isNullable = isNullable
     first = base.firstSymbols()
-    self.predictionMemoSeed = predictionMemoSeed
+    self.predictionMemo = PredictionMemo(grammar: base, rulesByLHS: rulesByLHS, first: first)
   }
 
   /// Returns a complete string representation of `self` from which it
@@ -90,8 +70,7 @@ extension PreprocessedGrammar {
       rulesByLHS: \(rulesByLHS.storage),
       rawPosition: \(rawPosition.serialized()),
       leoPositions: \(leoPositions),
-      isNullable: \(isNullable),
-      predictionMemoSeed: \(predictionMemoSeed)
+      isNullable: \(isNullable)
       )
     """
   }

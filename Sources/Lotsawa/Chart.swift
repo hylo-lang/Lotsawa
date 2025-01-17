@@ -14,10 +14,10 @@ public struct Chart: Hashable
   /// of the last complete set.
   internal var setStart: [Position] = [0]
 
-  init(predictionMemoSeed: PredictionsFromSymbols) {
+  init(predictionMemo: PredictionMemo) {
     //entries.reserveCapacity(1024 * 1024 * 4)
     //setStart.reserveCapacity(1024 * 1024)
-    storedPredictionMemo = .init(.init(seed: predictionMemoSeed))
+    storedPredictionMemo = .init(predictionMemo)
   }
 
   var storedPredictionMemo: Incidental<PredictionMemo>
@@ -43,6 +43,7 @@ extension Chart {
     entries.removeAll(keepingCapacity: true)
     setStart.removeAll(keepingCapacity: true)
     setStart.append(0)
+    predictionMemo.reset()
   }
 }
 
@@ -295,7 +296,8 @@ extension Chart {
 extension Chart {
 
   struct Predictions: RandomAccessCollection {
-    typealias Base = [Chart.ItemID]
+    typealias Base = PredictionSet
+
     let earleme: UInt32
     let base: Base
 
@@ -312,7 +314,10 @@ extension Chart {
   }
 
   func predictions(startingWith transitionSymbol: Symbol, inEarleySet origin: UInt32) -> Predictions {
-    Predictions(earleme: origin, base: predictionMemo.setInEarleme[Int(origin)][transitionSymbol] ?? [])
+    Predictions(
+      earleme: origin,
+      base: predictionMemo.predictions(
+        inEarleme: Int(origin), startingWith: transitionSymbol))
   }
 
 }

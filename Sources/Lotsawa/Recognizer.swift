@@ -42,7 +42,7 @@ extension Recognizer {
     self.leoPositions = g.leoPositions
     self.acceptsNull = g.isNullable
     self.first = g.first
-    self.chart = Chart(predictionMemoSeed: g.predictionMemoSeed)
+    self.chart = Chart(predictionMemo: g.predictionMemo)
     initialize()
   }
 
