@@ -95,18 +95,20 @@ extension Recognizer {
         nonPredictionMainstems.allSatisfy(\.isEarley),
         "Leo item is not first in mainstems.")
 
-      // The set containing potential mainstem derivations to be paired with the one for s.
-      let predictions = chart.predictions(startingWith: s, inEarleySet: origin)
-      for var m in predictions {
-        m.origin = origin
-        derive(.init(item: m.advanced(in: g), mainstemIndex: nil))
-      }
-
       // Use type annotation to make sure this isn't some lazy
       // collection dependent on the chart or an unsafe buffer
       // pointer; we're going to insert stuff and we don't want to
       // cause needless copies or invalidate transitionItems.
       let transitionItems: Range<Int> = nonPredictionMainstems.indices
+
+      // The set containing potential mainstem derivations to be paired with the one for s.
+      let predictions = chart.predictions(startingWith: s, inEarleySet: origin)
+      for m0 in predictions {
+        var m = m0.advanced
+        m.origin = origin
+        derive(.init(item: m, mainstemIndex: nil))
+      }
+
       for i in transitionItems
           where i == transitionItems.first || chart.entries[i - 1].item != chart.entries[i].item
       {

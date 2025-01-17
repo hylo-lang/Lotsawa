@@ -1,8 +1,20 @@
-typealias Prediction = Chart.ItemID
+struct Prediction: Comparable, Hashable {
+  let original: Chart.ItemID
+  let advanced: Chart.ItemID
+
+  static func == (l: Self, r: Self) -> Bool { l.original == r.original }
+  static func < (l: Self, r: Self) -> Bool { l.original < r.original }
+
+  func hash(into hasher: inout Hasher) {
+    original.hash(into: &hasher)
+  }
+}
+
 typealias PredictionSet = UnsafeBufferPointer<Prediction>.SubSequence
 
 internal struct PredictionMemo: Hashable {
-  typealias SetStorage = [Chart.ItemID]
+
+  typealias SetStorage = [Prediction]
   typealias PredictionSetID = Range<SetStorage.Index>
   var setStorage: SetStorage = []
   // Where each earleme's set starts/ends.
@@ -19,7 +31,7 @@ internal struct PredictionMemo: Hashable {
     let allSymbols = g.allSymbols()
     // Start with an empty set for each symbol
     var p = Dictionary<Symbol, Set<Prediction>>(
-      uniqueKeysWithValues: allSymbols.map { ($0, Set<Chart.ItemID>()) })
+      uniqueKeysWithValues: allSymbols.map { ($0, Set<Prediction>()) })
 
     var foundPrediction = false
     repeat {
@@ -28,8 +40,8 @@ internal struct PredictionMemo: Hashable {
         let s = s0
         for r in rulesByLHS[s0] {
           let oldCount = p[s]!.count
-          p[s]!.insert(
-            .init(predicting: r, in: g, at: 0, first: first[r]!))
+          let x = Chart.ItemID(predicting: r, in: g, at: 0, first: first[r]!)
+          p[s]!.insert(.init(original: x, advanced: x.advanced(in: g)))
           p[s]!.formUnion(p[first[r]!]!)
           if p[s]!.count != oldCount { foundPrediction = true }
         }
@@ -77,9 +89,9 @@ internal struct PredictionMemo: Hashable {
     let ithSet = predictions(inEarleme: i)
     let k = Chart.ItemID.transitionKey(transitionSymbol)
 
-    let j = ithSet.partitionPoint { d in d.transitionKey >= k }
+    let j = ithSet.partitionPoint { d in d.original.transitionKey >= k }
     let items = ithSet[j...]
-    return items.prefix(while: { x in x.symbolKey == transitionSymbol.id })
+    return items.prefix(while: { x in x.original.symbolKey == transitionSymbol.id })
   }
 
   mutating func finishEarleme() {
