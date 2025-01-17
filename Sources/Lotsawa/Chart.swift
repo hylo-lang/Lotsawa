@@ -295,29 +295,8 @@ extension Chart {
 
 extension Chart {
 
-  struct Predictions: RandomAccessCollection {
-    typealias Base = PredictionSet
-
-    let earleme: UInt32
-    let base: Base
-
-    typealias Element = Chart.ItemID
-    typealias Index = Base.Index
-    var startIndex: Index { base.startIndex }
-    var endIndex: Index { base.endIndex }
-
-    subscript(p: Base.Index) -> Element {
-      var i = base[p]
-      i.origin = earleme
-      return i
-    }
-  }
-
-  func predictions(startingWith transitionSymbol: Symbol, inEarleySet origin: UInt32) -> Predictions {
-    Predictions(
-      earleme: origin,
-      base: predictionMemo.predictions(
-        inEarleme: Int(origin), startingWith: transitionSymbol))
+  func predictions(startingWith transitionSymbol: Symbol, inEarleySet origin: UInt32) -> PredictionSet {
+      predictionMemo.predictions(inEarleme: Int(origin), startingWith: transitionSymbol)
   }
 
 }

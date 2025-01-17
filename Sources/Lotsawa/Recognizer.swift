@@ -97,7 +97,8 @@ extension Recognizer {
 
       // The set containing potential mainstem derivations to be paired with the one for s.
       let predictions = chart.predictions(startingWith: s, inEarleySet: origin)
-      for m in predictions {
+      for var m in predictions {
+        m.origin = origin
         derive(.init(item: m.advanced(in: g), mainstemIndex: nil))
       }
 
