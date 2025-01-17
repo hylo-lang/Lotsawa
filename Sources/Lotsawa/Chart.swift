@@ -301,7 +301,7 @@ extension Chart {
     let earleme: UInt32
     let base: Base
 
-    typealias Element = Chart.Entry
+    typealias Element = Chart.ItemID
     typealias Index = Base.Index
     var startIndex: Index { base.startIndex }
     var endIndex: Index { base.endIndex }
@@ -309,7 +309,7 @@ extension Chart {
     subscript(p: Base.Index) -> Element {
       var i = base[p]
       i.origin = earleme
-      return .init(item: i, mainstemIndex: .init(UInt32.max))
+      return i
     }
   }
 
