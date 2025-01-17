@@ -53,7 +53,7 @@ public struct PreprocessedGrammar<StoredSymbol: SignedInteger & FixedWidthIntege
     }
     while foundPrediction
 
-    predictionMemoSeed = p.mapValues { Dictionary(grouping: $0) { $0.transitionSymbol! } }
+    predictionMemoSeed = p.mapValues { Dictionary(grouping: $0) { $0.transitionSymbol! }.mapValues { $0.sorted() } }
   }
 /*
   func rhsStartAndPostdot(_ r: RuleID) -> (Position, Symbol) {

@@ -4,7 +4,7 @@ typealias PredictionsFromSymbols = [Set<Symbol>: PredictionSet]
 extension PredictionSet {
   mutating func formUnion(_ other: Self) {
     for (k, v) in other {
-      self[k] = Array(Set(v).union(self[k] ?? []))
+      self[k] = Array(Set(v).union(self[k] ?? [])).sorted()
     }
   }
 }
