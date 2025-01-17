@@ -1,7 +1,7 @@
 /// A Recognizer wrapper engineered for convenient testing
 public struct DebugRecognizer: CustomStringConvertible {
   /// The underlying recognizer type.
-  public typealias Base = Recognizer<Symbol.ID>
+  public typealias Base = Recognizer<DefaultGrammar.StoredSymbol>
 
   /// The underlying recognizer.
   public var base: Base

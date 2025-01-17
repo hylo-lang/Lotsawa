@@ -1,7 +1,7 @@
 /// A wrapped `Forest` with conveniences for testing and debugging.
 public struct DebugForest {
   /// The underlying forest.
-  public var base: Forest<Symbol.ID>
+  public var base: Forest<DefaultGrammar.StoredSymbol>
 
   /// The language recognized.
   public let language: DebugGrammar
@@ -12,7 +12,7 @@ public struct DebugForest {
   /// A wrapped `Forest.Derivation` with conveniences for testing and debugging.
   public struct Derivation {
     /// The underlying derivation.
-    public let base: Forest<Symbol.ID>.Derivation
+    public let base: Forest<DefaultGrammar.StoredSymbol>.Derivation
 
     /// The language recognized.
     public let language: DebugGrammar

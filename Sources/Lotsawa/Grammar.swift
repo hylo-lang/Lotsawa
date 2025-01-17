@@ -41,6 +41,8 @@ public struct RuleID: Hashable, Comparable {
 /// - Parameter StoredSymbol: storage representation of `Symbol.id` values in this grammar.
 public struct Grammar<StoredSymbol: SignedInteger & FixedWidthInteger> {
 
+  public typealias StoredSymbol = StoredSymbol
+
   /// Storage for all the rules.
   ///
   /// Rules are packed end-to-end, with the RHS symbols in order, followed by the LHS symbol with
