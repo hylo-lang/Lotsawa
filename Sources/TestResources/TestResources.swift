@@ -2,7 +2,7 @@ import Foundation
 import Lotsawa
 
 func textResource(_ name: String) -> String {
-  try! String(contentsOf: Bundle.module.url(forResource: name, withExtension: "txt")!)
+  try! String(contentsOf: Bundle.module.url(forResource: name, withExtension: "txt")!, encoding: .ascii)
 }
 
 public var ansiCGrammar: DebugGrammar {

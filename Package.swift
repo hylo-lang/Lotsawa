@@ -20,7 +20,7 @@ let thisDirectory = try (#filePath).replacing(Regex(#"[\\/][^\\/]*$"#), with: ""
 let package = Package(
   name: "Lotsawa",
     platforms: [
-       .macOS(.v10_15)
+       .macOS(.v15)
     ],
     products: [
         .library(
