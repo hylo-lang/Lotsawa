@@ -12,12 +12,13 @@ public struct Chart: Hashable
 
   /// The position in `chart` where each Earley/derivation set begins, plus a sentinel for the end
   /// of the last complete set.
-  internal var setStart: [Position] = [0]
+  internal var setStart: [Position] = []
 
   init(predictionMemo: PredictionMemo) {
     //entries.reserveCapacity(1024 * 1024 * 4)
     //setStart.reserveCapacity(1024 * 1024)
     storedPredictionMemo = .init(predictionMemo)
+    removeAll()
   }
 
   var storedPredictionMemo: Incidental<PredictionMemo>
@@ -41,6 +42,7 @@ extension Chart {
   ///   tie the chart to a particular grammar.
   mutating func removeAll() {
     entries.removeAll(keepingCapacity: true)
+    entries.append(.emptyPredictionSet)
     setStart.removeAll(keepingCapacity: true)
     setStart.append(0)
     predictionMemo.reset()
@@ -71,8 +73,11 @@ extension Chart {
 
   /// The set of partial parses ending at earleme `i`.
   public func earleySet(_ i: SourcePosition) -> EarleySet {
-    entries.withUnsafeBufferPointer {
-      $0[setStart[Int(i)]..<setStart[Int(i) + 1]]
+    assert(i < setStart.count - 1)
+    return entries.withUnsafeBufferPointer { entries in
+      setStart.withUnsafeBufferPointer { setStart in
+        entries[(setStart[Int(i)] + 1)..<setStart[Int(i) + 1]]
+      }
     }
   }
 
@@ -93,6 +98,14 @@ extension Chart {
       get { mainstemIndexStorage == ~0 ? nil : .init(mainstemIndexStorage) }
       set { mainstemIndexStorage = newValue == nil ? ~0 : .init(newValue!) }
     }
+
+    /// An instance referring to the given prediction set.
+    init(predictionSet: PredictionSetID) {
+      self.item = .init(predictionSet: predictionSet)
+      self.mainstemIndexStorage = 0
+    }
+
+    static var emptyPredictionSet: Self { Self(predictionSet: emptyPredictionSetID) }
 
     /// Creates an instance with the given properties
     ///
@@ -199,11 +212,21 @@ extension Chart {
   /// Completes the current earleme and moves on to the next one, returning `true` unless no
   /// progress was made in the current earleme.
   mutating func finishEarleme() -> Bool {
-    predictionMemo.finishEarleme()
+    let finishedSetHasNonPredictions = setStart.last! + 1 < entries.count
+    let finishedEarleme = Int(currentEarleme)
     setStart.append(entries.count)
-    return setStart.last != setStart
-      .dropLast().last || !predictionMemo
-      .setInEarleme[setStart.count - 2].isEmpty
+    let predictions = predictionMemo.finishEarleme().predictionSetID
+    if predictions != emptyPredictionSetID {
+      self[predictionSetOfEarleme: finishedEarleme] = predictions
+      return true
+    }
+    entries.append(.emptyPredictionSet)
+    return finishedSetHasNonPredictions
+  }
+
+  subscript(predictionSetOfEarleme e: Int) -> PredictionSetID {
+    get { entries[setStart[e]].predictionSetID }
+    set { entries[setStart[e]] = Entry(predictionSet: newValue) }
   }
 }
 
@@ -296,7 +319,8 @@ extension Chart {
 extension Chart {
 
   func predictions(startingWith transitionSymbol: Symbol, inEarleySet origin: UInt32) -> PredictionSet {
-      predictionMemo.predictions(inEarleme: Int(origin), startingWith: transitionSymbol)
+    let setID = self[predictionSetOfEarleme: Int(origin)]
+    return predictionMemo.predictions(setID, startingWith: transitionSymbol)
   }
 
 }

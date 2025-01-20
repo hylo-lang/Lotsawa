@@ -23,6 +23,19 @@ extension Chart {
 }
 
 extension Chart.ItemID {
+
+  /// Creates a reference to the prediction set whose ID is given by origin.
+  init(predictionSet s: PredictionSetID) {
+    storage = (
+      originLow_dotPosition:
+        UInt32(UInt16(truncatingIfNeeded: s)) << 16,
+      isCompletion_symbol_isEarley_originHi: UInt32(UInt16(truncatingIfNeeded: s >> 16)))
+    assert(!isEarley)
+    assert(self.predictionSetID == s)
+    assert(self.transitionSymbol == Symbol(id: 0))
+    assert(!isCompletion)
+  }
+
   /// Creates an Earley item starting at `origin and predicting the rule identified by `r` in `g`.
   init<S>(predicting r: RuleID, in g: Grammar<S>, at origin: SourcePosition, first postdot: Symbol) {
     let ruleStart = g.rhsStart(r)
@@ -142,6 +155,13 @@ extension Chart.ItemID {
       if newValue { storage.isCompletion_symbol_isEarley_originHi |= 1 << 16 }
       else { storage.isCompletion_symbol_isEarley_originHi &= ~(1 << 16) }
     }
+  }
+
+  var predictionSetID: PredictionSetID {
+    assert(!isEarley)
+    assert(self.transitionSymbol == Symbol(id: 0))
+    assert(!isCompletion)
+    return .init(storage.isCompletion_symbol_isEarley_originHi << 16 | storage.originLow_dotPosition >> 16)
   }
 
   /// The input position where this partial recognition started.

@@ -20,6 +20,17 @@ extension DebugChart: CustomStringConvertible {
 
       result.append("---------- \(earleme) ----------\n")
 
+      if earleme == base.currentEarleme {
+        result
+          .append(
+            "predicted symbols: \(language.text(base.predictionMemo.predictedSymbolsInCurrentEarleme))\n"
+          )
+      }
+      else {
+        for x in base.predictionMemo.predictions(base[predictionSetOfEarleme: Int(earleme)]) {
+          result += language.dottedText(rawPosition[x.original.dotPosition]) + "\n"
+        }
+      }
       var remainingDerivations = earleme == base.currentEarleme
         ? base.currentEarleySet : base.earleySet(earleme)
 
@@ -52,4 +63,25 @@ extension DebugChart: CustomStringConvertible {
     return result
   }
 
+  private func appendText(_ head: Chart.Entry, mainstemText: String, to result: inout String) {
+    // print("###", itemDerivations.startIndex)
+    if !head.isLeo {
+      // print("non-leo")
+      result.append("<\(head.origin)> ")
+    }
+    if head.mainstemIndex != nil {
+      // print("has mainstem")
+      result.append(mainstemText)
+    }
+
+    if head.isLeo {
+      // print("leo description")
+      result += "L(\(head.memoizedPenultIndex ?? -999)) •\(head.transitionSymbol ?? Symbol(id: -999))"
+    }
+    else  {
+      // print("dotted text")
+      result += language.dottedText(rawPosition[head.dotPosition])
+    }
+    result += "\n"
+  }
 }

@@ -19,7 +19,7 @@ public struct Recognizer<StoredSymbol: SignedInteger & FixedWidthInteger> {
   private let first: [RuleID: Symbol]
 
   /// Storage for all DerivationGroups, grouped by Earleme and sorted within each Earleme.
-  public private(set) var chart: Chart;
+  public internal(set) var chart: Chart;
 
   /// True iff at least one Leo candidate item was added to the current earley set.
   private var leoCandidateFound = false

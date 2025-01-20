@@ -16,7 +16,7 @@ public struct DebugRecognizer: CustomStringConvertible {
   /// Creates an instance that recognizes `language`.
   public init(_ language: DebugGrammar) {
     self.language = language
-    let p = PreprocessedGrammar(language.raw)
+    let p = PreprocessedGrammar(language.raw, language: language)
     base = Recognizer(p)
     rawPosition = p.rawPosition
   }
@@ -29,6 +29,8 @@ public struct DebugRecognizer: CustomStringConvertible {
     if !base.finishEarleme() { return input[...] }
 
     for (i, c) in input.enumerated() {
+      print("###############")
+      print(chart)
       base.discover(language.symbols["'\(c)'"]!, startingAt: .init(i))
       if !base.finishEarleme() {
         return input.dropFirst(i + 1)

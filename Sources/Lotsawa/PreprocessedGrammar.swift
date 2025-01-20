@@ -23,7 +23,7 @@ public struct PreprocessedGrammar<StoredSymbol: SignedInteger & FixedWidthIntege
   let predictionMemo: PredictionMemo
 
   /// Creates a preprocessed version of `raw`, ready for recognition.
-  public init(_ raw: Grammar<StoredSymbol>) {
+  public init(_ raw: Grammar<StoredSymbol>, language: DebugGrammar? = nil) {
     (base, rawPosition, isNullable) = raw.eliminatingNulls()
     rulesByLHS = MultiMap(grouping: base.ruleIDs, by: base.lhs)
     leoPositions = base.leoPositions()
@@ -34,7 +34,7 @@ public struct PreprocessedGrammar<StoredSymbol: SignedInteger & FixedWidthIntege
       .init(predicting: r, in: base, at: 0, first: first[r]!)
     }
 
-    predictionMemo = PredictionMemo(grammar: base, rulesByLHS: rulesByLHS, first: first)
+    predictionMemo = PredictionMemo(grammar: base, rulesByLHS: rulesByLHS, first: first, language: language)
   }
 /*
   func rhsStartAndPostdot(_ r: RuleID) -> (Position, Symbol) {
