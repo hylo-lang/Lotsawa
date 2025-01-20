@@ -10,6 +10,6 @@ An Earley/Leo parser in pure Swift.
 
 There are two faster Earley parsers, [Marpa](https://jeffreykegler.github.io/Marpa-web-site/), which inspired this work, and [YAEP](https://github.com/vnmakarov/yaep).  Marpa is faster by about 1.5x but uses 10x more memory. YAEP is much faster than Marpa and uses much *much* less memory than either of the others. 
 
-Most of the code was written in a very principled way, but in January 2025 I made a lot of commits as an experiment without writing comments or tests, and now some of the tests failed.
+Most of the code was written in a very principled way, but in January 2025 I made a lot of commits as an experiment without writing comments or tests, and now some of the tests fail.
 
 You've been warned.
